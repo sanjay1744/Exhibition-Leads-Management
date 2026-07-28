@@ -6,31 +6,40 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="voice-recorder p-4 border rounded-lg bg-white shadow-sm">
-      <h3 class="text-lg font-semibold mb-2">Voice Note Audio Recorder</h3>
+    <div class="card-panel h-full flex flex-col justify-between hover:shadow-md transition">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="material-icons text-red-600">mic</span>
+          <h3 class="text-sm font-bold text-gray-800">Voice Note Audio</h3>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">Record quick spoken discussion notes.</p>
 
-      <div class="flex items-center gap-3">
         @if (!isRecording()) {
           <button 
             (click)="startRecording()" 
-            class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium text-sm flex items-center gap-1"
+            class="w-full btn bg-red-600 hover:bg-red-700 text-white justify-center text-xs py-2.5 rounded-lg font-medium shadow-sm transition"
           >
-            🔴 Start Voice Recording
+            <span class="material-icons text-sm">fiber_manual_record</span>
+            Record Voice Note
           </button>
         } @else {
           <button 
             (click)="stopRecording()" 
-            class="px-4 py-2 bg-gray-800 text-white rounded hover:bg-black font-medium text-sm flex items-center gap-1"
+            class="w-full btn bg-gray-900 hover:bg-black text-white justify-center text-xs py-2.5 rounded-lg font-medium shadow-sm transition animate-pulse"
           >
-            ⏹️ Stop Recording
+            <span class="material-icons text-sm">stop</span>
+            Stop & Save Audio
           </button>
-          <span class="text-sm font-semibold text-red-600 animate-pulse">Recording...</span>
         }
       </div>
 
       @if (audioRecorded()) {
-        <div class="mt-3 text-sm text-green-700 bg-green-50 p-2 rounded">
-          ✓ Audio voice note attached (Ready to save).
+        <div class="mt-3 text-xs bg-red-50 border border-red-200 text-red-800 p-2 rounded-md flex items-center justify-between font-medium">
+          <span class="flex items-center gap-1.5">
+            <span class="material-icons text-sm text-red-600">graphic_eq</span>
+            Audio Note Attached (0:15)
+          </span>
+          <span class="material-icons text-sm text-emerald-600">check_circle</span>
         </div>
       }
     </div>
@@ -51,7 +60,6 @@ export class VoiceRecorderComponent {
     this.isRecording.set(false);
     this.audioRecorded.set(true);
 
-    // Mock Audio Blob created locally offline
     const dummyAudioBlob = new Blob(['AUDIO_DATA_MOCK'], { type: 'audio/webm' });
     this.voiceRecorded.emit(dummyAudioBlob);
   }

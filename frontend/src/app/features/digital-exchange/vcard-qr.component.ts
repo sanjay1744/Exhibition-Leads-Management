@@ -6,24 +6,33 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md border text-center my-6">
-      <h2 class="text-xl font-bold text-gray-800 mb-2">Digital Business Card Exchange</h2>
-      <p class="text-sm text-gray-600 mb-4">Let visitors scan this offline vCard QR code to save your contact card.</p>
+    <div class="max-w-md mx-auto my-6">
+      <div class="card text-center">
+        <h2 class="text-lg font-bold text-gray-900 mb-1 flex items-center justify-center gap-2">
+          <span class="material-icons text-blue-600">qr_code_2</span>
+          Digital Business Card Exchange
+        </h2>
+        <p class="text-xs text-gray-500 mb-4">Let visitors scan this offline vCard QR code to instantly save your contact details.</p>
 
-      <div class="p-6 bg-slate-100 rounded-lg inline-block mb-4 border">
-        <div class="text-6xl mb-2">📱</div>
-        <div class="font-mono text-xs text-gray-500 bg-white p-2 rounded border">
-          BEGIN:VCARD<br/>
-          FN:Alex Morgan<br/>
-          ORG:AriyAI Technologies<br/>
-          TEL:+1 555-0199<br/>
-          END:VCARD
+        <div class="p-4 bg-gray-50 rounded border inline-block mb-4 w-full">
+          <div class="material-icons text-6xl text-slate-700 mb-2">qr_code_scanner</div>
+          <div class="font-mono text-xs text-left text-gray-600 bg-white p-3 rounded border">
+            BEGIN:VCARD<br/>
+            VERSION:3.0<br/>
+            FN:Alex Morgan<br/>
+            TITLE:Sales Director<br/>
+            ORG:AriyAI ERP Solutions<br/>
+            TEL;TYPE=CELL:+91 9876543210<br/>
+            EMAIL:alex&#64;ariyai.com<br/>
+            END:VCARD
+          </div>
         </div>
-      </div>
 
-      <button (click)="downloadBrochure()" class="w-full bg-emerald-600 text-white font-semibold py-2 rounded hover:bg-emerald-700">
-        📄 Share Company PDF Brochure Offline
-      </button>
+        <button (click)="downloadBrochure()" class="btn btn-success w-full justify-center">
+          <span class="material-icons text-sm">picture_as_pdf</span>
+          Share Company PDF Brochure Offline
+        </button>
+      </div>
     </div>
   `
 })

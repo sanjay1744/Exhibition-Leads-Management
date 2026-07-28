@@ -9,31 +9,81 @@ import { SyncService } from './core/services/sync.service';
   standalone: true,
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <div class="min-h-screen bg-slate-100 flex flex-col font-sans">
-      <!-- Header Bar -->
-      <header class="bg-slate-900 text-white shadow-md">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-xl font-extrabold text-blue-400">⚡ LeadCapture</span>
-            <span class="text-xs bg-slate-700 px-2 py-0.5 rounded text-gray-300">Offline-First PWA</span>
+    <div class="app-container">
+      <!-- Exact AriyAI Sidebar -->
+      <aside class="sidebar">
+        <!-- Logo Box -->
+        <div class="sidebar-logo">
+          <div class="logo-box">
+            <span class="logo-text">AriyAI</span>
+          </div>
+        </div>
+
+        <!-- Sidebar Navigation Menu with Chevron Arrows -->
+        <nav class="sidebar-nav">
+          <a routerLink="/dashboard" routerLinkActive="active" class="nav-item-link">
+            <span class="material-icons nav-chevron">chevron_right</span>
+            <span class="material-icons nav-icon">dashboard</span>
+            <span class="nav-text">Dashboard Overview</span>
+          </a>
+
+          <a routerLink="/capture" routerLinkActive="active" class="nav-item-link">
+            <span class="material-icons nav-chevron">chevron_right</span>
+            <span class="material-icons nav-icon">person_add</span>
+            <span class="nav-text">Lead Capture</span>
+          </a>
+
+          <a routerLink="/exchange" routerLinkActive="active" class="nav-item-link">
+            <span class="material-icons nav-chevron">chevron_right</span>
+            <span class="material-icons nav-icon">qr_code_2</span>
+            <span class="nav-text">vCard Exchange</span>
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Main App Content Area -->
+      <div class="main-content">
+        <!-- Top Navigation Header Bar -->
+        <header class="top-header">
+          <!-- Left: Hamburger Toggle -->
+          <div class="header-left">
+            <button class="menu-toggle-btn" title="Toggle Menu">
+              <span class="material-icons">menu</span>
+            </button>
           </div>
 
-          <nav class="flex gap-4 text-sm font-medium">
-            <a routerLink="/capture" routerLinkActive="text-blue-400 border-b-2 border-blue-400" class="hover:text-blue-300 py-1">Capture Lead</a>
-            <a routerLink="/exchange" routerLinkActive="text-blue-400 border-b-2 border-blue-400" class="hover:text-blue-300 py-1">vCard Exchange</a>
-            <a routerLink="/dashboard" routerLinkActive="text-blue-400 border-b-2 border-blue-400" class="hover:text-blue-300 py-1">Analytics</a>
-          </nav>
+          <!-- Center: Pill Search Input -->
+          <div class="header-center">
+            <div class="search-wrapper">
+              <span class="material-icons search-icon">search</span>
+              <input type="text" class="search-input" placeholder="Search menus..." />
+            </div>
+          </div>
 
-          <button (click)="triggerSync()" class="bg-blue-600 hover:bg-blue-500 text-xs px-3 py-1.5 rounded font-semibold transition">
-            🔄 Manual Sync
-          </button>
-        </div>
-      </header>
+          <!-- Right: Notifications & User Profile -->
+          <div class="header-right">
+            <!-- Notifications Icon -->
+            <button class="header-icon-btn" title="Notifications">
+              <span class="material-icons">notifications_none</span>
+            </button>
 
-      <!-- Main Body -->
-      <main class="flex-grow">
-        <router-outlet></router-outlet>
-      </main>
+            <!-- User Profile Dropdown -->
+            <div class="user-profile">
+              <div class="user-avatar">T</div>
+              <div class="user-info">
+                <span class="user-name">Thalaimalai</span>
+                <span class="user-role">Naren-Marketing</span>
+              </div>
+              <span class="material-icons text-gray-500 text-sm">keyboard_arrow_down</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- Main Body Page Outlet -->
+        <main class="content-body">
+          <router-outlet></router-outlet>
+        </main>
+      </div>
     </div>
   `
 })

@@ -13,30 +13,48 @@ export interface QrParsedContact {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="qr-scanner p-4 border rounded-lg bg-white shadow-sm">
-      <h3 class="text-lg font-semibold mb-2">QR Code & vCard Scanner</h3>
-      
-      @if (isScanning()) {
-        <div class="p-3 bg-indigo-50 text-indigo-700 rounded mb-2">
-          📷 Camera active. Align visitor QR code...
+    <div class="card-panel h-full flex flex-col justify-between hover:shadow-md transition">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="material-icons text-indigo-600">qr_code_scanner</span>
+          <h3 class="text-sm font-bold text-gray-800">QR Code / vCard</h3>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">Scan visitor badge or vCard QR code.</p>
+
+        @if (isScanning()) {
+          <div class="p-3 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs flex items-center justify-between mb-3 animate-pulse">
+            <span class="flex items-center gap-1.5 font-medium">
+              <span class="material-icons text-sm">videocam</span> Camera Active...
+            </span>
+            <button (click)="toggleScan()" class="text-[10px] bg-indigo-200 px-2 py-0.5 rounded font-bold">CANCEL</button>
+          </div>
+        }
+
+        <div class="grid grid-cols-2 gap-2">
+          <button 
+            (click)="toggleScan()" 
+            class="btn btn-primary justify-center text-xs text-center py-2.5 rounded-lg"
+          >
+            <span class="material-icons text-sm">camera_alt</span>
+            {{ isScanning() ? 'Stop Camera' : 'Scan QR' }}
+          </button>
+
+          <button 
+            (click)="simulateScan()" 
+            class="btn btn-outline-pill justify-center text-xs text-center py-2.5 rounded-lg"
+          >
+            <span class="material-icons text-sm">auto_fix_high</span>
+            Demo Scan
+          </button>
+        </div>
+      </div>
+
+      @if (scannedSuccess()) {
+        <div class="mt-3 text-xs bg-indigo-50 border border-indigo-200 text-indigo-800 p-2 rounded-md flex items-center gap-1.5 font-medium">
+          <span class="material-icons text-sm text-indigo-600">verified</span>
+          vCard QR Scanned!
         </div>
       }
-
-      <div class="flex gap-2">
-        <button 
-          (click)="toggleScan()" 
-          class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 font-medium text-sm"
-        >
-          {{ isScanning() ? 'Stop Camera' : 'Start Camera Scanner' }}
-        </button>
-
-        <button 
-          (click)="simulateScan()" 
-          class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 font-medium text-sm"
-        >
-          Simulate vCard Scan
-        </button>
-      </div>
     </div>
   `
 })
@@ -44,18 +62,21 @@ export class QrScannerComponent {
   @Output() qrScanned = new EventEmitter<QrParsedContact>();
 
   isScanning = signal(false);
+  scannedSuccess = signal(false);
 
   toggleScan(): void {
     this.isScanning.update((val) => !val);
   }
 
   simulateScan(): void {
+    this.scannedSuccess.set(true);
     const mockVcard = {
       name: 'Sarah Connor',
       company: 'Cyberdyne Systems',
-      phone: '+1 555-0144',
+      phone: '+91 9876500112',
       email: 's.connor@cyberdyne.io',
     };
     this.qrScanned.emit(mockVcard);
+    setTimeout(() => this.scannedSuccess.set(false), 3000);
   }
 }
