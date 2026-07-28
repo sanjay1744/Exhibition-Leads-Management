@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApplicationDatabase } from '../../core/services/db.service';
 import { LocalLead } from '../../core/models/lead.model';
+import { StallService } from '../../core/services/stall.service';
 import { OcrScannerComponent, ExtractedCardData } from './ocr-scanner.component';
 import { QrScannerComponent, QrParsedContact } from './qr-scanner.component';
 import { VoiceRecorderComponent } from './voice-recorder.component';
@@ -13,15 +14,20 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
   imports: [CommonModule, FormsModule, OcrScannerComponent, QrScannerComponent, VoiceRecorderComponent],
   template: `
     <div class="max-w-5xl mx-auto">
-      <!-- Page Header -->
-      <div class="page-title-bar">
+      <!-- Page Header with Active Stall Badge -->
+      <div class="page-title-bar flex items-center justify-between mb-6">
         <div>
           <h1 class="page-title">Capture Exhibition Lead</h1>
-          <p class="page-subtitle">Offline-first local storage (IndexedDB) with automatic CRM sync.</p>
+          <p class="page-subtitle">Capturing for project: <strong>{{ stallService.activeStall()?.name || 'Main Exhibition' }}</strong></p>
+        </div>
+
+        <div class="text-xs bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
+          <span class="material-icons text-sm text-blue-600">storefront</span>
+          {{ stallService.activeStall()?.code || 'STALL-01' }}
         </div>
       </div>
 
-      <!-- Quick Acquisition Hardware Tools (3 Equal Cards) -->
+      <!-- Quick Acquisition Tools Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <app-ocr-scanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
         <app-qr-scanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
@@ -117,7 +123,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
               </div>
             </div>
 
-            <!-- Interest Level Buttons -->
+            <!-- Interest Priority Buttons -->
             <div>
               <label class="form-label">Interest Priority</label>
               <div class="flex gap-2 pt-0.5">
@@ -158,7 +164,6 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
               <span class="text-[11px] text-gray-400">Click chips below to add quick notes</span>
             </div>
 
-            <!-- Quick Template Chips -->
             <div class="flex flex-wrap gap-1.5 mb-2.5">
               @for (chip of quickChips; track chip) {
                 <button 
@@ -180,7 +185,6 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
             ></textarea>
           </div>
 
-          <!-- Saved Feedback Banner -->
           @if (savedMessage()) {
             <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold flex items-center gap-2">
               <span class="material-icons text-sm text-emerald-600">check_circle</span>
@@ -188,7 +192,6 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
             </div>
           }
 
-          <!-- Form Action Bar -->
           <div class="flex items-center justify-between border-top pt-4">
             <button type="button" (click)="resetForm()" class="btn btn-outline-pill text-xs">
               <span class="material-icons text-sm">refresh</span> Reset Form
@@ -196,7 +199,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
 
             <button type="submit" class="btn btn-primary px-6 py-2.5 rounded-lg text-sm shadow-sm">
               <span class="material-icons text-sm">save</span>
-              Save Lead (Offline IndexedDB)
+              Save Lead to {{ stallService.activeStall()?.code || 'Active Stall' }}
             </button>
           </div>
         </form>
@@ -206,6 +209,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
 })
 export class LeadFormComponent {
   private db = inject(ApplicationDatabase);
+  stallService = inject(StallService);
 
   name = '';
   company = '';
@@ -272,9 +276,11 @@ export class LeadFormComponent {
       return;
     }
 
+    const activeStallId = this.stallService.activeStall()?.id || '33333333-3333-3333-3333-333333333333';
+
     const newLead: LocalLead = {
       id: crypto.randomUUID(),
-      exhibitionId: 'EXPO_2026_DEFAULT',
+      exhibitionId: activeStallId,
       repId: 'REP_001',
       name: this.name,
       company: this.company,
@@ -293,7 +299,7 @@ export class LeadFormComponent {
     };
 
     await this.db.saveLead(newLead);
-    this.savedMessage.set('✓ Lead saved locally to Dexie IndexedDB! Status: Pending Sync.');
+    this.savedMessage.set(`✓ Lead saved locally for ${this.stallService.activeStall()?.name || 'Active Stall'}! Status: Pending Sync.`);
 
     this.resetForm();
 

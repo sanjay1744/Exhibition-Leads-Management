@@ -3,37 +3,45 @@
 # ==========================================
 
 # ------------------------------------------
-# Node.js & Angular Build Artifacts
+# Node.js & Frontend Build Artifacts
 # ------------------------------------------
-node_modules/
-client/node_modules/
-client/dist/
-client/.angular/
-client/.sass-cache/
-client/coverage/
+**/node_modules/
+**/dist/
+**/.angular/
+**/.sass-cache/
+**/coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
-client/package-lock.json
 
 # ------------------------------------------
 # .NET / C# Build Artifacts
 # ------------------------------------------
-bin/
-obj/
-server/**/bin/
-server/**/obj/
-server/.vs/
-server/*.user
-server/*.userosscache
-server/*.sln.docstates
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.userosscache
+*.sln.docstates
 [Dd]ebug/
 [Rr]elease/
 *.suo
-*.user
 *.userhost
-*.sln.docstates
+
+# ------------------------------------------
+# Environment & Secret Configuration Files
+# ------------------------------------------
+**/appsettings.json
+**/appsettings.Development.json
+**/appsettings.*.json
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.pfx
 
 # ------------------------------------------
 # Operating System & IDE Files
@@ -52,17 +60,6 @@ Thumbs.db
 !.vscode/launch.json
 *.swp
 *.swo
-
-# ------------------------------------------
-# Environment & Secret Files
-# ------------------------------------------
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.pem
-*.pfx
 
 # ------------------------------------------
 # Logs & Temporary Files

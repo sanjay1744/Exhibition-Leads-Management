@@ -14,6 +14,10 @@ public class Lead
 
     public Guid RepId { get; set; }
 
+    public Guid StallId { get; set; } // Foreign key to Stall (Project) for strict data isolation
+
+    public Guid CapturedByUserId { get; set; }
+
     [Required]
     [MaxLength(200)]
     public string Name { get; set; } = string.Empty;

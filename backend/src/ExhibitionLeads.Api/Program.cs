@@ -46,12 +46,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Configure InMemory / PostgreSQL DbContext
+// Configure SQL Server / InMemory DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (!string.IsNullOrEmpty(connectionString))
+if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString));
+        options.UseSqlServer(connectionString));
 }
 else
 {
@@ -61,31 +61,66 @@ else
 
 var app = builder.Build();
 
-// Ensure InMemory / Dev DB created & Seed Users from Screenshot
+// Recreate SQL Server DB Schema for new Stall & RBAC hierarchy
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.EnsureCreated();
-
-    if (!dbContext.Users.Any())
+    try 
     {
-        var defaultPasswordHash = AuthController.HashPassword("Admin@123");
-        var users = new List<User>
-        {
-            new User { FullName = "Thalaimalai", Username = "Thalaimalai", UserGroup = "Naren-Marketing", Role = "-", Status = "Active", PasswordHash = defaultPasswordHash },
-            new User { FullName = "Saravanan", Username = "Saravanan", UserGroup = "Naren Marketing", Role = "-", Status = "Active", PasswordHash = defaultPasswordHash },
-            new User { FullName = "Vasanth", Username = "Vasanth", UserGroup = "Naren-Store-Admin", Role = "-", Status = "Active", PasswordHash = defaultPasswordHash },
-            new User { FullName = "ntesales", Username = "Krishna", UserGroup = "Naren-Store-Admin", Role = "-", Status = "Active", PasswordHash = defaultPasswordHash },
-            new User { FullName = "Balasubramaniam", Username = "Bala", UserGroup = "Naren-Marketing", Role = "-", Status = "Inactive", PasswordHash = defaultPasswordHash },
-            new User { FullName = "Senthil", Username = "Senthil", UserGroup = "Naren-Marketing", Role = "-", Status = "Inactive", PasswordHash = defaultPasswordHash },
-            new User { FullName = "Venkatesan", Username = "Venkatesan", UserGroup = "Naren-Marketing", Role = "-", Status = "Inactive", PasswordHash = defaultPasswordHash },
-            new User { FullName = "snathan", Username = "Senthilnathan", UserGroup = "Naren Admin", Role = "-", Status = "Active", PasswordHash = defaultPasswordHash },
-            new User { FullName = "archana", Username = "Archana", UserGroup = "Naren-Accounts", Role = "-", Status = "Inactive", PasswordHash = defaultPasswordHash },
-            new User { FullName = "rohini", Username = "Rohini", UserGroup = "Naren Admin", Role = "-", Status = "Active", PasswordHash = defaultPasswordHash }
-        };
-        dbContext.Users.AddRange(users);
-        dbContext.SaveChanges();
+        // Recreate database tables to ensure new schema (Stalls, AssignedStallId, StallId) is applied cleanly
+        dbContext.Database.EnsureDeleted();
+        dbContext.Database.EnsureCreated();
+    } 
+    catch 
+    {
+        dbContext.Database.EnsureCreated();
     }
+
+    var defaultPasswordHash = AuthController.HashPassword("Admin@123");
+    
+    var thalaimalaiUser = new User 
+    { 
+        Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), 
+        FullName = "Thalaimalai", 
+        Username = "Thalaimalai", 
+        Email = "thalaimalai@ariyai.com",
+        UserGroup = "Naren-Marketing", 
+        Role = "StallOwner", 
+        Status = "Active", 
+        PasswordHash = defaultPasswordHash 
+    };
+
+    var sanjayUser = new User 
+    { 
+        Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), 
+        FullName = "Sanjay", 
+        Username = "sanjay", 
+        Email = "sanjay@ariyai.com",
+        UserGroup = "Naren Admin", 
+        Role = "Admin", 
+        Status = "Active", 
+        PasswordHash = defaultPasswordHash 
+    };
+
+    dbContext.Users.AddRange(thalaimalaiUser, sanjayUser);
+
+    // Initial Default Stall (Project) Owned by Thalaimalai
+    if (!dbContext.Stalls.Any())
+    {
+        var defaultStall = new Stall
+        {
+            Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            Name = "Stall 01 - Main Exhibition",
+            Code = "STALL-01",
+            Location = "Hall A, Booth 12",
+            OwnerId = thalaimalaiUser.Id,
+            OwnerName = thalaimalaiUser.FullName
+        };
+        dbContext.Stalls.Add(defaultStall);
+        thalaimalaiUser.AssignedStallId = defaultStall.Id;
+    }
+
+    dbContext.SaveChanges();
 }
 
 if (app.Environment.IsDevelopment())

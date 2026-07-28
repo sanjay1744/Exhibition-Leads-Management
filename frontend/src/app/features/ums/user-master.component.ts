@@ -1,14 +1,16 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { AuthService } from '../../core/services/auth.service';
 
 export interface UserMasterItem {
   id: string;
   fullName: string;
   username: string;
+  email: string;
   userGroup: string;
-  role: string;
+  role: 'Admin' | 'StallOwner' | 'Marketing' | string;
   status: 'Active' | 'Inactive';
 }
 
@@ -18,22 +20,20 @@ export interface UserMasterItem {
   imports: [CommonModule, FormsModule],
   template: `
     <div>
-      <!-- Page Title & Top Actions Bar (Matches Screenshot) -->
-      <div class="page-title-bar">
+      <!-- Page Title & Top Actions Bar -->
+      <div class="page-title-bar flex items-center justify-between mb-6">
         <div>
           <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">USER MASTER</h1>
+          <p class="text-xs text-slate-500">Dynamic User Management (Role Hierarchy: Admin > Stall Owner > Marketing)</p>
         </div>
 
         <div class="page-actions flex items-center gap-2">
-          <button (click)="openExportSettings()" class="btn btn-outline-pill bg-white border border-gray-300 text-xs px-3 py-1.5 rounded-md font-medium text-gray-700 flex items-center gap-1 shadow-sm">
-            <span class="material-icons text-sm text-gray-500">tune</span>
-            Export Setting
-          </button>
-
-          <button (click)="exportUsers()" class="btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-md font-medium flex items-center gap-1 shadow-sm">
-            <span class="material-icons text-sm">description</span>
-            Export
-          </button>
+          @if (isStallOwner()) {
+            <span class="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1">
+              <span class="material-icons text-sm text-amber-600">security</span>
+              Stall Owner Role (User Deletion Restricted)
+            </span>
+          }
 
           <button (click)="openAddModal()" class="btn btn-primary text-xs px-3.5 py-1.5 rounded-md font-semibold flex items-center gap-1 shadow-sm">
             <span class="material-icons text-sm">add</span>
@@ -51,17 +51,17 @@ export interface UserMasterItem {
             <input 
               type="text" 
               [(ngModel)]="searchQuery" 
-              placeholder="Search" 
+              placeholder="Search users..." 
               class="w-full border border-slate-300 rounded px-3 py-1.5 text-xs outline-none focus:border-blue-600"
             />
           </div>
 
           <div class="text-xs font-semibold text-slate-500">
-            {{ filteredUsers().length }} users
+            {{ filteredUsers().length }} users registered in SQL Server DB
           </div>
         </div>
 
-        <!-- Table Data Grid (Exact Colors & Font from Screenshot) -->
+        <!-- Table Data Grid (Dynamic SQL Server Data Only) -->
         <div class="overflow-x-auto">
           <table class="erp-table w-full text-left border-collapse">
             <thead>
@@ -70,9 +70,9 @@ export interface UserMasterItem {
                 <th class="py-2.5 px-4">Full Name</th>
                 <th class="py-2.5 px-4">Username</th>
                 <th class="py-2.5 px-4">User Group</th>
-                <th class="py-2.5 px-4">Role</th>
+                <th class="py-2.5 px-4">Role Hierarchy</th>
                 <th class="py-2.5 px-4 text-center">Status</th>
-                <th class="py-2.5 px-4 text-center w-24">Actions</th>
+                <th class="py-2.5 px-4 text-center w-28">Actions</th>
               </tr>
             </thead>
             <tbody class="text-xs text-slate-700">
@@ -82,14 +82,28 @@ export interface UserMasterItem {
                   
                   <td class="py-3 px-4">
                     <div class="font-bold text-slate-900 leading-tight">{{ user.fullName }}</div>
-                    <div class="text-[11px] text-slate-400 font-mono">{{ user.fullName.toLowerCase() }}</div>
+                    <div class="text-[11px] text-slate-400 font-mono">{{ user.username.toLowerCase() }}</div>
                   </td>
 
-                  <td class="py-3 px-4 font-medium text-slate-800">{{ user.username }}</td>
+                  <td class="py-3 px-4 font-semibold text-slate-800">{{ user.username }}</td>
 
                   <td class="py-3 px-4 text-slate-600 font-medium">{{ user.userGroup }}</td>
 
-                  <td class="py-3 px-4 text-slate-500">{{ user.role || '—' }}</td>
+                  <td class="py-3 px-4">
+                    <span 
+                      class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1"
+                      [ngClass]="{
+                        'bg-purple-100 text-purple-800 border border-purple-200': user.role === 'Admin',
+                        'bg-blue-100 text-blue-800 border border-blue-200': user.role === 'StallOwner',
+                        'bg-slate-100 text-slate-700': user.role === 'Marketing' || user.role === '-'
+                      }"
+                    >
+                      <span class="material-icons text-[12px]">
+                        {{ user.role === 'Admin' ? 'shield' : user.role === 'StallOwner' ? 'storefront' : 'person' }}
+                      </span>
+                      {{ user.role === 'StallOwner' ? 'Stall Owner' : user.role }}
+                    </span>
+                  </td>
 
                   <td class="py-3 px-4 text-center">
                     <span 
@@ -108,13 +122,18 @@ export interface UserMasterItem {
                       <button (click)="openPasswordModal(user)" class="text-amber-600 hover:text-amber-800 p-1" title="Reset Key">
                         <span class="material-icons text-base">vpn_key</span>
                       </button>
+                      @if (isAdmin()) {
+                        <button (click)="deleteUser(user)" class="text-red-600 hover:text-red-800 p-1" title="Delete User (Admin Only)">
+                          <span class="material-icons text-base">delete</span>
+                        </button>
+                      }
                     </div>
                   </td>
                 </tr>
               } @empty {
                 <tr>
                   <td colspan="7" class="py-8 text-center text-slate-400">
-                    No users found matching your search.
+                    No users found matching your query.
                   </td>
                 </tr>
               }
@@ -122,14 +141,13 @@ export interface UserMasterItem {
           </table>
         </div>
 
-        <!-- Pagination Footer (Exact Screenshot Layout) -->
+        <!-- Pagination Footer -->
         <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-6 text-xs text-slate-600 font-medium">
           <div class="flex items-center gap-2">
             <span>Items per page:</span>
             <select [(ngModel)]="pageSizeSelect" (change)="onPageSizeChange()" class="border border-slate-300 rounded px-2 py-1 bg-white text-xs outline-none">
               <option [value]="10">10</option>
               <option [value]="25">25</option>
-              <option [value]="50">50</option>
             </select>
           </div>
 
@@ -149,10 +167,10 @@ export interface UserMasterItem {
 
       </div>
 
-      <!-- Add / Edit Modal -->
+      <!-- Add / Edit User Modal -->
       @if (isModalOpen()) {
         <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div class="bg-white rounded-lg shadow-xl border w-full max-w-md p-6">
+          <div class="bg-white rounded-xl shadow-2xl border w-full max-w-md p-6">
             <h2 class="text-base font-bold text-slate-900 mb-4 border-b pb-2">
               {{ editingUser() ? 'Edit User' : 'Add New User' }}
             </h2>
@@ -161,28 +179,30 @@ export interface UserMasterItem {
               <div class="space-y-3 mb-5">
                 <div>
                   <label class="form-label">Full Name *</label>
-                  <input [(ngModel)]="formData.fullName" name="fullName" required class="form-control" placeholder="Thalaimalai" />
+                  <input [(ngModel)]="formData.fullName" name="fullName" required class="form-control" placeholder="Full Name" />
                 </div>
 
                 <div>
                   <label class="form-label">Username *</label>
-                  <input [(ngModel)]="formData.username" name="username" required class="form-control" placeholder="Thalaimalai" />
+                  <input [(ngModel)]="formData.username" name="username" required class="form-control" placeholder="Username" />
                 </div>
 
                 <div>
-                  <label class="form-label">User Group *</label>
-                  <select [(ngModel)]="formData.userGroup" name="userGroup" class="form-control">
-                    <option value="Naren-Marketing">Naren-Marketing</option>
-                    <option value="Naren Marketing">Naren Marketing</option>
-                    <option value="Naren-Store-Admin">Naren-Store-Admin</option>
-                    <option value="Naren Admin">Naren Admin</option>
-                    <option value="Naren-Accounts">Naren-Accounts</option>
+                  <label class="form-label">Role Hierarchy *</label>
+                  <select [(ngModel)]="formData.role" name="role" class="form-control font-semibold">
+                    <option value="Admin">🛡️ Admin (All Access)</option>
+                    <option value="StallOwner">🏪 Stall Owner (Stall Admin, Cannot Delete Users)</option>
+                    <option value="Marketing">👤 Marketing Rep (Stall Lead Collector)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label class="form-label">Role</label>
-                  <input [(ngModel)]="formData.role" name="role" class="form-control" placeholder="—" />
+                  <label class="form-label">User Group</label>
+                  <select [(ngModel)]="formData.userGroup" name="userGroup" class="form-control">
+                    <option value="Naren Admin">Naren Admin</option>
+                    <option value="Naren-Marketing">Naren-Marketing</option>
+                    <option value="Naren-Store-Admin">Naren-Store-Admin</option>
+                  </select>
                 </div>
 
                 <div>
@@ -213,20 +233,11 @@ export interface UserMasterItem {
   `
 })
 export class UserMasterComponent implements OnInit {
+  private http = inject(HttpClient);
+  private auth = inject(AuthService);
   private apiUrl = 'http://localhost:5000/api/users';
 
-  users = signal<UserMasterItem[]>([
-    { id: '1', fullName: 'Thalaimalai', username: 'Thalaimalai', userGroup: 'Naren-Marketing', role: '—', status: 'Active' },
-    { id: '2', fullName: 'Saravanan', username: 'Saravanan', userGroup: 'Naren Marketing', role: '—', status: 'Active' },
-    { id: '3', fullName: 'Vasanth', username: 'Vasanth', userGroup: 'Naren-Store-Admin', role: '—', status: 'Active' },
-    { id: '4', fullName: 'ntesales', username: 'Krishna', userGroup: 'Naren-Store-Admin', role: '—', status: 'Active' },
-    { id: '5', fullName: 'Balasubramaniam', username: 'Bala', userGroup: 'Naren-Marketing', role: '—', status: 'Inactive' },
-    { id: '6', fullName: 'Senthil', username: 'Senthil', userGroup: 'Naren-Marketing', role: '—', status: 'Inactive' },
-    { id: '7', fullName: 'Venkatesan', username: 'Venkatesan', userGroup: 'Naren-Marketing', role: '—', status: 'Inactive' },
-    { id: '8', fullName: 'snathan', username: 'Senthilnathan', userGroup: 'Naren Admin', role: '—', status: 'Active' },
-    { id: '9', fullName: 'archana', username: 'Archana', userGroup: 'Naren-Accounts', role: '—', status: 'Inactive' },
-    { id: '10', fullName: 'rohini', username: 'Rohini', userGroup: 'Naren Admin', role: '—', status: 'Active' }
-  ]);
+  users = signal<UserMasterItem[]>([]);
 
   searchQuery = '';
   pageSize = signal(10);
@@ -239,13 +250,17 @@ export class UserMasterComponent implements OnInit {
   formData = {
     fullName: '',
     username: '',
+    email: '',
     userGroup: 'Naren-Marketing',
-    role: '—',
+    role: 'Marketing',
     status: 'Active' as 'Active' | 'Inactive',
     password: ''
   };
 
-  constructor(private http: HttpClient) {}
+  currentUser = this.auth.currentUser();
+
+  isAdmin = computed(() => this.currentUser?.role === 'Admin');
+  isStallOwner = computed(() => this.currentUser?.role === 'StallOwner');
 
   ngOnInit(): void {
     this.fetchUsers();
@@ -254,12 +269,12 @@ export class UserMasterComponent implements OnInit {
   fetchUsers(): void {
     this.http.get<UserMasterItem[]>(this.apiUrl).subscribe({
       next: (res) => {
-        if (res && res.length > 0) {
+        if (res) {
           this.users.set(res);
         }
       },
-      error: () => {
-        // Fallback to seeded items if offline
+      error: (err) => {
+        console.error('Error fetching users from DB:', err);
       }
     });
   }
@@ -271,7 +286,8 @@ export class UserMasterComponent implements OnInit {
       (u) =>
         u.fullName.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
-        u.userGroup.toLowerCase().includes(q)
+        u.userGroup.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q)
     );
   });
 
@@ -305,8 +321,9 @@ export class UserMasterComponent implements OnInit {
     this.formData = {
       fullName: '',
       username: '',
+      email: '',
       userGroup: 'Naren-Marketing',
-      role: '—',
+      role: 'Marketing',
       status: 'Active',
       password: ''
     };
@@ -318,9 +335,10 @@ export class UserMasterComponent implements OnInit {
     this.formData = {
       fullName: user.fullName,
       username: user.username,
+      email: user.email,
       userGroup: user.userGroup,
       role: user.role,
-      status: user.status,
+      status: user.status as 'Active' | 'Inactive',
       password: ''
     };
     this.isModalOpen.set(true);
@@ -329,8 +347,29 @@ export class UserMasterComponent implements OnInit {
   openPasswordModal(user: UserMasterItem): void {
     const newPass = prompt(`Reset Password for ${user.username}:`, 'Admin@123');
     if (newPass) {
-      alert(`Password for ${user.username} successfully reset!`);
+      this.http.put(`${this.apiUrl}/${user.id}/reset-password`, JSON.stringify(newPass), {
+        headers: { 'Content-Type': 'application/json' }
+      }).subscribe({
+        next: () => alert(`Password for ${user.username} reset successfully!`),
+        error: () => alert('Failed to reset password.')
+      });
     }
+  }
+
+  deleteUser(user: UserMasterItem): void {
+    if (!confirm(`Are you sure you want to delete user "${user.fullName}"?`)) return;
+
+    const headers = new HttpHeaders().set('X-User-Role', this.currentUser?.role || 'Admin');
+
+    this.http.delete(`${this.apiUrl}/${user.id}`, { headers }).subscribe({
+      next: () => {
+        alert(`User ${user.fullName} deleted successfully!`);
+        this.fetchUsers();
+      },
+      error: (err) => {
+        alert(err?.error?.message || 'Delete operation failed.');
+      }
+    });
   }
 
   closeModal(): void {
@@ -344,32 +383,21 @@ export class UserMasterComponent implements OnInit {
     }
 
     if (this.editingUser()) {
-      const updated = this.users().map((u) =>
-        u.id === this.editingUser()!.id
-          ? { ...u, fullName: this.formData.fullName, username: this.formData.username, userGroup: this.formData.userGroup, role: this.formData.role, status: this.formData.status }
-          : u
-      );
-      this.users.set(updated);
+      this.http.put(`${this.apiUrl}/${this.editingUser()!.id}`, this.formData).subscribe({
+        next: () => {
+          this.fetchUsers();
+          this.closeModal();
+        },
+        error: (err) => alert(err?.error?.message || 'Failed to update user.')
+      });
     } else {
-      const newUser: UserMasterItem = {
-        id: crypto.randomUUID(),
-        fullName: this.formData.fullName,
-        username: this.formData.username,
-        userGroup: this.formData.userGroup,
-        role: this.formData.role,
-        status: this.formData.status
-      };
-      this.users.update((list) => [newUser, ...list]);
+      this.http.post(this.apiUrl, this.formData).subscribe({
+        next: () => {
+          this.fetchUsers();
+          this.closeModal();
+        },
+        error: (err) => alert(err?.error?.message || 'Failed to create user.')
+      });
     }
-
-    this.closeModal();
-  }
-
-  exportUsers(): void {
-    alert('Exporting USER MASTER to Excel/CSV...');
-  }
-
-  openExportSettings(): void {
-    alert('Configuring Export Column Settings...');
   }
 }

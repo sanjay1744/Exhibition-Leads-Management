@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<Stall> Stalls => Set<Stall>();
     public DbSet<SmtpConfig> SmtpConfigs => Set<SmtpConfig>();
     public DbSet<NotificationConfig> NotificationConfigs => Set<NotificationConfig>();
 
@@ -23,6 +24,7 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Phone);
             entity.HasIndex(e => e.Email);
             entity.HasIndex(e => e.ExhibitionId);
+            entity.HasIndex(e => e.StallId);
             entity.HasIndex(e => e.RepId);
         });
 
@@ -30,6 +32,13 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(u => u.Username).IsUnique();
             entity.HasIndex(u => u.Email);
+            entity.HasIndex(u => u.AssignedStallId);
+        });
+
+        modelBuilder.Entity<Stall>(entity =>
+        {
+            entity.HasIndex(s => s.Code).IsUnique();
+            entity.HasIndex(s => s.OwnerId);
         });
 
         modelBuilder.Entity<SmtpConfig>(entity =>
