@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { ApplicationDatabase } from '../../core/services/db.service';
 import { LocalLead } from '../../core/models/lead.model';
 import { NetworkService } from '../../core/services/network.service';
@@ -160,36 +161,165 @@ import { AuthService } from '../../core/services/auth.service';
         </table>
       </div>
 
-      <!-- Create Stall Modal -->
+      <!-- Exact Rich Create Stall (Project) Modal matching Stall Master -->
       @if (isCreateStallModalOpen()) {
-        <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div class="bg-white rounded-xl shadow-2xl border w-full max-w-md p-6">
-            <h2 class="text-base font-bold text-slate-900 mb-4 border-b pb-2 flex items-center gap-2">
-              <span class="material-icons text-blue-600">storefront</span>
-              Create New Stall (Project)
-            </h2>
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 my-8">
+            <div class="flex items-center justify-between border-b pb-3 mb-5">
+              <div class="flex items-center gap-2">
+                <span class="material-icons text-blue-600 text-xl">storefront</span>
+                <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">CREATE NEW STALL (PROJECT)</h2>
+              </div>
+              <button (click)="isCreateStallModalOpen.set(false)" class="text-slate-400 hover:text-slate-600">
+                <span class="material-icons text-lg">close</span>
+              </button>
+            </div>
 
             <form (ngSubmit)="saveNewStall()">
-              <div class="space-y-3 mb-5">
+              <div class="space-y-4 mb-6">
+
+                <!-- Row 1: Auto-Generated Stall Code (Read-Only) -->
                 <div>
-                  <label class="form-label">Stall / Project Name *</label>
-                  <input [(ngModel)]="newStallData.name" name="name" required class="form-control" placeholder="e.g. Stall 02 - Auto Expo 2026" />
+                  <div class="flex justify-between items-center mb-1">
+                    <label class="form-label font-bold text-xs text-slate-700 mb-0">Stall Code (Auto-Generated) *</label>
+                    <span class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">✨ Automatic System Code</span>
+                  </div>
+                  <div class="relative flex items-center">
+                    <span class="material-icons absolute left-3 text-blue-600 text-base">qr_code_2</span>
+                    <input 
+                      [value]="newStallData.code" 
+                      readonly 
+                      class="form-control pl-10 text-xs font-mono font-bold bg-slate-100 text-blue-800 cursor-not-allowed border-blue-200" 
+                    />
+                  </div>
                 </div>
 
+                <!-- Row 2: Stall / Project Name -->
                 <div>
-                  <label class="form-label">Stall Code *</label>
-                  <input [(ngModel)]="newStallData.code" name="code" required class="form-control uppercase" placeholder="e.g. STALL-02" />
+                  <label class="form-label font-bold text-xs text-slate-700 mb-1">Stall / Project Name *</label>
+                  <input 
+                    [(ngModel)]="newStallData.name" 
+                    name="name" 
+                    required 
+                    class="form-control text-xs font-semibold" 
+                    placeholder="e.g. Stall 02 - SIMA TexFair" 
+                  />
                 </div>
 
-                <div>
-                  <label class="form-label">Location / Hall Booth</label>
-                  <input [(ngModel)]="newStallData.location" name="location" class="form-control" placeholder="e.g. Hall B, Booth 45" />
+                <!-- Row 3: Exhibition Event Name & Conducting Organizer -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Exhibition Event Name *</label>
+                    <input 
+                      [(ngModel)]="newStallData.eventName" 
+                      name="eventName" 
+                      required 
+                      class="form-control text-xs font-semibold" 
+                      placeholder="e.g. TexFair 2026" 
+                    />
+                  </div>
+
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Conducting Organizer *</label>
+                    <input 
+                      [(ngModel)]="newStallData.organizer" 
+                      name="organizer" 
+                      required 
+                      class="form-control text-xs font-semibold" 
+                      placeholder="e.g. SIMA Association" 
+                    />
+                  </div>
                 </div>
+
+                <!-- Row 4: Duration (Days) & Dates -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Duration (Days) *</label>
+                    <input 
+                      type="number" 
+                      [(ngModel)]="newStallData.durationDays" 
+                      name="durationDays" 
+                      required 
+                      class="form-control text-xs font-semibold" 
+                      placeholder="4" 
+                    />
+                  </div>
+
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Start Date</label>
+                    <input 
+                      type="date" 
+                      [(ngModel)]="newStallData.startDate" 
+                      name="startDate" 
+                      class="form-control text-xs font-semibold" 
+                    />
+                  </div>
+
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">End Date</label>
+                    <input 
+                      type="date" 
+                      [(ngModel)]="newStallData.endDate" 
+                      name="endDate" 
+                      class="form-control text-xs font-semibold" 
+                    />
+                  </div>
+                </div>
+
+                <!-- Row 5: Venue Location -->
+                <div>
+                  <label class="form-label font-bold text-xs text-slate-700 mb-1">Venue Location *</label>
+                  <input 
+                    [(ngModel)]="newStallData.location" 
+                    name="location" 
+                    required 
+                    class="form-control text-xs font-semibold" 
+                    placeholder="e.g. Codissia Trade Fair Complex, Coimbatore" 
+                  />
+                </div>
+
+                <!-- Row 6: Hall Number & Booth Number -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Specific Hall Number *</label>
+                    <input 
+                      [(ngModel)]="newStallData.hallNumber" 
+                      name="hallNumber" 
+                      required 
+                      class="form-control text-xs font-semibold" 
+                      placeholder="e.g. Hall A" 
+                    />
+                  </div>
+
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Specific Booth Number *</label>
+                    <input 
+                      [(ngModel)]="newStallData.boothNumber" 
+                      name="boothNumber" 
+                      required 
+                      class="form-control text-xs font-semibold" 
+                      placeholder="e.g. Booth 12" 
+                    />
+                  </div>
+                </div>
+
+                <!-- Row 7: Stall Owner Assignment -->
+                <div>
+                  <label class="form-label font-bold text-xs text-slate-700 mb-1">Assigned Stall Owner *</label>
+                  <select [(ngModel)]="newStallData.ownerName" name="ownerName" class="form-control text-xs font-semibold">
+                    <option value="Thalaimalai">Thalaimalai (Stall Owner)</option>
+                    <option value="Sanjay">Sanjay (Admin)</option>
+                  </select>
+                </div>
+
               </div>
 
-              <div class="flex justify-end gap-2 pt-2 border-t">
+              <!-- Action Bar -->
+              <div class="flex justify-end gap-2 pt-3 border-t">
                 <button type="button" (click)="isCreateStallModalOpen.set(false)" class="btn btn-outline-pill text-xs">Cancel</button>
-                <button type="submit" class="btn btn-primary text-xs px-4">Create Stall Project</button>
+                <button type="submit" class="btn btn-primary text-xs px-6 py-2 rounded-lg font-bold shadow-md">
+                  Save Stall Project
+                </button>
               </div>
             </form>
           </div>
@@ -201,6 +331,7 @@ import { AuthService } from '../../core/services/auth.service';
 export class SalesDashboardComponent implements OnInit {
   private db = inject(ApplicationDatabase);
   private auth = inject(AuthService);
+  private http = inject(HttpClient);
   stallService = inject(StallService);
   network = inject(NetworkService);
 
@@ -210,7 +341,16 @@ export class SalesDashboardComponent implements OnInit {
   newStallData = {
     name: '',
     code: '',
-    location: ''
+    eventName: '',
+    organizer: '',
+    durationDays: 4,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+    location: 'Codissia Trade Fair Complex, Coimbatore',
+    hallNumber: 'Hall A',
+    boothNumber: 'Booth 12',
+    ownerId: '11111111-1111-1111-1111-111111111111',
+    ownerName: 'Thalaimalai'
   };
 
   currentUser = this.auth.currentUser();
@@ -235,7 +375,6 @@ export class SalesDashboardComponent implements OnInit {
   filteredStallLeads = computed(() => {
     const activeStallId = this.stallService.activeStall()?.id;
     if (!activeStallId) return this.allLeads();
-    // Strict Stall / Project Data Isolation
     return this.allLeads().filter((l) => l.exhibitionId === activeStallId || !l.exhibitionId);
   });
 
@@ -261,33 +400,46 @@ export class SalesDashboardComponent implements OnInit {
   }
 
   openCreateStallModal(): void {
-    this.newStallData = { name: '', code: '', location: '' };
-    this.isCreateStallModalOpen.set(true);
+    this.http.get<{ code: string }>('http://localhost:5000/api/stalls/next-code').subscribe({
+      next: (res) => {
+        const nextCode = res.code || `STL-${new Date().getFullYear()}-002`;
+        this.newStallData = {
+          name: '',
+          code: nextCode,
+          eventName: '',
+          organizer: '',
+          durationDays: 4,
+          startDate: new Date().toISOString().split('T')[0],
+          endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+          location: 'Codissia Trade Fair Complex, Coimbatore',
+          hallNumber: 'Hall A',
+          boothNumber: 'Booth 12',
+          ownerId: '11111111-1111-1111-1111-111111111111',
+          ownerName: 'Thalaimalai'
+        };
+        this.isCreateStallModalOpen.set(true);
+      },
+      error: () => {
+        this.newStallData.code = `STL-${new Date().getFullYear()}-002`;
+        this.isCreateStallModalOpen.set(true);
+      }
+    });
   }
 
   saveNewStall(): void {
-    if (!this.newStallData.name || !this.newStallData.code) {
-      alert('Stall Name and Code are required.');
+    if (!this.newStallData.name) {
+      alert('Stall / Project Name is required.');
       return;
     }
 
-    const ownerName = this.currentUser?.fullName || 'Thalaimalai';
-    const ownerId = this.currentUser?.token || '11111111-1111-1111-1111-111111111111';
-
-    this.stallService.createStall({
-      name: this.newStallData.name,
-      code: this.newStallData.code,
-      location: this.newStallData.location,
-      ownerId: ownerId,
-      ownerName: ownerName
-    }).subscribe({
-      next: () => {
-        alert(`New Stall (Project) "${this.newStallData.name}" created successfully!`);
+    this.http.post<Stall>('http://localhost:5000/api/stalls', this.newStallData).subscribe({
+      next: (created) => {
+        alert(`New Stall (Project) "${created.name}" created with Auto Code: ${created.code}!`);
+        this.stallService.loadStalls();
         this.isCreateStallModalOpen.set(false);
       },
-      error: () => {
-        alert(`New Stall (Project) "${this.newStallData.name}" created!`);
-        this.isCreateStallModalOpen.set(false);
+      error: (err) => {
+        alert(err?.error?.message || `Failed to create Stall.`);
       }
     });
   }

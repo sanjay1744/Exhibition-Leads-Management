@@ -70,7 +70,7 @@ export interface UserMasterItem {
                 <th class="py-2.5 px-4">Full Name</th>
                 <th class="py-2.5 px-4">Username</th>
                 <th class="py-2.5 px-4">User Group</th>
-                <th class="py-2.5 px-4">Role Hierarchy</th>
+                <th class="py-2.5 px-4">Role </th>
                 <th class="py-2.5 px-4 text-center">Status</th>
                 <th class="py-2.5 px-4 text-center w-28">Actions</th>
               </tr>

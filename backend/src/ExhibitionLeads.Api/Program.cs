@@ -67,7 +67,6 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try 
     {
-        // Recreate database tables to ensure new schema (Stalls, AssignedStallId, StallId) is applied cleanly
         dbContext.Database.EnsureDeleted();
         dbContext.Database.EnsureCreated();
     } 
@@ -111,10 +110,18 @@ using (var scope = app.Services.CreateScope())
         {
             Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
             Name = "Stall 01 - Main Exhibition",
-            Code = "STALL-01",
-            Location = "Hall A, Booth 12",
+            Code = "STL-2026-001",
+            EventName = "International Industrial TexFair 2026",
+            Organizer = "SIMA Trade Association",
+            DurationDays = 4,
+            StartDate = DateTime.UtcNow.Date,
+            EndDate = DateTime.UtcNow.Date.AddDays(4),
+            Location = "Codissia Trade Fair Complex, Coimbatore",
+            HallNumber = "Hall A",
+            BoothNumber = "Booth 12",
             OwnerId = thalaimalaiUser.Id,
-            OwnerName = thalaimalaiUser.FullName
+            OwnerName = thalaimalaiUser.FullName,
+            Status = "Active"
         };
         dbContext.Stalls.Add(defaultStall);
         thalaimalaiUser.AssignedStallId = defaultStall.Id;

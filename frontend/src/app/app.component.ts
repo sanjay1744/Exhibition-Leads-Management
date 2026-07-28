@@ -23,6 +23,51 @@ import { AuthService } from './core/services/auth.service';
 
           <!-- Sidebar Navigation Menu -->
           <nav class="sidebar-nav">
+            <!-- Navigation Menu Items -->
+            <a routerLink="/dashboard" routerLinkActive="active" class="nav-item-link">
+              <span class="material-icons nav-chevron">chevron_right</span>
+              <span class="material-icons nav-icon">dashboard</span>
+              <span class="nav-text">Dashboard</span>
+            </a>
+
+            <a routerLink="/capture" routerLinkActive="active" class="nav-item-link">
+              <span class="material-icons nav-chevron">chevron_right</span>
+              <span class="material-icons nav-icon">person_add</span>
+              <span class="nav-text">Lead</span>
+            </a>
+
+            <a routerLink="/exchange" routerLinkActive="active" class="nav-item-link">
+              <span class="material-icons nav-chevron">chevron_right</span>
+              <span class="material-icons nav-icon">qr_code_2</span>
+              <span class="nav-text">vCard Exchange</span>
+            </a>
+
+            <!-- Expandable Master Folder -->
+            <div>
+              <div (click)="toggleMasterMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
+                <div class="flex items-center">
+                  <span class="material-icons nav-chevron">
+                    {{ isMasterExpanded() ? 'expand_more' : 'chevron_right' }}
+                  </span>
+                  <span class="material-icons nav-icon">dataset</span>
+                  <span class="nav-text font-semibold">Master</span>
+                </div>
+              </div>
+
+              @if (isMasterExpanded()) {
+                <div class="pl-6 bg-black/10">
+                  <a routerLink="/stalls" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                    <span class="material-icons nav-icon text-sm">storefront</span>
+                    <span class="nav-text">Stalls (Projects)</span>
+                  </a>
+                  <a routerLink="/ums/user" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                    <span class="material-icons nav-icon text-sm">group</span>
+                    <span class="nav-text">User Master</span>
+                  </a>
+                </div>
+              }
+            </div>
+
             <!-- Expandable UMS Folder -->
             <div>
               <div (click)="toggleUmsMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
@@ -46,7 +91,7 @@ import { AuthService } from './core/services/auth.service';
               }
             </div>
 
-            <!-- Expandable Admin Folder (Matches Screenshots 1 & 2) -->
+            <!-- Expandable Admin Folder -->
             <div>
               <div (click)="toggleAdminMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
                 <div class="flex items-center">
@@ -75,74 +120,6 @@ import { AuthService } from './core/services/auth.service';
                   </a>
                 </div>
               }
-            </div>
-
-            <!-- Navigation Menu Items -->
-            <a routerLink="/dashboard" routerLinkActive="active" class="nav-item-link">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">dashboard</span>
-              <span class="nav-text">Dashboard</span>
-            </a>
-
-            <a routerLink="/capture" routerLinkActive="active" class="nav-item-link">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">person_add</span>
-              <span class="nav-text">Lead</span>
-            </a>
-
-            <a routerLink="/exchange" routerLinkActive="active" class="nav-item-link">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">qr_code_2</span>
-              <span class="nav-text">vCard Exchange</span>
-            </a>
-
-            <!-- Other Modules (Styling Placeholders) -->
-            <div class="nav-item-link opacity-60">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">dataset</span>
-              <span class="nav-text">Master</span>
-            </div>
-
-            <div class="nav-item-link opacity-60">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">account_balance</span>
-              <span class="nav-text">Finance</span>
-            </div>
-
-            <div class="nav-item-link opacity-60">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">factory</span>
-              <span class="nav-text">Production</span>
-            </div>
-
-            <div class="nav-item-link opacity-60">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">badge</span>
-              <span class="nav-text">HRMS</span>
-            </div>
-
-            <div class="nav-item-link opacity-60">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">local_shipping</span>
-              <span class="nav-text">Sales</span>
-            </div>
-
-            <div class="nav-item-link opacity-60">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">inventory_2</span>
-              <span class="nav-text">Inventory</span>
-            </div>
-
-            <div class="nav-item-link opacity-60">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">support_agent</span>
-              <span class="nav-text">Service</span>
-            </div>
-
-            <div class="nav-item-link opacity-60">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">bar_chart</span>
-              <span class="nav-text">Reports</span>
             </div>
           </nav>
         </aside>
@@ -207,6 +184,15 @@ import { AuthService } from './core/services/auth.service';
                   <!-- Menu Links -->
                   <div class="py-1">
                     <a 
+                      routerLink="/stalls" 
+                      (click)="closeProfileMenu()" 
+                      class="flex items-center gap-3 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      <span class="material-icons text-slate-500 text-base">storefront</span>
+                      Stalls (Projects)
+                    </a>
+
+                    <a 
                       routerLink="/profile" 
                       (click)="closeProfileMenu()" 
                       class="flex items-center gap-3 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
@@ -258,9 +244,14 @@ export class AppComponent {
   private sync = inject(SyncService);
   private router = inject(Router);
 
+  isMasterExpanded = signal(true);
   isUmsExpanded = signal(false);
-  isAdminExpanded = signal(true);
+  isAdminExpanded = signal(false);
   isProfileMenuOpen = signal(false);
+
+  toggleMasterMenu(): void {
+    this.isMasterExpanded.update((val) => !val);
+  }
 
   toggleUmsMenu(): void {
     this.isUmsExpanded.update((val) => !val);

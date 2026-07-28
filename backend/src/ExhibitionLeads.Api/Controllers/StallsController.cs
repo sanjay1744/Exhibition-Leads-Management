@@ -16,39 +16,137 @@ public class StallsController : ControllerBase
         _context = context;
     }
 
+    public record StallDto(
+        Guid Id,
+        string Name,
+        string Code,
+        string EventName,
+        string Organizer,
+        int DurationDays,
+        DateTime? StartDate,
+        DateTime? EndDate,
+        string Location,
+        string HallNumber,
+        string BoothNumber,
+        Guid OwnerId,
+        string OwnerName,
+        string Status,
+        DateTime CreatedAt,
+        int LeadCount
+    );
+
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Stall>>> GetStalls([FromQuery] string? ownerId)
+    public async Task<ActionResult<IEnumerable<StallDto>>> GetStalls([FromQuery] string? ownerId)
     {
         var query = _context.Stalls.AsQueryable();
         if (!string.IsNullOrEmpty(ownerId) && Guid.TryParse(ownerId, out var oGuid))
         {
             query = query.Where(s => s.OwnerId == oGuid);
         }
-        return await query.OrderBy(s => s.Name).ToListAsync();
+
+        var stalls = await query.OrderByDescending(s => s.CreatedAt).ToListAsync();
+        var leadCounts = await _context.Leads
+            .GroupBy(l => l.StallId)
+            .Select(g => new { StallId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.StallId, x => x.Count);
+
+        var dtos = stalls.Select(s => new StallDto(
+            s.Id,
+            s.Name,
+            s.Code,
+            s.EventName,
+            s.Organizer,
+            s.DurationDays,
+            s.StartDate,
+            s.EndDate,
+            s.Location,
+            s.HallNumber,
+            s.BoothNumber,
+            s.OwnerId,
+            s.OwnerName,
+            s.Status,
+            s.CreatedAt,
+            leadCounts.TryGetValue(s.Id, out var count) ? count : 0
+        ));
+
+        return Ok(dtos);
     }
 
-    public record CreateStallRequest(string Name, string Code, string Location, Guid OwnerId, string OwnerName);
+    [HttpGet("next-code")]
+    public async Task<ActionResult<object>> GetNextStallCode()
+    {
+        var year = DateTime.UtcNow.Year;
+        var count = await _context.Stalls.CountAsync() + 1;
+        var nextCode = $"STL-{year}-{count:D3}";
+        return Ok(new { code = nextCode });
+    }
+
+    public record CreateStallRequest(
+        string Name,
+        string? Code,
+        string? EventName,
+        string? Organizer,
+        int? DurationDays,
+        DateTime? StartDate,
+        DateTime? EndDate,
+        string? Location,
+        string? HallNumber,
+        string? BoothNumber,
+        object? OwnerId,
+        string? OwnerName
+    );
 
     [HttpPost]
     public async Task<ActionResult<Stall>> CreateStall([FromBody] CreateStallRequest request)
     {
-        if (await _context.Stalls.AnyAsync(s => s.Code == request.Code))
+        if (string.IsNullOrWhiteSpace(request.Name))
         {
-            return BadRequest(new { message = "Stall code already exists." });
+            return BadRequest(new { message = "Stall Name is required." });
         }
+
+        var code = request.Code;
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            var year = DateTime.UtcNow.Year;
+            var count = await _context.Stalls.CountAsync() + 1;
+            code = $"STL-{year}-{count:D3}";
+        }
+
+        if (await _context.Stalls.AnyAsync(s => s.Code == code))
+        {
+            var year = DateTime.UtcNow.Year;
+            var count = await _context.Stalls.CountAsync() + 1;
+            code = $"STL-{year}-{count:D3}-{Guid.NewGuid().ToString()[..4]}";
+        }
+
+        Guid ownerGuid = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        if (request.OwnerId != null && Guid.TryParse(request.OwnerId.ToString(), out var parsedGuid))
+        {
+            ownerGuid = parsedGuid;
+        }
+
+        var duration = request.DurationDays.HasValue && request.DurationDays.Value > 0 ? request.DurationDays.Value : 4;
 
         var stall = new Stall
         {
             Name = request.Name,
-            Code = request.Code,
-            Location = request.Location,
-            OwnerId = request.OwnerId,
-            OwnerName = request.OwnerName
+            Code = code,
+            EventName = !string.IsNullOrWhiteSpace(request.EventName) ? request.EventName : request.Name,
+            Organizer = !string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer : "Internal Exhibition Team",
+            DurationDays = duration,
+            StartDate = request.StartDate ?? DateTime.UtcNow.Date,
+            EndDate = request.EndDate ?? DateTime.UtcNow.Date.AddDays(duration),
+            Location = !string.IsNullOrWhiteSpace(request.Location) ? request.Location : "Main Convention Center",
+            HallNumber = !string.IsNullOrWhiteSpace(request.HallNumber) ? request.HallNumber : "Hall A",
+            BoothNumber = !string.IsNullOrWhiteSpace(request.BoothNumber) ? request.BoothNumber : "Booth 01",
+            OwnerId = ownerGuid,
+            OwnerName = !string.IsNullOrWhiteSpace(request.OwnerName) ? request.OwnerName : "Thalaimalai",
+            Status = "Active"
         };
 
         _context.Stalls.Add(stall);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetStalls), new { id = stall.Id }, stall);
+        return Ok(stall);
     }
 }
