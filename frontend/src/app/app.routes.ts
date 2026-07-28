@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { LeadListComponent } from './features/lead-capture/lead-list.component';
 import { LeadFormComponent } from './features/lead-capture/lead-form.component';
 import { VcardQrComponent } from './features/digital-exchange/vcard-qr.component';
 import { SalesDashboardComponent } from './features/dashboard/sales-dashboard.component';
@@ -15,7 +16,9 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   { path: 'dashboard', component: SalesDashboardComponent, canActivate: [authGuard] },
+  { path: 'leads', component: LeadListComponent, canActivate: [authGuard] },
   { path: 'capture', component: LeadFormComponent, canActivate: [authGuard] },
+  { path: 'capture/:id', component: LeadFormComponent, canActivate: [authGuard] },
   { path: 'exchange', component: VcardQrComponent, canActivate: [authGuard] },
   { path: 'stalls', component: StallMasterComponent, canActivate: [authGuard] },
   { path: 'ums/user', component: UserMasterComponent, canActivate: [authGuard] },

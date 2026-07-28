@@ -1,6 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router, ActivatedRoute } from '@angular/router';
 import { ApplicationDatabase } from '../../core/services/db.service';
 import { LocalLead } from '../../core/models/lead.model';
 import { StallService } from '../../core/services/stall.service';
@@ -14,32 +15,40 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
   imports: [CommonModule, FormsModule, OcrScannerComponent, QrScannerComponent, VoiceRecorderComponent],
   template: `
     <div class="max-w-5xl mx-auto">
-      <!-- Page Header with Active Stall Badge -->
+      <!-- Page Header -->
       <div class="page-title-bar flex items-center justify-between mb-6">
         <div>
-          <h1 class="page-title">Capture Exhibition Lead</h1>
-          <p class="page-subtitle">Capturing for project: <strong>{{ stallService.activeStall()?.name || 'Main Exhibition' }}</strong></p>
+          <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">
+            {{ isEditMode() ? 'EDIT LEAD ENTRY' : 'NEW LEAD ENTRY' }}
+          </h1>
+          <p class="page-subtitle text-xs text-slate-500">
+            {{ isEditMode() ? 'Modify visitor details for record ID: ' + editingLeadId : 'Capture visitor details for project: ' + (stallService.activeStall()?.name || 'Main Exhibition') }}
+          </p>
         </div>
 
-        <div class="text-xs bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
+        <div class="text-xs bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-2xs">
           <span class="material-icons text-sm text-blue-600">storefront</span>
           {{ stallService.activeStall()?.code || 'STALL-01' }}
         </div>
       </div>
 
-      <!-- Quick Acquisition Tools Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <app-ocr-scanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
-        <app-qr-scanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
-        <app-voice-recorder (voiceRecorded)="onVoiceRecorded($event)"></app-voice-recorder>
-      </div>
+      <!-- Quick Acquisition Tools Grid (Shown when creating or optional) -->
+      @if (!isEditMode()) {
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <app-ocr-scanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
+          <app-qr-scanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
+          <app-voice-recorder (voiceRecorded)="onVoiceRecorded($event)"></app-voice-recorder>
+        </div>
+      }
 
       <!-- Visitor Information Form Card -->
-      <div class="card-panel">
+      <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <div class="flex items-center justify-between border-b pb-4 mb-6">
           <div class="flex items-center gap-2">
             <span class="material-icons text-blue-600">contact_page</span>
-            <h2 class="text-base font-bold text-gray-800">Visitor Information & Requirements</h2>
+            <h2 class="text-base font-bold text-slate-900">
+              {{ isEditMode() ? 'Edit Visitor Record & Requirements' : 'Visitor Information & Requirements' }}
+            </h2>
           </div>
           @if (isAutoFilled()) {
             <span class="status-pill green">
@@ -52,14 +61,14 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <!-- Full Name -->
             <div>
-              <label class="form-label">Full Name *</label>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Full Name *</label>
               <div class="relative flex items-center">
-                <span class="material-icons absolute left-3 text-gray-400 text-lg">person</span>
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">person</span>
                 <input 
                   [(ngModel)]="name" 
                   name="name" 
                   required 
-                  class="form-control pl-10" 
+                  class="form-control pl-10 text-xs font-semibold" 
                   placeholder="Visitor Name" 
                 />
               </div>
@@ -67,14 +76,14 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
 
             <!-- Company Name -->
             <div>
-              <label class="form-label">Company Name *</label>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Company Name *</label>
               <div class="relative flex items-center">
-                <span class="material-icons absolute left-3 text-gray-400 text-lg">business</span>
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">business</span>
                 <input 
                   [(ngModel)]="company" 
                   name="company" 
                   required 
-                  class="form-control pl-10" 
+                  class="form-control pl-10 text-xs font-semibold" 
                   placeholder="Company Name" 
                 />
               </div>
@@ -82,14 +91,14 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
 
             <!-- Mobile Phone -->
             <div>
-              <label class="form-label">Mobile Phone *</label>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Mobile Phone *</label>
               <div class="relative flex items-center">
-                <span class="material-icons absolute left-3 text-gray-400 text-lg">call</span>
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">call</span>
                 <input 
                   [(ngModel)]="phone" 
                   name="phone" 
                   required 
-                  class="form-control pl-10" 
+                  class="form-control pl-10 text-xs font-semibold" 
                   placeholder="+91 9876543210" 
                 />
               </div>
@@ -97,13 +106,13 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
 
             <!-- Email Address -->
             <div>
-              <label class="form-label">Email Address</label>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Email Address</label>
               <div class="relative flex items-center">
-                <span class="material-icons absolute left-3 text-gray-400 text-lg">mail</span>
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">mail</span>
                 <input 
                   [(ngModel)]="email" 
                   name="email" 
-                  class="form-control pl-10" 
+                  class="form-control pl-10 text-xs font-semibold" 
                   placeholder="visitor@company.com" 
                 />
               </div>
@@ -111,13 +120,13 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
 
             <!-- Designation -->
             <div>
-              <label class="form-label">Designation / Role</label>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Designation / Role</label>
               <div class="relative flex items-center">
-                <span class="material-icons absolute left-3 text-gray-400 text-lg">work</span>
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">work</span>
                 <input 
                   [(ngModel)]="designation" 
                   name="designation" 
-                  class="form-control pl-10" 
+                  class="form-control pl-10 text-xs font-semibold" 
                   placeholder="Purchase Manager / Director" 
                 />
               </div>
@@ -125,13 +134,13 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
 
             <!-- Interest Priority Buttons -->
             <div>
-              <label class="form-label">Interest Priority</label>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Interest Priority</label>
               <div class="flex gap-2 pt-0.5">
                 <button 
                   type="button" 
                   (click)="interestLevel = 'Hot'" 
-                  class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition flex items-center justify-center gap-1"
-                  [ngClass]="interestLevel === 'Hot' ? 'bg-red-50 border-red-500 text-red-700 shadow-sm' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'"
+                  class="flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1"
+                  [ngClass]="interestLevel === 'Hot' ? 'bg-red-50 border-red-500 text-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
                 >
                   🔥 Hot
                 </button>
@@ -139,8 +148,8 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
                 <button 
                   type="button" 
                   (click)="interestLevel = 'Warm'" 
-                  class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition flex items-center justify-center gap-1"
-                  [ngClass]="interestLevel === 'Warm' ? 'bg-amber-50 border-amber-500 text-amber-700 shadow-sm' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'"
+                  class="flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1"
+                  [ngClass]="interestLevel === 'Warm' ? 'bg-amber-50 border-amber-500 text-amber-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
                 >
                   ⚡ Warm
                 </button>
@@ -148,8 +157,8 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
                 <button 
                   type="button" 
                   (click)="interestLevel = 'Cold'" 
-                  class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition flex items-center justify-center gap-1"
-                  [ngClass]="interestLevel === 'Cold' ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'"
+                  class="flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1"
+                  [ngClass]="interestLevel === 'Cold' ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
                 >
                   ❄️ Cold
                 </button>
@@ -160,8 +169,8 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
           <!-- Discussion Remarks & Quick Tags -->
           <div class="mb-5">
             <div class="flex justify-between items-center mb-1.5">
-              <label class="form-label mb-0">Discussion Remarks & Requirements</label>
-              <span class="text-[11px] text-gray-400">Click chips below to add quick notes</span>
+              <label class="form-label font-bold text-xs text-slate-700 mb-0">Discussion Remarks & Requirements</label>
+              <span class="text-[11px] text-slate-400 font-medium">Click chips below to add quick notes</span>
             </div>
 
             <div class="flex flex-wrap gap-1.5 mb-2.5">
@@ -169,7 +178,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
                 <button 
                   type="button" 
                   (click)="addQuickRemark(chip)" 
-                  class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition"
+                  class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-semibold transition"
                 >
                   + {{ chip }}
                 </button>
@@ -180,7 +189,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
               [(ngModel)]="remarks" 
               name="remarks" 
               rows="3" 
-              class="form-control" 
+              class="form-control text-xs font-medium" 
               placeholder="Enter key discussion notes, budget, or required follow-ups..."
             ></textarea>
           </div>
@@ -192,14 +201,14 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
             </div>
           }
 
-          <div class="flex items-center justify-between border-top pt-4">
+          <div class="flex items-center justify-between border-t pt-4">
             <button type="button" (click)="resetForm()" class="btn btn-outline-pill text-xs">
               <span class="material-icons text-sm">refresh</span> Reset Form
             </button>
 
-            <button type="submit" class="btn btn-primary px-6 py-2.5 rounded-lg text-sm shadow-sm">
+            <button type="submit" class="btn btn-primary px-8 py-2.5 rounded-lg text-xs font-bold shadow-md">
               <span class="material-icons text-sm">save</span>
-              Save Lead to {{ stallService.activeStall()?.code || 'Active Stall' }}
+              {{ isEditMode() ? 'Update Lead Record' : 'Save Lead to ' + (stallService.activeStall()?.code || 'Active Stall') }}
             </button>
           </div>
         </form>
@@ -207,9 +216,15 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
     </div>
   `
 })
-export class LeadFormComponent {
+export class LeadFormComponent implements OnInit {
   private db = inject(ApplicationDatabase);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
   stallService = inject(StallService);
+
+  editingLeadId: string | null = null;
+  existingCreatedAt: string | null = null;
+  isEditMode = signal(false);
 
   name = '';
   company = '';
@@ -230,6 +245,32 @@ export class LeadFormComponent {
     'Send Product Catalog PDF',
     'Decision Maker'
   ];
+
+  async ngOnInit(): Promise<void> {
+    const idParam = this.route.snapshot.paramMap.get('id') || this.route.snapshot.queryParamMap.get('id');
+    if (idParam) {
+      this.editingLeadId = idParam;
+      this.isEditMode.set(true);
+      await this.loadLeadForEdit(idParam);
+    }
+  }
+
+  async loadLeadForEdit(id: string): Promise<void> {
+    const lead = await this.db.getLeadById(id);
+    if (lead) {
+      this.name = lead.name;
+      this.company = lead.company;
+      this.phone = lead.phone;
+      this.email = lead.email || '';
+      this.designation = lead.designation || '';
+      this.interestLevel = lead.interestLevel;
+      this.remarks = lead.remarks || '';
+      this.existingCreatedAt = lead.createdAt;
+    } else {
+      alert('Selected lead record not found.');
+      this.router.navigate(['/leads']);
+    }
+  }
 
   onCardExtracted(data: ExtractedCardData): void {
     if (data.name) this.name = data.name;
@@ -278,8 +319,8 @@ export class LeadFormComponent {
 
     const activeStallId = this.stallService.activeStall()?.id || '33333333-3333-3333-3333-333333333333';
 
-    const newLead: LocalLead = {
-      id: crypto.randomUUID(),
+    const leadToSave: LocalLead = {
+      id: this.editingLeadId || crypto.randomUUID(),
       exhibitionId: activeStallId,
       repId: 'REP_001',
       name: this.name,
@@ -294,15 +335,16 @@ export class LeadFormComponent {
       remarks: this.remarks,
       status: 'New',
       syncStatus: 'Pending',
-      createdAt: new Date().toISOString(),
+      createdAt: this.existingCreatedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    await this.db.saveLead(newLead);
-    this.savedMessage.set(`✓ Lead saved locally for ${this.stallService.activeStall()?.name || 'Active Stall'}! Status: Pending Sync.`);
+    await this.db.saveLead(leadToSave);
+    const actionText = this.isEditMode() ? 'updated' : 'saved';
+    this.savedMessage.set(`✓ Lead ${actionText} successfully! Redirecting to Leads list...`);
 
-    this.resetForm();
-
-    setTimeout(() => this.savedMessage.set(null), 3500);
+    setTimeout(() => {
+      this.router.navigate(['/leads']);
+    }, 1000);
   }
 }

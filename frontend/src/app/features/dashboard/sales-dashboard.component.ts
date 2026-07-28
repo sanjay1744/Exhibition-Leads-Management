@@ -67,8 +67,8 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
       </div>
 
-      <!-- KPI Metrics Cards Grid (Stall Isolated Data Only) -->
-      <div class="kpi-grid">
+      <!-- KPI Metrics Cards Grid -->
+      <div class="kpi-grid mb-6">
         <!-- Card 1: Total Leads -->
         <div class="kpi-card">
           <div class="kpi-icon-box green">
@@ -114,54 +114,7 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
       </div>
 
-      <!-- Table Panel (Stall Isolated Lead Data) -->
-      <div class="table-panel">
-        <div class="table-header-title flex justify-between items-center">
-          <span>Stall Leads (Isolated to {{ stallService.activeStall()?.code || 'Active Stall' }})</span>
-          <span class="text-xs font-normal text-slate-500">Data collected in this stall will not mismatch with other stalls</span>
-        </div>
-
-        <table class="erp-table">
-          <thead>
-            <tr>
-              <th>Visitor Name</th>
-              <th>Company</th>
-              <th>Mobile</th>
-              <th>Designation</th>
-              <th>Interest Level</th>
-              <th>Sync Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (lead of filteredStallLeads(); track lead.id) {
-              <tr>
-                <td class="font-semibold">{{ lead.name }}</td>
-                <td>{{ lead.company }}</td>
-                <td>{{ lead.phone }}</td>
-                <td>{{ lead.designation || '-' }}</td>
-                <td>
-                  <span [class]="getInterestPill(lead.interestLevel)">
-                    {{ lead.interestLevel }}
-                  </span>
-                </td>
-                <td>
-                  <span [class]="getSyncPill(lead.syncStatus)">
-                    {{ lead.syncStatus }}
-                  </span>
-                </td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="6" class="p-8 text-center text-slate-400">
-                  No leads captured for this stall yet. Click "+ New Lead" to capture.
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Exact Rich Create Stall (Project) Modal matching Stall Master -->
+      <!-- Exact Rich Create Stall (Project) Modal -->
       @if (isCreateStallModalOpen()) {
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 my-8">
@@ -387,17 +340,6 @@ export class SalesDashboardComponent implements OnInit {
     const synced = this.filteredStallLeads().filter((l) => l.syncStatus === 'Synced').length;
     return Math.round((synced / total) * 100);
   });
-
-  getInterestPill(level: string): string {
-    if (level === 'Hot') return 'status-pill red';
-    if (level === 'Warm') return 'status-pill orange';
-    return 'status-pill green';
-  }
-
-  getSyncPill(status: string): string {
-    if (status === 'Synced') return 'status-pill green';
-    return 'status-pill orange';
-  }
 
   openCreateStallModal(): void {
     this.http.get<{ code: string }>('http://localhost:5000/api/stalls/next-code').subscribe({

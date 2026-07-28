@@ -35,6 +35,20 @@ export class ApplicationDatabase extends Dexie {
   }
 
   /**
+   * Get a single Lead by ID
+   */
+  async getLeadById(id: string): Promise<LocalLead | undefined> {
+    return await this.leads.get(id);
+  }
+
+  /**
+   * Delete a Lead from IndexedDB
+   */
+  async deleteLead(id: string): Promise<void> {
+    await this.leads.delete(id);
+  }
+
+  /**
    * Fetch all leads pending synchronization
    */
   async getPendingLeads(): Promise<LocalLead[]> {

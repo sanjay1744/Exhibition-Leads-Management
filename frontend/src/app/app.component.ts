@@ -30,11 +30,31 @@ import { AuthService } from './core/services/auth.service';
               <span class="nav-text">Dashboard</span>
             </a>
 
-            <a routerLink="/capture" routerLinkActive="active" class="nav-item-link">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">person_add</span>
-              <span class="nav-text">Lead</span>
-            </a>
+            <!-- Expandable Lead Folder (As Requested) -->
+            <div>
+              <div (click)="toggleLeadMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
+                <div class="flex items-center">
+                  <span class="material-icons nav-chevron">
+                    {{ isLeadExpanded() ? 'expand_more' : 'chevron_right' }}
+                  </span>
+                  <span class="material-icons nav-icon">person_add</span>
+                  <span class="nav-text font-semibold">Lead</span>
+                </div>
+              </div>
+
+              @if (isLeadExpanded()) {
+                <div class="pl-6 bg-black/10">
+                  <a routerLink="/leads" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                    <span class="material-icons nav-icon text-sm">list_alt</span>
+                    <span class="nav-text">Lead</span>
+                  </a>
+                  <a routerLink="/capture" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                    <span class="material-icons nav-icon text-sm">add_circle_outline</span>
+                    <span class="nav-text">New Lead</span>
+                  </a>
+                </div>
+              }
+            </div>
 
             <a routerLink="/exchange" routerLinkActive="active" class="nav-item-link">
               <span class="material-icons nav-chevron">chevron_right</span>
@@ -244,10 +264,15 @@ export class AppComponent {
   private sync = inject(SyncService);
   private router = inject(Router);
 
-  isMasterExpanded = signal(true);
+  isLeadExpanded = signal(true);
+  isMasterExpanded = signal(false);
   isUmsExpanded = signal(false);
   isAdminExpanded = signal(false);
   isProfileMenuOpen = signal(false);
+
+  toggleLeadMenu(): void {
+    this.isLeadExpanded.update((val) => !val);
+  }
 
   toggleMasterMenu(): void {
     this.isMasterExpanded.update((val) => !val);
