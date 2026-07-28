@@ -1,0 +1,244 @@
+import { Component, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../core/services/auth.service';
+
+@Component({
+  selector: 'app-profile',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="max-w-6xl mx-auto">
+      <!-- Page Header Bar (Matches Screenshot) -->
+      <div class="page-title-bar flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm">
+            <span class="material-icons">account_circle</span>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-slate-900 leading-tight">My Profile</h1>
+            <p class="text-xs text-slate-500">View and manage your account details</p>
+          </div>
+        </div>
+
+        <button (click)="toggleEdit()" class="btn btn-primary text-xs px-4 py-2 rounded-md font-semibold flex items-center gap-1.5 shadow-sm">
+          <span class="material-icons text-sm">{{ isEditing() ? 'save' : 'edit' }}</span>
+          {{ isEditing() ? 'Save Profile' : 'Edit Profile' }}
+        </button>
+      </div>
+
+      <!-- 2 Column Profile Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Left Summary Card -->
+        <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center shadow-sm h-fit">
+          <!-- Avatar Circle -->
+          <div class="w-24 h-24 rounded-full border-4 border-blue-600 bg-blue-700 text-white font-extrabold text-2xl flex items-center justify-center mb-4 shadow-md">
+            TH
+          </div>
+
+          <h2 class="text-lg font-bold text-slate-900 mb-0.5">{{ user?.fullName || 'Thalaimalai' }}</h2>
+          <span class="text-xs text-slate-400 font-mono mb-3">&#64;{{ user?.username || 'Thalaimalai' }}</span>
+
+          <span class="badge badge-approved mb-5">
+            <span class="material-icons text-xs">circle</span> Active
+          </span>
+
+          <div class="w-full border-t border-slate-100 my-2"></div>
+
+          <!-- Metadata List -->
+          <div class="w-full space-y-3 pt-2 text-xs">
+            <div class="flex justify-between items-center text-slate-600">
+              <span class="flex items-center gap-1 text-slate-500 font-medium">
+                <span class="material-icons text-sm text-slate-400">badge</span> Role
+              </span>
+              <span class="font-semibold text-slate-800">—</span>
+            </div>
+
+            <div class="flex justify-between items-center text-slate-600">
+              <span class="flex items-center gap-1 text-slate-500 font-medium">
+                <span class="material-icons text-sm text-slate-400">domain</span> Company ID
+              </span>
+              <span class="font-bold text-slate-800">7</span>
+            </div>
+
+            <div class="flex justify-between items-center text-slate-600">
+              <span class="flex items-center gap-1 text-slate-500 font-medium">
+                <span class="material-icons text-sm text-slate-400">groups</span> Group
+              </span>
+              <span class="font-bold text-slate-900">{{ user?.userGroup || 'Naren-Marketing' }}</span>
+            </div>
+
+            <div class="flex justify-between items-center text-slate-600">
+              <span class="flex items-center gap-1 text-slate-500 font-medium">
+                <span class="material-icons text-sm text-slate-400">fingerprint</span> Agent ID
+              </span>
+              <span class="font-bold text-slate-800">97</span>
+            </div>
+
+            <div class="flex justify-between items-center text-slate-600">
+              <span class="flex items-center gap-1 text-slate-500 font-medium">
+                <span class="material-icons text-sm text-slate-400">work</span> Emp ID
+              </span>
+              <span class="font-bold text-slate-800">64</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column Sections -->
+        <div class="md:col-span-2 space-y-6">
+          
+          <!-- Card 1: Personal Information -->
+          <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 border-b pb-3 mb-4 flex items-center gap-2">
+              <span class="material-icons text-blue-600 text-base">person</span>
+              Personal Information
+            </h3>
+
+            <div class="space-y-4">
+              <div>
+                <label class="form-label text-[11px] uppercase tracking-wider text-slate-400">FULL NAME *</label>
+                <input [disabled]="!isEditing()" [(ngModel)]="profileData.fullName" class="form-control bg-slate-50/50" />
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="form-label text-[11px] uppercase tracking-wider text-slate-400">SHORT NAME</label>
+                  <input [disabled]="!isEditing()" [(ngModel)]="profileData.shortName" class="form-control bg-slate-50/50" />
+                </div>
+
+                <div>
+                  <label class="form-label text-[11px] uppercase tracking-wider text-slate-400">USERNAME</label>
+                  <div class="relative flex items-center">
+                    <span class="absolute left-3 text-slate-400 text-xs font-mono">&#64;</span>
+                    <input disabled [value]="user?.username || 'Thalaimalai'" class="form-control pl-8 bg-slate-100/70 text-slate-600" />
+                    <span class="absolute right-3 text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">Cannot change</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="form-label text-[11px] uppercase tracking-wider text-slate-400">MOBILE</label>
+                <div class="relative flex items-center">
+                  <span class="material-icons absolute left-3 text-slate-400 text-base">call</span>
+                  <input [disabled]="!isEditing()" [(ngModel)]="profileData.phone" class="form-control pl-10 bg-slate-50/50" placeholder="+91 00000 00000" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Address -->
+          <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 border-b pb-3 mb-4 flex items-center gap-2">
+              <span class="material-icons text-blue-600 text-base">location_on</span>
+              Address
+            </h3>
+
+            <div class="space-y-4">
+              <div>
+                <label class="form-label text-[11px] uppercase tracking-wider text-slate-400">ADDRESS LINE 1</label>
+                <input [disabled]="!isEditing()" [(ngModel)]="profileData.address1" class="form-control bg-slate-50/50" placeholder="Street / Building" />
+              </div>
+
+              <div>
+                <label class="form-label text-[11px] uppercase tracking-wider text-slate-400">ADDRESS LINE 2</label>
+                <input [disabled]="!isEditing()" [(ngModel)]="profileData.address2" class="form-control bg-slate-50/50" placeholder="Area / Locality" />
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="form-label text-[11px] uppercase tracking-wider text-slate-400">CITY</label>
+                  <input [disabled]="!isEditing()" [(ngModel)]="profileData.city" class="form-control bg-slate-50/50" placeholder="City" />
+                </div>
+
+                <div>
+                  <label class="form-label text-[11px] uppercase tracking-wider text-slate-400">STATE / COUNTRY</label>
+                  <input [disabled]="!isEditing()" [(ngModel)]="profileData.state" class="form-control bg-slate-50/50" placeholder="State / Country" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Account Details Grid (3x3 Grid from Screenshot 3) -->
+          <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 border-b pb-4 mb-4 flex items-center gap-2">
+              <span class="material-icons text-blue-600 text-base">security</span>
+              Account Details
+            </h3>
+
+            <div class="grid grid-cols-3 gap-6 text-xs border border-slate-100 rounded-lg p-4 bg-slate-50/40">
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">USER ID</span>
+                <span class="font-bold text-slate-800 text-sm">2</span>
+              </div>
+
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ROLE ID</span>
+                <span class="font-bold text-slate-800 text-sm">0</span>
+              </div>
+
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ROLE TYPE</span>
+                <span class="font-bold text-slate-500 text-sm">—</span>
+              </div>
+
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">CATEGORY ID</span>
+                <span class="font-bold text-slate-800 text-sm">0</span>
+              </div>
+
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">USER GROUP ID</span>
+                <span class="font-bold text-slate-800 text-sm">46</span>
+              </div>
+
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">GROUP NAME</span>
+                <span class="font-extrabold text-slate-900 text-sm">{{ user?.userGroup || 'Naren-Marketing' }}</span>
+              </div>
+
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">COMPANY ID</span>
+                <span class="font-bold text-slate-800 text-sm">7</span>
+              </div>
+
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ALLOW EDIT</span>
+                <span class="font-bold text-slate-500 text-sm">—</span>
+              </div>
+
+              <div>
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">STATUS</span>
+                <span class="badge badge-approved text-[11px] font-bold">🟢 Active</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `
+})
+export class ProfileComponent {
+  private authService = inject(AuthService);
+  user = this.authService.currentUser();
+
+  isEditing = signal(false);
+
+  profileData = {
+    fullName: this.user?.fullName || 'Thalaimalai',
+    shortName: 'Thalaimalai',
+    phone: '+91 00000 00000',
+    address1: 'Street / Building',
+    address2: 'Area / Locality',
+    city: 'City',
+    state: 'State / Country'
+  };
+
+  toggleEdit(): void {
+    if (this.isEditing()) {
+      alert('Profile details saved successfully!');
+    }
+    this.isEditing.update((val) => !val);
+  }
+}

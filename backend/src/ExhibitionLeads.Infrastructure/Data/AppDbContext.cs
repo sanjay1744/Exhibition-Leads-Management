@@ -10,6 +10,9 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<Lead> Leads => Set<Lead>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<SmtpConfig> SmtpConfigs => Set<SmtpConfig>();
+    public DbSet<NotificationConfig> NotificationConfigs => Set<NotificationConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,6 +24,17 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Email);
             entity.HasIndex(e => e.ExhibitionId);
             entity.HasIndex(e => e.RepId);
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasIndex(u => u.Username).IsUnique();
+            entity.HasIndex(u => u.Email);
+        });
+
+        modelBuilder.Entity<SmtpConfig>(entity =>
+        {
+            entity.HasIndex(s => s.UserId);
         });
     }
 }

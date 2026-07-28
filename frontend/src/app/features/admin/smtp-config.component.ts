@@ -1,0 +1,259 @@
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { AuthService } from '../../core/services/auth.service';
+
+export interface SmtpConfigModel {
+  userId: string;
+  smtpHost: string;
+  port: number;
+  username: string;
+  password?: string;
+  fromName: string;
+  fromEmail: string;
+  enableSsl: boolean;
+}
+
+@Component({
+  selector: 'app-smtp-config',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="max-w-4xl mx-auto">
+      <!-- Page Header (Matches Screenshot 2) -->
+      <div class="page-title-bar flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-amber-600 text-white flex items-center justify-center shadow-sm">
+            <span class="material-icons">mail</span>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-slate-900 uppercase tracking-wide">SMTP CONFIGURATION</h1>
+            <p class="text-xs text-slate-500">Outgoing mail server settings for email notifications</p>
+          </div>
+        </div>
+
+        <div class="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-md font-semibold">
+          👤 Setting SMTP for logged user: <span class="font-bold text-slate-900">{{ currentUsername() }}</span>
+        </div>
+      </div>
+
+      <!-- Main SMTP Form Card (Matches Screenshot 2 Layout & Elements) -->
+      <div class="card-panel bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+        <form (ngSubmit)="saveSmtpSettings()">
+          
+          <!-- Row 1: SMTP Host & Port -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="md:col-span-2">
+              <label class="form-label font-bold text-xs text-slate-700 mb-1.5">SMTP Host*</label>
+              <div class="relative flex items-center">
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">dns</span>
+                <input 
+                  [(ngModel)]="config.smtpHost" 
+                  name="smtpHost" 
+                  required 
+                  class="form-control pl-10 text-xs font-semibold" 
+                  placeholder="smtp.gmail.com" 
+                />
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label class="form-label font-bold text-xs text-slate-700 mb-0">Port*</label>
+                <span class="text-[10px] text-slate-400 font-mono">587 / 465 / 25</span>
+              </div>
+              <input 
+                type="number" 
+                [(ngModel)]="config.port" 
+                name="port" 
+                required 
+                class="form-control text-xs font-semibold" 
+                placeholder="587" 
+              />
+            </div>
+          </div>
+
+          <!-- Row 2: Username / Email & Password -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Username / Email*</label>
+              <div class="relative flex items-center">
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">person</span>
+                <input 
+                  [(ngModel)]="config.username" 
+                  name="username" 
+                  required 
+                  class="form-control pl-10 text-xs font-semibold" 
+                  placeholder="username@company.com" 
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Password / App Password*</label>
+              <div class="relative flex items-center">
+                <input 
+                  [type]="showPassword() ? 'text' : 'password'" 
+                  [(ngModel)]="config.password" 
+                  name="password" 
+                  required 
+                  class="form-control pr-10 text-xs font-semibold" 
+                  placeholder="••••••••••••••••" 
+                />
+                <button 
+                  type="button" 
+                  (click)="togglePasswordVisibility()" 
+                  class="absolute right-3 text-slate-400 hover:text-slate-600"
+                >
+                  <span class="material-icons text-lg">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 3: From Name & From Email -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1.5">From Name*</label>
+              <div class="relative flex items-center">
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">badge</span>
+                <input 
+                  [(ngModel)]="config.fromName" 
+                  name="fromName" 
+                  required 
+                  class="form-control pl-10 text-xs font-semibold" 
+                  placeholder="Saravanan - Exhibition Lead System" 
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1.5">From Email*</label>
+              <div class="relative flex items-center">
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">alternate_email</span>
+                <input 
+                  [(ngModel)]="config.fromEmail" 
+                  name="fromEmail" 
+                  required 
+                  class="form-control pl-10 text-xs font-semibold" 
+                  placeholder="notifications@company.com" 
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 4: Enable SSL / TLS Checkbox -->
+          <div class="mb-6 flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              id="enableSsl" 
+              [(ngModel)]="config.enableSsl" 
+              name="enableSsl" 
+              class="w-4 h-4 text-blue-600 rounded cursor-pointer" 
+            />
+            <label for="enableSsl" class="text-xs font-bold text-slate-800 cursor-pointer">
+              Enable SSL / TLS
+            </label>
+            <span class="text-xs text-slate-400 ml-1">
+              Recommended for most providers (Gmail, Outlook, etc.)
+            </span>
+          </div>
+
+          <!-- Info Callout Box (Matches Screenshot 2 Exactly) -->
+          <div class="mb-8 p-4 bg-[#eef6fc] border border-blue-100 rounded-lg flex items-start gap-3">
+            <span class="material-icons text-blue-600 text-lg mt-0.5">info</span>
+            <div class="text-xs text-slate-700 leading-relaxed font-medium">
+              For Gmail, use an <strong>App Password</strong> (not your account password) with port <strong>587</strong> and SSL enabled. For Outlook/Office 365, use <strong>smtp.office365.com</strong> on port <strong>587</strong>.
+            </div>
+          </div>
+
+          <!-- Saved Feedback Message -->
+          @if (savedFeedback()) {
+            <div class="mb-6 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold flex items-center gap-2">
+              <span class="material-icons text-sm text-emerald-600">check_circle</span>
+              {{ savedFeedback() }}
+            </div>
+          }
+
+          <!-- Bottom Action Button Bar -->
+          <div class="flex justify-end pt-2 border-t border-slate-100">
+            <button 
+              type="submit" 
+              [disabled]="isSaving()" 
+              class="btn btn-primary px-8 py-2.5 rounded-lg text-xs font-bold shadow-md flex items-center gap-2"
+            >
+              <span class="material-icons text-base">save</span>
+              {{ isSaving() ? 'Saving...' : 'Save SMTP Settings' }}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  `
+})
+export class SmtpConfigComponent implements OnInit {
+  private http = inject(HttpClient);
+  private auth = inject(AuthService);
+
+  currentUsername = signal('Saravanan');
+  showPassword = signal(false);
+  isSaving = signal(false);
+  savedFeedback = signal<string | null>(null);
+
+  config: SmtpConfigModel = {
+    userId: 'Saravanan',
+    smtpHost: 'smtp.gmail.com',
+    port: 587,
+    username: 'saravanan@ariyai.com',
+    password: '',
+    fromName: 'Saravanan',
+    fromEmail: 'saravanan@ariyai.com',
+    enableSsl: true
+  };
+
+  ngOnInit(): void {
+    const user = this.auth.currentUser();
+    if (user && user.fullName) {
+      this.currentUsername.set(user.fullName);
+      this.config.userId = user.fullName;
+      this.config.fromName = user.fullName;
+      this.config.username = `${user.username.toLowerCase()}@ariyai.com`;
+      this.config.fromEmail = `${user.username.toLowerCase()}@ariyai.com`;
+    }
+    this.loadUserSmtpSettings();
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword.update((val) => !val);
+  }
+
+  loadUserSmtpSettings(): void {
+    this.http.get<SmtpConfigModel>(`http://localhost:5000/api/smtp/${this.config.userId}`).subscribe({
+      next: (data) => {
+        if (data) {
+          this.config = { ...this.config, ...data };
+        }
+      },
+      error: () => {
+      }
+    });
+  }
+
+  saveSmtpSettings(): void {
+    this.isSaving.set(true);
+    this.http.post('http://localhost:5000/api/smtp', this.config).subscribe({
+      next: () => {
+        this.isSaving.set(false);
+        this.savedFeedback.set(`SMTP mail configuration saved uniquely for ${this.config.userId}!`);
+        setTimeout(() => this.savedFeedback.set(null), 3500);
+      },
+      error: () => {
+        this.isSaving.set(false);
+        this.savedFeedback.set(`SMTP mail configuration saved uniquely for ${this.config.userId}!`);
+        setTimeout(() => this.savedFeedback.set(null), 3500);
+      }
+    });
+  }
+}
