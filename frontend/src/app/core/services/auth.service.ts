@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, of } from 'rxjs';
 
+import { getApiUrl } from '../config/api.config';
+
 export interface UserSession {
   token: string;
   username: string;
@@ -15,9 +17,10 @@ export interface UserSession {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:5000/api/auth';
+  private get apiUrl() { return `${getApiUrl()}/auth`; }
   private TOKEN_KEY = 'ariyai_jwt_token';
   private USER_KEY = 'ariyai_user_session';
+
 
   currentUser = signal<UserSession | null>(this.getStoredUser());
   isAuthenticated = computed(() => !!this.currentUser());

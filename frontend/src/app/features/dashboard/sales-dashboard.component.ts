@@ -8,6 +8,8 @@ import { LocalLead } from '../../core/models/lead.model';
 import { NetworkService } from '../../core/services/network.service';
 import { StallService, Stall } from '../../core/services/stall.service';
 import { AuthService } from '../../core/services/auth.service';
+import { getApiUrl } from '../../core/config/api.config';
+
 
 @Component({
   selector: 'app-sales-dashboard',
@@ -341,7 +343,7 @@ export class SalesDashboardComponent implements OnInit {
   });
 
   openCreateStallModal(): void {
-    this.http.get<{ code: string }>('http://localhost:5000/api/stalls/next-code').subscribe({
+    this.http.get<{ code: string }>(`${getApiUrl()}/stalls/next-code`).subscribe({
       next: (res) => {
         const nextCode = res.code || `STL-${new Date().getFullYear()}-002`;
         this.newStallData = {
@@ -373,7 +375,7 @@ export class SalesDashboardComponent implements OnInit {
       return;
     }
 
-    this.http.post<Stall>('http://localhost:5000/api/stalls', this.newStallData).subscribe({
+    this.http.post<Stall>(`${getApiUrl()}/stalls`, this.newStallData).subscribe({
       next: (created) => {
         alert(`New Stall (Project) "${created.name}" created with Auto Code: ${created.code}!`);
         this.stallService.loadStalls();

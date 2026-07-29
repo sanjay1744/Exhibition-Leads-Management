@@ -1,7 +1,7 @@
 import {
   __commonJS,
   __toESM
-} from "./chunk-TXDUYLVM.js";
+} from "./chunk-KBUIKKCC.js";
 
 // node_modules/dexie/dist/dexie.js
 var require_dexie = __commonJS({
