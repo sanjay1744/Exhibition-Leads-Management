@@ -42,16 +42,16 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
       }
 
       <!-- Visitor Information Form Card -->
-      <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <div class="flex items-center justify-between border-b pb-4 mb-6">
+      <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm overflow-hidden">
+        <div class="bg-[#1a3a5c] text-white p-4 rounded-t-xl -mx-6 -mt-6 mb-6 flex items-center justify-between shadow-xs">
           <div class="flex items-center gap-2">
-            <span class="material-icons text-blue-600">contact_page</span>
-            <h2 class="text-base font-bold text-slate-900">
+            <span class="material-icons text-blue-300">contact_page</span>
+            <h2 class="text-sm font-bold text-white uppercase tracking-wide">
               {{ isEditMode() ? 'Edit Visitor Record & Requirements' : 'Visitor Information & Requirements' }}
             </h2>
           </div>
           @if (isAutoFilled()) {
-            <span class="status-pill green">
+            <span class="status-pill green bg-emerald-500 text-white font-bold border border-emerald-400">
               <span class="material-icons text-xs">auto_awesome</span> Auto-Filled from {{ captureMethod === 'qr_scan' ? 'QR Scanner' : captureMethod === 'card_ocr' ? 'OCR Card' : 'Scanner' }}
             </span>
           }

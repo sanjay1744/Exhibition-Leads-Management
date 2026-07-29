@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, signal, inject } from '@angular/core';
+import { Component, EventEmitter, Output, signal, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { createWorker, Worker } from 'tesseract.js';
@@ -12,118 +12,199 @@ export { ExtractedCardData };
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="card-panel h-full flex flex-col justify-between hover:shadow-md transition bg-white border border-slate-200 rounded-xl p-4">
+    <div class="card-panel p-0 overflow-hidden h-full flex flex-col justify-between hover:shadow-md transition bg-white border border-slate-200 rounded-xl">
       <div>
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-2">
+        <!-- Header with Table Blue (#1a3a5c) theme -->
+        <div class="bg-[#1a3a5c] text-white p-3.5 px-4 flex items-center justify-between shadow-xs">
           <div class="flex items-center gap-2">
-            <span class="material-icons text-blue-600">credit_card</span>
-            <h3 class="text-sm font-bold text-slate-800">Business Card OCR</h3>
-          </div>
-          <span class="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-            <span class="material-icons text-[12px]">wifi_off</span> Offline Wasm
-          </span>
-        </div>
-        <p class="text-xs text-slate-500 mb-3">Snap horizontal or vertical cards to auto-extract contact details offline.</p>
-
-        <!-- Image Upload Button -->
-        <label class="cursor-pointer block border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-3 text-center bg-slate-50 hover:bg-blue-50/50 transition mb-2">
-          <input 
-            type="file" 
-            accept="image/*" 
-            capture="environment" 
-            (change)="onFileSelected($event)" 
-            class="hidden"
-            [disabled]="isProcessing()"
-          />
-          <span class="material-icons text-slate-400 text-2xl block mb-1">add_a_photo</span>
-          <span class="text-xs font-semibold text-blue-600 block">Scan Business Card</span>
-          <span class="text-[10px] text-slate-400">JPG, PNG, WebP up to 10MB</span>
-        </label>
-      </div>
-
-      <!-- Processing Progress Overlay -->
-      @if (isProcessing()) {
-        <div class="mt-3 p-3 bg-blue-50/80 border border-blue-200 rounded-lg text-xs">
-          <div class="flex items-center justify-between text-blue-800 font-semibold mb-1">
-            <span class="flex items-center gap-1.5">
-              <span class="material-icons animate-spin text-sm">sync</span>
-              {{ statusMessage() }}
-            </span>
-            <span>{{ progressPercent() }}%</span>
-          </div>
-          <div class="w-full bg-blue-200 rounded-full h-1.5 overflow-hidden">
-            <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" [style.width.%]="progressPercent()"></div>
+            <span class="material-icons text-blue-300 text-lg">credit_card</span>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-white">Business Card OCR</h3>
           </div>
         </div>
-      }
 
-      <!-- Enhanced Image & Extracted Preview -->
-      @if (extractedData() && !isProcessing()) {
-        <div class="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
-          <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200">
-            <span class="text-xs font-bold text-slate-800 flex items-center gap-1">
-              <span class="material-icons text-sm text-emerald-600">check_circle</span>
-              Extracted Card Info
-            </span>
+        <div class="p-4">
+          <p class="text-xs text-slate-500 mb-3">Snap horizontal or vertical cards to auto-extract contact details offline.</p>
+
+          <!-- Quick Action Buttons -->
+          <div class="grid grid-cols-1 gap-2 mb-2">
             <button 
               type="button"
-              (click)="openEditModal()"
-              class="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5"
+              (click)="openCameraModal()" 
+              class="btn btn-primary w-full justify-center text-xs py-2.5 rounded-lg font-bold shadow-sm flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              [disabled]="isProcessing()"
             >
-              <span class="material-icons text-xs">edit</span> Review & Edit
+              <span class="material-icons text-sm">photo_camera</span>
+              Scan via Camera
+            </button>
+
+            <label class="cursor-pointer block border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-2.5 text-center bg-slate-50 hover:bg-blue-50/50 transition">
+              <input 
+                type="file" 
+                accept="image/*" 
+                capture="environment" 
+                (change)="onFileSelected($event)" 
+                class="hidden"
+                [disabled]="isProcessing()"
+              />
+              <div class="flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-600">
+                <span class="material-icons text-sm">add_a_photo</span>
+                <span>Upload Business Card Image</span>
+              </div>
+              <span class="text-[10px] text-slate-400 block mt-0.5">JPG, PNG, WebP up to 10MB</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Processing Progress Overlay -->
+        @if (isProcessing()) {
+          <div class="mx-4 mb-4 p-3 bg-blue-50/80 border border-blue-200 rounded-lg text-xs">
+            <div class="flex items-center justify-between text-blue-800 font-semibold mb-1">
+              <span class="flex items-center gap-1.5">
+                <span class="material-icons animate-spin text-sm">sync</span>
+                {{ statusMessage() }}
+              </span>
+              <span>{{ progressPercent() }}%</span>
+            </div>
+            <div class="w-full bg-blue-200 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" [style.width.%]="progressPercent()"></div>
+            </div>
+          </div>
+        }
+
+        <!-- Enhanced Image & Extracted Preview -->
+        @if (extractedData() && !isProcessing()) {
+          <div class="mx-4 mb-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                <span class="material-icons text-sm text-emerald-600">check_circle</span>
+                Extracted Card Info
+              </span>
+              <button 
+                type="button"
+                (click)="openEditModal()"
+                class="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5"
+              >
+                <span class="material-icons text-xs">edit</span> Review & Edit
+              </button>
+            </div>
+
+            <div class="space-y-1 text-xs text-slate-700">
+              @if (extractedData()?.name) {
+                <div class="flex items-center gap-1 font-bold text-slate-900">
+                  <span class="material-icons text-slate-400 text-xs">person</span>
+                  {{ extractedData()?.name }}
+                </div>
+              }
+              @if (extractedData()?.designation) {
+                <div class="flex items-center gap-1 text-slate-600">
+                  <span class="material-icons text-slate-400 text-xs">badge</span>
+                  {{ extractedData()?.designation }}
+                </div>
+              }
+              @if (extractedData()?.company) {
+                <div class="flex items-center gap-1 text-slate-600">
+                  <span class="material-icons text-slate-400 text-xs">business</span>
+                  {{ extractedData()?.company }}
+                </div>
+              }
+              @if (extractedData()?.phone) {
+                <div class="flex items-center gap-1 text-slate-600">
+                  <span class="material-icons text-slate-400 text-xs">phone</span>
+                  {{ extractedData()?.phone }}
+                </div>
+              }
+              @if (extractedData()?.email) {
+                <div class="flex items-center gap-1 text-slate-600">
+                  <span class="material-icons text-slate-400 text-xs">email</span>
+                  {{ extractedData()?.email }}
+                </div>
+              }
+              @if (extractedData()?.website) {
+                <div class="flex items-center gap-1 text-slate-600">
+                  <span class="material-icons text-slate-400 text-xs">language</span>
+                  {{ extractedData()?.website }}
+                </div>
+              }
+            </div>
+
+            <button 
+              type="button" 
+              (click)="applyData()"
+              class="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-1.5 px-3 rounded-md transition shadow-xs flex items-center justify-center gap-1"
+            >
+              <span class="material-icons text-xs">bolt</span> Auto-Fill Lead Form
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Live Camera Capture Modal -->
+    @if (showCameraModal()) {
+      <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn relative">
+          <div class="flex items-center justify-between border-b pb-3 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="material-icons text-blue-600">photo_camera</span>
+              <h3 class="text-base font-bold text-slate-900">Scan Business Card via Camera</h3>
+            </div>
+            <button (click)="closeCameraModal()" class="text-slate-400 hover:text-slate-600">
+              <span class="material-icons">close</span>
             </button>
           </div>
 
-          <div class="space-y-1 text-xs text-slate-700">
-            @if (extractedData()?.name) {
-              <div class="flex items-center gap-1 font-bold text-slate-900">
-                <span class="material-icons text-slate-400 text-xs">person</span>
-                {{ extractedData()?.name }}
+          <!-- Camera Stream Container with Card Guide Reticle -->
+          <div class="relative bg-slate-900 rounded-xl overflow-hidden min-h-[260px] flex items-center justify-center border border-slate-800">
+            <video id="ocr-camera-viewport" autoplay playsinline class="w-full h-full object-cover max-h-[320px]"></video>
+
+            <!-- Card Framing Guide Overlay -->
+            <div class="absolute inset-4 border-2 border-dashed border-blue-400/80 rounded-lg pointer-events-none flex items-center justify-center">
+              <div class="text-[10px] text-blue-200 font-bold bg-slate-900/60 px-2.5 py-1 rounded-full uppercase tracking-wider backdrop-blur-xs">
+                Position Business Card Inside Frame
+              </div>
+            </div>
+
+            @if (isStartingCamera()) {
+              <div class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-white text-xs gap-2">
+                <span class="material-icons text-3xl animate-spin text-blue-400">sync</span>
+                <span>Initializing Camera...</span>
               </div>
             }
-            @if (extractedData()?.designation) {
-              <div class="flex items-center gap-1 text-slate-600">
-                <span class="material-icons text-slate-400 text-xs">badge</span>
-                {{ extractedData()?.designation }}
-              </div>
-            }
-            @if (extractedData()?.company) {
-              <div class="flex items-center gap-1 text-slate-600">
-                <span class="material-icons text-slate-400 text-xs">business</span>
-                {{ extractedData()?.company }}
-              </div>
-            }
-            @if (extractedData()?.phone) {
-              <div class="flex items-center gap-1 text-slate-600">
-                <span class="material-icons text-slate-400 text-xs">phone</span>
-                {{ extractedData()?.phone }}
-              </div>
-            }
-            @if (extractedData()?.email) {
-              <div class="flex items-center gap-1 text-slate-600">
-                <span class="material-icons text-slate-400 text-xs">email</span>
-                {{ extractedData()?.email }}
-              </div>
-            }
-            @if (extractedData()?.website) {
-              <div class="flex items-center gap-1 text-slate-600">
-                <span class="material-icons text-slate-400 text-xs">language</span>
-                {{ extractedData()?.website }}
+
+            @if (cameraError()) {
+              <div class="absolute inset-0 bg-slate-900/90 p-4 flex flex-col items-center justify-center text-center text-white text-xs gap-2">
+                <span class="material-icons text-red-400 text-3xl">videocam_off</span>
+                <span class="font-bold text-red-200">{{ cameraError() }}</span>
+                <button 
+                  (click)="startCamera()" 
+                  class="mt-2 bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs"
+                >
+                  Retry Camera
+                </button>
               </div>
             }
           </div>
 
-          <button 
-            type="button" 
-            (click)="applyData()"
-            class="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-1.5 px-3 rounded-md transition shadow-xs flex items-center justify-center gap-1"
-          >
-            <span class="material-icons text-xs">bolt</span> Auto-Fill Lead Form
-          </button>
+          <div class="mt-4 flex items-center justify-between">
+            <button 
+              type="button" 
+              (click)="closeCameraModal()" 
+              class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button"
+              (click)="captureCardFromCamera()" 
+              class="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md flex items-center gap-1.5"
+            >
+              <span class="material-icons text-sm">camera</span>
+              Snap Photo & Extract OCR
+            </button>
+          </div>
         </div>
-      }
-    </div>
+      </div>
+    }
 
     <!-- Review & Edit Modal -->
     @if (showModal()) {
@@ -221,7 +302,7 @@ export { ExtractedCardData };
     }
   `
 })
-export class OcrScannerComponent {
+export class OcrScannerComponent implements OnDestroy {
   private preprocessor = inject(OcrPreprocessorService);
   private parser = inject(CardParserService);
 
@@ -237,6 +318,84 @@ export class OcrScannerComponent {
 
   showModal = signal(false);
   modalData: ExtractedCardData = {};
+
+  showCameraModal = signal(false);
+  isStartingCamera = signal(false);
+  cameraError = signal<string | null>(null);
+  private mediaStream: MediaStream | null = null;
+
+  async openCameraModal(): Promise<void> {
+    this.showCameraModal.set(true);
+    this.cameraError.set(null);
+    setTimeout(() => this.startCamera(), 200);
+  }
+
+  async startCamera(): Promise<void> {
+    this.isStartingCamera.set(true);
+    this.cameraError.set(null);
+
+    try {
+      if (this.mediaStream) {
+        this.stopCamera();
+      }
+
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+
+      const videoEl = document.getElementById('ocr-camera-viewport') as HTMLVideoElement;
+      if (videoEl) {
+        videoEl.srcObject = this.mediaStream;
+        await videoEl.play();
+      }
+      this.isStartingCamera.set(false);
+    } catch (err: any) {
+      console.error('OCR Camera error:', err);
+      this.isStartingCamera.set(false);
+      this.cameraError.set(err?.message || 'Could not access camera. Ensure camera permissions are allowed.');
+    }
+  }
+
+  stopCamera(): void {
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream = null;
+    }
+  }
+
+  async closeCameraModal(): Promise<void> {
+    this.stopCamera();
+    this.showCameraModal.set(false);
+  }
+
+  async captureCardFromCamera(): Promise<void> {
+    const videoEl = document.getElementById('ocr-camera-viewport') as HTMLVideoElement;
+    if (!videoEl || !videoEl.videoWidth) {
+      alert('Camera video stream is not ready yet.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoEl.videoWidth;
+    canvas.height = videoEl.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+    if (!blob) return;
+
+    const capturedFile = new File([blob], 'camera_card_snap.jpg', { type: 'image/jpeg' });
+    await this.closeCameraModal();
+    this.rawSelectedFile = capturedFile;
+    this.currentRotation = 0;
+    await this.processCardPipeline(capturedFile, 0);
+  }
 
   async onFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
@@ -374,5 +533,9 @@ export class OcrScannerComponent {
     this.extractedData.set({ ...this.modalData });
     this.cardExtracted.emit({ ...this.modalData });
     this.closeEditModal();
+  }
+
+  ngOnDestroy(): void {
+    this.stopCamera();
   }
 }
