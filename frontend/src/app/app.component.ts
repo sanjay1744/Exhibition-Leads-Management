@@ -52,7 +52,7 @@ import { ToastService } from './core/services/toast.service';
           <!-- Logo Box (Clickable -> Dashboard) -->
           <div class="sidebar-logo">
             <a routerLink="/dashboard" class="logo-box cursor-pointer hover:opacity-90 transition block">
-              <span class="logo-text">AriyAI</span>
+              <img src="ariyai-logo.png" alt="AriyAI" style="height: 28px; width: auto;" />
             </a>
           </div>
 

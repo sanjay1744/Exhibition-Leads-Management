@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ApplicationDatabase } from '../../core/services/db.service';
-import { LocalLead } from '../../core/models/lead.model';
+import { LocalLead, CaptureMethod } from '../../core/models/lead.model';
 import { StallService } from '../../core/services/stall.service';
 import { OcrScannerComponent, ExtractedCardData } from './ocr-scanner.component';
 import { QrScannerComponent, QrParsedContact } from './qr-scanner.component';
@@ -42,19 +42,14 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
       }
 
       <!-- Visitor Information Form Card -->
-      <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <div class="flex items-center justify-between border-b pb-4 mb-6">
+      <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm overflow-hidden">
+        <div class="bg-[#1a3a5c] text-white p-4 rounded-t-xl -mx-6 -mt-6 mb-6 flex items-center justify-between shadow-xs">
           <div class="flex items-center gap-2">
-            <span class="material-icons text-blue-600">contact_page</span>
-            <h2 class="text-base font-bold text-slate-900">
+            <span class="material-icons text-blue-300">contact_page</span>
+            <h2 class="text-sm font-bold text-white uppercase tracking-wide">
               {{ isEditMode() ? 'Edit Visitor Record & Requirements' : 'Visitor Information & Requirements' }}
             </h2>
           </div>
-          @if (isAutoFilled()) {
-            <span class="status-pill green">
-              <span class="material-icons text-xs">auto_awesome</span> Auto-Filled from Scanner
-            </span>
-          }
         </div>
 
         <form (ngSubmit)="saveLead()">
@@ -264,6 +259,7 @@ export class LeadFormComponent implements OnInit {
   remarks = '';
   voiceBlob: Blob | null = null;
 
+  captureMethod: CaptureMethod = 'manual';
   isAutoFilled = signal(false);
   savedMessage = signal<string | null>(null);
 
@@ -296,6 +292,7 @@ export class LeadFormComponent implements OnInit {
       this.address = lead.address || '';
       this.interestLevel = lead.interestLevel;
       this.remarks = lead.remarks || '';
+      this.captureMethod = lead.captureMethod || 'manual';
       this.existingCreatedAt = lead.createdAt;
     } else {
       alert('Selected lead record not found.');
@@ -311,6 +308,7 @@ export class LeadFormComponent implements OnInit {
     if (data.designation) this.designation = data.designation;
     if (data.website) this.website = data.website;
     if (data.address) this.address = data.address;
+    this.captureMethod = 'card_ocr';
     this.isAutoFilled.set(true);
   }
 
@@ -319,11 +317,19 @@ export class LeadFormComponent implements OnInit {
     if (data.company) this.company = data.company;
     if (data.phone) this.phone = data.phone;
     if (data.email) this.email = data.email;
+    if (data.designation) this.designation = data.designation;
+    if (data.website) this.website = data.website;
+    if (data.address) this.address = data.address;
+    if (data.remarks && !this.remarks) this.remarks = data.remarks;
+    this.captureMethod = 'qr_scan';
     this.isAutoFilled.set(true);
   }
 
   onVoiceRecorded(blob: Blob): void {
     this.voiceBlob = blob;
+    if (this.captureMethod === 'manual') {
+      this.captureMethod = 'voice_note';
+    }
   }
 
   addQuickRemark(chip: string): void {
@@ -344,6 +350,7 @@ export class LeadFormComponent implements OnInit {
     this.address = '';
     this.remarks = '';
     this.interestLevel = 'Warm';
+    this.captureMethod = 'manual';
     this.isAutoFilled.set(false);
   }
 
@@ -366,7 +373,7 @@ export class LeadFormComponent implements OnInit {
       designation: this.designation,
       website: this.website,
       address: this.address,
-      captureMethod: 'manual',
+      captureMethod: this.captureMethod,
       interestLevel: this.interestLevel,
       productCategory: ['Enterprise'],
       priority: 'High',
