@@ -1,0 +1,9 @@
+{
+  "outputDirectory": "dist/exhibition-lead-capture-client/browser",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
