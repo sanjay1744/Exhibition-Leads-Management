@@ -157,22 +157,29 @@ export { ExtractedCardData };
           </div>
 
           <!-- Camera Stream Container -->
-          <div class="relative bg-slate-950 rounded-xl overflow-hidden min-h-[300px] flex items-center justify-center border border-slate-800">
-            <video id="ocr-camera-viewport" autoplay playsinline class="w-full h-[300px] object-contain bg-slate-950"></video>
+          <div class="relative bg-slate-950 rounded-xl overflow-hidden aspect-[4/3] max-h-[360px] w-full flex items-center justify-center border border-slate-800 shadow-inner">
+            <video id="ocr-camera-viewport" autoplay playsinline class="w-full h-full object-cover bg-slate-950"></video>
 
-            <!-- Dimmed Background Overlay around Card Box -->
-            <div class="absolute inset-0 bg-slate-950/60 pointer-events-none"></div>
+            <!-- Top Horizontal Dark Block -->
+            <div class="absolute top-0 left-0 right-0 h-[18%] bg-slate-950/85 backdrop-blur-[1px] pointer-events-none z-10 border-b border-white/10 flex items-center justify-center">
+              <span class="text-[10px] text-slate-300 font-semibold tracking-wider uppercase">Business Card Scanner</span>
+            </div>
+
+            <!-- Bottom Horizontal Dark Block -->
+            <div class="absolute bottom-0 left-0 right-0 h-[18%] bg-slate-950/85 backdrop-blur-[1px] pointer-events-none z-10 border-t border-white/10 flex items-center justify-center">
+              <span class="text-[10px] text-slate-400 font-medium">Keep card horizontal & aligned inside frame</span>
+            </div>
 
             <!-- Central Visual Card Target Reticle Box -->
             <div 
               id="ocr-card-reticle-box"
-              class="absolute left-[8%] right-[8%] top-[14%] bottom-[14%] rounded-lg pointer-events-none transition-all duration-300 flex flex-col justify-between p-2.5 z-10"
-              [ngClass]="cardAligned() ? 'border-4 border-emerald-400 shadow-[0_0_35px_rgba(52,211,153,0.9)] bg-emerald-950/10' : 'border-2 border-dashed border-blue-400 shadow-[0_0_15px_rgba(0,0,0,0.6)]'"
+              class="absolute left-[6%] right-[6%] top-[18%] bottom-[18%] rounded-xl pointer-events-none transition-all duration-300 flex flex-col justify-between p-3 z-20"
+              [ngClass]="cardAligned() ? 'border-4 border-emerald-400 shadow-[0_0_35px_rgba(52,211,153,0.9)] bg-emerald-950/10' : 'border-2 border-dashed border-blue-400 shadow-[0_0_20px_rgba(0,0,0,0.8)]'"
             >
               <!-- Top Corner Brackets -->
               <div class="w-full flex justify-between">
-                <div class="w-7 h-7 border-t-4 border-l-4 rounded-tl-sm transition-colors duration-300" [ngClass]="cardAligned() ? 'border-emerald-400' : 'border-blue-400'"></div>
-                <div class="w-7 h-7 border-t-4 border-r-4 rounded-tr-sm transition-colors duration-300" [ngClass]="cardAligned() ? 'border-emerald-400' : 'border-blue-400'"></div>
+                <div class="w-7 h-7 border-t-4 border-l-4 rounded-tl-md transition-colors duration-300" [ngClass]="cardAligned() ? 'border-emerald-400' : 'border-blue-400'"></div>
+                <div class="w-7 h-7 border-t-4 border-r-4 rounded-tr-md transition-colors duration-300" [ngClass]="cardAligned() ? 'border-emerald-400' : 'border-blue-400'"></div>
               </div>
 
               <!-- Status Badge in Center -->
@@ -193,11 +200,11 @@ export { ExtractedCardData };
 
               <!-- Bottom Corner Brackets & Live Status -->
               <div class="w-full flex justify-between items-end">
-                <div class="w-7 h-7 border-b-4 border-l-4 rounded-bl-sm transition-colors duration-300" [ngClass]="cardAligned() ? 'border-emerald-400' : 'border-blue-400'"></div>
+                <div class="w-7 h-7 border-b-4 border-l-4 rounded-bl-md transition-colors duration-300" [ngClass]="cardAligned() ? 'border-emerald-400' : 'border-blue-400'"></div>
                 <div class="text-[10px] text-white/90 bg-slate-900/90 px-2.5 py-0.5 rounded font-semibold backdrop-blur-xs border border-white/10">
                   {{ cameraStatus() }}
                 </div>
-                <div class="w-7 h-7 border-b-4 border-r-4 rounded-br-sm transition-colors duration-300" [ngClass]="cardAligned() ? 'border-emerald-400' : 'border-blue-400'"></div>
+                <div class="w-7 h-7 border-b-4 border-r-4 rounded-br-md transition-colors duration-300" [ngClass]="cardAligned() ? 'border-emerald-400' : 'border-blue-400'"></div>
               </div>
             </div>
 
@@ -389,8 +396,9 @@ export class OcrScannerComponent implements OnDestroy {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          aspectRatio: { ideal: 1.777 }
         }
       });
 
@@ -425,13 +433,6 @@ export class OcrScannerComponent implements OnDestroy {
 
   /**
    * RECTANGULAR CONTOUR CARD DETECTOR (like CamScanner / Adobe Scan)
-   * 
-   * WHY all previous versions failed: They checked average brightness, saturation,
-   * and edge counts — but faces in good lighting can pass ALL of those.
-   * 
-   * PDF scanner apps work differently: they look for 4 STRAIGHT EDGES forming a
-   * RECTANGLE. A business card has sharp, continuous top/bottom/left/right borders.
-   * A human face NEVER has 4 straight edges.
    * 
    * Algorithm:
    * 1. Sample the reticle area at reduced resolution
@@ -470,11 +471,11 @@ export class OcrScannerComponent implements OnDestroy {
         return [d[i], d[i + 1], d[i + 2]];
       };
 
-      // Reticle bounds (matching the CSS: left 8%, right 8%, top 14%, bottom 14%)
-      const rLeft = Math.round(W * 0.08);
-      const rRight = Math.round(W * 0.92);
-      const rTop = Math.round(H * 0.14);
-      const rBottom = Math.round(H * 0.86);
+      // Reticle bounds (matching the CSS: left 6%, right 6%, top 18%, bottom 18%)
+      const rLeft = Math.round(W * 0.06);
+      const rRight = Math.round(W * 0.94);
+      const rTop = Math.round(H * 0.18);
+      const rBottom = Math.round(H * 0.82);
       const rW = rRight - rLeft;
       const rH = rBottom - rTop;
 
