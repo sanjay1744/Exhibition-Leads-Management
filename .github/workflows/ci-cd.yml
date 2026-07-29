@@ -1,0 +1,102 @@
+name: Exhibition Leads Management CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  # ==========================================
+  # 1. BUILD & TEST BACKEND (.NET 9 Web API)
+  # ==========================================
+  backend-ci:
+    name: Build .NET 9 Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore Backend Dependencies
+        run: dotnet restore backend/ExhibitionLeads.sln
+
+      - name: Build Backend Solution
+        run: dotnet build backend/ExhibitionLeads.sln -c Release --no-restore
+
+  # ==========================================
+  # 2. BUILD & LINT FRONTEND (Angular 21 PWA)
+  # ==========================================
+  frontend-ci:
+    name: Build Angular 21 Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build Production Bundle
+        working-directory: ./frontend
+        run: npm run build -- --configuration=production
+
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/frontend/browser
+
+  # ==========================================
+  # 3. DEPLOY FRONTEND TO GITHUB PAGES (CD)
+  # ==========================================
+  deploy-frontend:
+    name: Deploy Frontend to GitHub Pages
+    needs: [backend-ci, frontend-ci]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          cname: '' # Optional custom domain
+
+  # ==========================================
+  # 4. TRIGGER RENDER DEPLOYMENT (CD)
+  # ==========================================
+  deploy-backend:
+    name: Trigger Render Backend Deployment
+    needs: [backend-ci, frontend-ci]
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.RENDER_DEPLOY_HOOK_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"

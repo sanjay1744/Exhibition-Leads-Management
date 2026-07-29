@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: exhibition-leads-api
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: singapore
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: JwtSettings__Secret
+        value: AriyAI_Super_Secret_JWT_Signing_Key_2026_Enterprise_Security!

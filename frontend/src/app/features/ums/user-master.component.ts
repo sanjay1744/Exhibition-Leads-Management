@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
+import { getApiUrl } from '../../core/config/api.config';
+
 
 export interface UserMasterItem {
   id: string;
@@ -234,7 +236,8 @@ export interface UserMasterItem {
 export class UserMasterComponent implements OnInit {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
-  private apiUrl = 'http://localhost:5000/api/users';
+  private get apiUrl() { return `${getApiUrl()}/users`; }
+
 
   users = signal<UserMasterItem[]>([]);
 

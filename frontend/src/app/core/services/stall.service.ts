@@ -2,6 +2,8 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
+import { getApiUrl } from '../config/api.config';
+
 export interface Stall {
   id: string;
   name: string;
@@ -16,7 +18,8 @@ export interface Stall {
   providedIn: 'root'
 })
 export class StallService {
-  private apiUrl = 'http://localhost:5000/api/stalls';
+  private get apiUrl() { return `${getApiUrl()}/stalls`; }
+
 
   stalls = signal<Stall[]>([]);
   activeStall = signal<Stall | null>(null);
