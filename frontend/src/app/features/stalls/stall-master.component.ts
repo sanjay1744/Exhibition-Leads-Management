@@ -6,6 +6,8 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { StallService } from '../../core/services/stall.service';
 import { ApplicationDatabase } from '../../core/services/db.service';
+import { getApiUrl } from '../../core/config/api.config';
+
 
 export interface StallMasterDto {
   id: string;
@@ -402,7 +404,7 @@ export class StallMasterComponent implements OnInit {
   private toast = inject(ToastService);
   private db = inject(ApplicationDatabase);
 
-  private apiUrl = 'http://localhost:5000/api/stalls';
+  private get apiUrl() { return `${getApiUrl()}/stalls`; }
 
   stalls = signal<StallMasterDto[]>([]);
   searchQuery = '';

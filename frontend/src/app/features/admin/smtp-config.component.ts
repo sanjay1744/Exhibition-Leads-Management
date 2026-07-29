@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
+import { getApiUrl } from '../../core/config/api.config';
+
 
 export interface SmtpConfigModel {
   userId: string;
@@ -230,7 +232,7 @@ export class SmtpConfigComponent implements OnInit {
   }
 
   loadUserSmtpSettings(): void {
-    this.http.get<SmtpConfigModel>(`http://localhost:5000/api/smtp/${this.config.userId}`).subscribe({
+    this.http.get<SmtpConfigModel>(`${getApiUrl()}/smtp/${this.config.userId}`).subscribe({
       next: (data) => {
         if (data) {
           this.config = { ...this.config, ...data };
@@ -243,7 +245,7 @@ export class SmtpConfigComponent implements OnInit {
 
   saveSmtpSettings(): void {
     this.isSaving.set(true);
-    this.http.post('http://localhost:5000/api/smtp', this.config).subscribe({
+    this.http.post(`${getApiUrl()}/smtp`, this.config).subscribe({
       next: () => {
         this.isSaving.set(false);
         this.savedFeedback.set(`SMTP mail configuration saved uniquely for ${this.config.userId}!`);
