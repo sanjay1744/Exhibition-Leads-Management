@@ -47,11 +47,18 @@ import { ToastService } from './core/services/toast.service';
           }
         </div>
 
+        <!-- Mobile Dimmed Backdrop Overlay -->
+        <div 
+          class="sidebar-backdrop" 
+          [class.active]="!isSidebarCollapsed()" 
+          (click)="toggleSidebar()"
+        ></div>
+
         <!-- Exact AriyAI Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" [class.collapsed]="isSidebarCollapsed()">
           <!-- Logo Box (Clickable -> Dashboard) -->
           <div class="sidebar-logo">
-            <a routerLink="/dashboard" class="logo-box cursor-pointer hover:opacity-90 transition block">
+            <a routerLink="/dashboard" (click)="closeSidebarOnMobile()" class="logo-box cursor-pointer hover:opacity-90 transition block">
               <img src="ariyai-logo.png" alt="AriyAI" style="height: 28px; width: auto;" />
             </a>
           </div>
@@ -59,7 +66,7 @@ import { ToastService } from './core/services/toast.service';
           <!-- Sidebar Navigation Menu -->
           <nav class="sidebar-nav">
             <!-- 1. Dashboard -->
-            <a routerLink="/dashboard" routerLinkActive="active" class="nav-item-link">
+            <a routerLink="/dashboard" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link">
               <span class="material-icons nav-chevron">chevron_right</span>
               <span class="material-icons nav-icon">dashboard</span>
               <span class="nav-text">Dashboard</span>
@@ -79,15 +86,15 @@ import { ToastService } from './core/services/toast.service';
 
               @if (isAdminExpanded()) {
                 <div class="pl-6 bg-black/10">
-                  <a routerLink="/admin/notification-config" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                  <a routerLink="/admin/notification-config" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm">notifications</span>
                     <span class="nav-text">Notification Config</span>
                   </a>
-                  <a routerLink="/admin/smtp-config" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                  <a routerLink="/admin/smtp-config" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm">mail</span>
                     <span class="nav-text">SMTP Config</span>
                   </a>
-                  <a routerLink="/admin/notification-logs" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                  <a routerLink="/admin/notification-logs" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm">history</span>
                     <span class="nav-text">Notification Logs</span>
                   </a>
@@ -109,11 +116,11 @@ import { ToastService } from './core/services/toast.service';
 
               @if (isMasterExpanded()) {
                 <div class="pl-6 bg-black/10">
-                  <a routerLink="/ums/user" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                  <a routerLink="/ums/user" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm">group</span>
                     <span class="nav-text">User Master</span>
                   </a>
-                  <a routerLink="/stalls" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                  <a routerLink="/stalls" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm">storefront</span>
                     <span class="nav-text">Stalls</span>
                   </a>
@@ -135,11 +142,11 @@ import { ToastService } from './core/services/toast.service';
 
               @if (isLeadExpanded()) {
                 <div class="pl-6 bg-black/10">
-                  <a routerLink="/leads" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                  <a routerLink="/leads" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm">list_alt</span>
                     <span class="nav-text">Lead</span>
                   </a>
-                  <a routerLink="/capture" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                  <a routerLink="/capture" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm">add_circle_outline</span>
                     <span class="nav-text">New Lead</span>
                   </a>
@@ -148,7 +155,7 @@ import { ToastService } from './core/services/toast.service';
             </div>
 
             <!-- 5. vCard Exchange -->
-            <a routerLink="/exchange" routerLinkActive="active" class="nav-item-link">
+            <a routerLink="/exchange" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link">
               <span class="material-icons nav-chevron">chevron_right</span>
               <span class="material-icons nav-icon">qr_code_2</span>
               <span class="nav-text">vCard Exchange</span>
@@ -162,7 +169,7 @@ import { ToastService } from './core/services/toast.service';
           <header class="top-header">
             <!-- Left: Hamburger Toggle -->
             <div class="header-left">
-              <button class="menu-toggle-btn" title="Toggle Menu">
+              <button class="menu-toggle-btn" (click)="toggleSidebar()" title="Toggle Menu">
                 <span class="material-icons">menu</span>
               </button>
             </div>
@@ -277,10 +284,34 @@ export class AppComponent {
   private sync = inject(SyncService);
   private router = inject(Router);
 
+  isSidebarCollapsed = signal(false);
   isLeadExpanded = signal(false);
   isMasterExpanded = signal(false);
   isAdminExpanded = signal(false);
   isProfileMenuOpen = signal(false);
+
+  constructor() {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      this.isSidebarCollapsed.set(true);
+    }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    if (window.innerWidth < 768) {
+      this.isSidebarCollapsed.set(true);
+    }
+  }
+
+  toggleSidebar(): void {
+    this.isSidebarCollapsed.update((val) => !val);
+  }
+
+  closeSidebarOnMobile(): void {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      this.isSidebarCollapsed.set(true);
+    }
+  }
 
   toggleLeadMenu(): void {
     this.isLeadExpanded.update((val) => !val);
