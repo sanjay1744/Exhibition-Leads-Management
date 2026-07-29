@@ -67,6 +67,10 @@ else
 
 var app = builder.Build();
 
+// Enable CORS immediately as the first middleware
+app.UseCors("AllowAngularPwa");
+
+
 // Ensure DB exists without deleting existing data
 using (var scope = app.Services.CreateScope())
 {
@@ -139,7 +143,6 @@ app.UseSwaggerUI(c =>
 });
 
 
-app.UseCors("AllowAngularPwa");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
