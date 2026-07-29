@@ -63,7 +63,17 @@ body {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  margin-left: 0;
+  opacity: 1;
+}
+
+.sidebar.collapsed {
+  margin-left: -260px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar-logo {
@@ -170,12 +180,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
-  border-radius: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
 .menu-toggle-btn:hover {
   background: #f1f5f9;
+  color: var(--sidebar-bg);
+}
+
+.menu-toggle-btn:active {
+  transform: scale(0.92);
 }
 
 .header-center {
@@ -528,4 +544,92 @@ body {
 .status-pill.red {
   background: #ffebee;
   color: #c62828;
+}
+
+/* ===== Responsive Mobile Drawer & Compact Layout ===== */
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* 1. Mobile Floating Drawer Sidebar */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    z-index: 50 !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+    margin-left: 0 !important;
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease !important;
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-100%) !important;
+    margin-left: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* 2. Mobile Dimmed Backdrop Overlay */
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 40;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .sidebar-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 3. Header Bar Compact adjustments */
+  .top-header {
+    padding: 0 12px;
+  }
+
+  .header-center {
+    margin: 0 8px;
+    max-width: 160px;
+  }
+
+  .search-input {
+    padding: 6px 12px 6px 32px;
+    font-size: 12px;
+  }
+
+  .user-info {
+    display: none !important; /* Compact view: hide name & role text, keep avatar */
+  }
+
+  /* 4. Page Layout Padding & Grids */
+  .content-body {
+    padding: 12px !important;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .table-panel {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .erp-table {
+    min-width: 600px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-center {
+    display: none !important; /* Hide search bar on extra small screens */
+  }
 }
