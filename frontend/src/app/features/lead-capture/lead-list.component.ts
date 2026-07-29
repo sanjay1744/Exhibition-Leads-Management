@@ -256,8 +256,12 @@ import { StallService } from '../../core/services/stall.service';
                     <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.designation || 'Visitor' }}</span>
                   </div>
                   <div>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase block">STALL NAME</span>
-                    <span class="font-semibold text-slate-800">{{ getStallName(selectedLeadForView()?.exhibitionId) }}</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">WEBSITE URL</span>
+                    <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.website || 'N/A' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">ADDRESS / LOCATION</span>
+                    <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.address || 'N/A' }}</span>
                   </div>
                 </div>
               </div>

@@ -59,7 +59,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
 
         <form (ngSubmit)="saveLead()">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-            <!-- Full Name -->
+            <!-- Full Name * (Mandatory) -->
             <div>
               <label class="form-label font-bold text-xs text-slate-700 mb-1">Full Name *</label>
               <div class="relative flex items-center">
@@ -74,22 +74,21 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
               </div>
             </div>
 
-            <!-- Company Name -->
+            <!-- Company Name (Optional) -->
             <div>
-              <label class="form-label font-bold text-xs text-slate-700 mb-1">Company Name *</label>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Company Name</label>
               <div class="relative flex items-center">
                 <span class="material-icons absolute left-3 text-slate-400 text-lg">business</span>
                 <input 
                   [(ngModel)]="company" 
                   name="company" 
-                  required 
                   class="form-control pl-10 text-xs font-semibold" 
                   placeholder="Company Name" 
                 />
               </div>
             </div>
 
-            <!-- Mobile Phone -->
+            <!-- Mobile Phone * (Mandatory) -->
             <div>
               <label class="form-label font-bold text-xs text-slate-700 mb-1">Mobile Phone *</label>
               <div class="relative flex items-center">
@@ -104,7 +103,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
               </div>
             </div>
 
-            <!-- Email Address -->
+            <!-- Email Address (Optional) -->
             <div>
               <label class="form-label font-bold text-xs text-slate-700 mb-1">Email Address</label>
               <div class="relative flex items-center">
@@ -118,7 +117,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
               </div>
             </div>
 
-            <!-- Designation -->
+            <!-- Designation (Optional) -->
             <div>
               <label class="form-label font-bold text-xs text-slate-700 mb-1">Designation / Role</label>
               <div class="relative flex items-center">
@@ -128,6 +127,34 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
                   name="designation" 
                   class="form-control pl-10 text-xs font-semibold" 
                   placeholder="Purchase Manager / Director" 
+                />
+              </div>
+            </div>
+
+            <!-- Website URL (Optional) -->
+            <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Website URL</label>
+              <div class="relative flex items-center">
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">language</span>
+                <input 
+                  [(ngModel)]="website" 
+                  name="website" 
+                  class="form-control pl-10 text-xs font-semibold" 
+                  placeholder="www.company.com" 
+                />
+              </div>
+            </div>
+
+            <!-- Address / Location (Optional) -->
+            <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Address / Location</label>
+              <div class="relative flex items-center">
+                <span class="material-icons absolute left-3 text-slate-400 text-lg">location_on</span>
+                <input 
+                  [(ngModel)]="address" 
+                  name="address" 
+                  class="form-control pl-10 text-xs font-semibold" 
+                  placeholder="City, State or Full Address" 
                 />
               </div>
             </div>
@@ -231,6 +258,8 @@ export class LeadFormComponent implements OnInit {
   phone = '';
   email = '';
   designation = '';
+  website = '';
+  address = '';
   interestLevel: 'Hot' | 'Warm' | 'Cold' = 'Warm';
   remarks = '';
   voiceBlob: Blob | null = null;
@@ -259,10 +288,12 @@ export class LeadFormComponent implements OnInit {
     const lead = await this.db.getLeadById(id);
     if (lead) {
       this.name = lead.name;
-      this.company = lead.company;
+      this.company = lead.company || '';
       this.phone = lead.phone;
       this.email = lead.email || '';
       this.designation = lead.designation || '';
+      this.website = lead.website || '';
+      this.address = lead.address || '';
       this.interestLevel = lead.interestLevel;
       this.remarks = lead.remarks || '';
       this.existingCreatedAt = lead.createdAt;
@@ -278,20 +309,8 @@ export class LeadFormComponent implements OnInit {
     if (data.phone) this.phone = data.phone;
     if (data.email) this.email = data.email;
     if (data.designation) this.designation = data.designation;
-    
-    const extraParts: string[] = [];
-    if (data.website) extraParts.push(`Web: ${data.website}`);
-    if (data.address) extraParts.push(`Addr: ${data.address}`);
-    
-    if (extraParts.length > 0) {
-      const ocrNotes = extraParts.join(' | ');
-      if (this.remarks && !this.remarks.includes(ocrNotes)) {
-        this.remarks += `, ${ocrNotes}`;
-      } else if (!this.remarks) {
-        this.remarks = ocrNotes;
-      }
-    }
-    
+    if (data.website) this.website = data.website;
+    if (data.address) this.address = data.address;
     this.isAutoFilled.set(true);
   }
 
@@ -321,14 +340,16 @@ export class LeadFormComponent implements OnInit {
     this.phone = '';
     this.email = '';
     this.designation = '';
+    this.website = '';
+    this.address = '';
     this.remarks = '';
     this.interestLevel = 'Warm';
     this.isAutoFilled.set(false);
   }
 
   async saveLead(): Promise<void> {
-    if (!this.name || !this.company || !this.phone) {
-      alert('Name, Company, and Mobile Phone are required.');
+    if (!this.name || !this.phone) {
+      alert('Full Name and Mobile Phone are required.');
       return;
     }
 
@@ -343,6 +364,8 @@ export class LeadFormComponent implements OnInit {
       phone: this.phone,
       email: this.email,
       designation: this.designation,
+      website: this.website,
+      address: this.address,
       captureMethod: 'manual',
       interestLevel: this.interestLevel,
       productCategory: ['Enterprise'],
