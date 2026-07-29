@@ -277,6 +277,7 @@ export class LeadFormComponent implements OnInit {
     if (data.company) this.company = data.company;
     if (data.phone) this.phone = data.phone;
     if (data.email) this.email = data.email;
+    if (data.designation) this.designation = data.designation;
     this.isAutoFilled.set(true);
   }
 
