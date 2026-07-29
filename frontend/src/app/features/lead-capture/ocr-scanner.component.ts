@@ -794,7 +794,7 @@ export class OcrScannerComponent implements OnDestroy {
     try {
       worker = await createWorker('eng', 1, {
         workerPath: '/ocr/worker.min.js',
-        corePath: '/ocr/tesseract-core.wasm',
+        corePath: '/ocr',
         logger: (m) => {
           if (m.status === 'recognizing text' && m.progress) {
             const pct = Math.round(30 + m.progress * 65);
