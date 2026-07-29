@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { StallService } from '../../core/services/stall.service';
+import { ApplicationDatabase } from '../../core/services/db.service';
 
 export interface StallMasterDto {
   id: string;
@@ -49,7 +50,7 @@ import { ToastService } from '../../core/services/toast.service';
           @if (canCreateStall()) {
             <button (click)="openCreateModal()" class="btn btn-primary text-xs px-4 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-md">
               <span class="material-icons text-sm">add_business</span>
-              + Create New Stall
+              Create New Stall
             </button>
           }
         </div>
@@ -81,14 +82,15 @@ import { ToastService } from '../../core/services/toast.service';
             <thead>
               <tr class="bg-[#1a3a5c] text-white text-xs font-semibold uppercase tracking-wider">
                 <th class="py-3 px-4">Stall Code</th>
-                <th class="py-3 px-4">Stall / Project Name</th>
+                <th class="py-3 px-4">Stall Name</th>
                 <th class="py-3 px-4">Event & Organizer</th>
                 <th class="py-3 px-4">Duration</th>
                 <th class="py-3 px-4">Venue & Hall / Booth</th>
                 <th class="py-3 px-4">Stall Owner</th>
                 <th class="py-3 px-4 text-center">Leads</th>
                 <th class="py-3 px-4 text-center">Status</th>
-                <th class="py-3 px-4 text-center">Actions</th>
+                <th class="py-3 px-3 text-center w-16">Edit</th>
+                <th class="py-3 px-3 text-center w-16">Delete</th>
               </tr>
             </thead>
             <tbody class="text-xs text-slate-700">
@@ -142,8 +144,8 @@ import { ToastService } from '../../core/services/toast.service';
 
                   <!-- Leads Captured Counter -->
                   <td class="py-3.5 px-4 text-center font-bold text-slate-900">
-                    <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                      {{ stall.leadCount }} Leads
+                    <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 font-bold">
+                      {{ stall.leadCount }}
                     </span>
                   </td>
 
@@ -154,16 +156,31 @@ import { ToastService } from '../../core/services/toast.service';
                     </span>
                   </td>
 
-                  <!-- Actions -->
-                  <td class="py-3.5 px-4 text-center">
-                    <button (click)="selectStallProject(stall)" class="btn btn-primary py-1 px-2.5 text-[11px] rounded font-bold shadow-xs">
-                      Select Project
+                  <!-- Edit Column -->
+                  <td class="py-3.5 px-3 text-center">
+                    <button 
+                      (click)="openEditModal(stall)" 
+                      class="p-1.5 text-blue-600 hover:bg-blue-100 hover:text-blue-800 rounded-lg transition inline-flex items-center justify-center"
+                      title="Edit Stall Project"
+                    >
+                      <span class="material-icons text-base">edit</span>
+                    </button>
+                  </td>
+
+                  <!-- Delete Column -->
+                  <td class="py-3.5 px-3 text-center">
+                    <button 
+                      (click)="deleteStall(stall)" 
+                      class="p-1.5 text-rose-600 hover:bg-rose-100 hover:text-rose-800 rounded-lg transition inline-flex items-center justify-center"
+                      title="Delete Stall Project"
+                    >
+                      <span class="material-icons text-base">delete</span>
                     </button>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="9" class="py-12 text-center text-slate-400">
+                  <td colspan="10" class="py-12 text-center text-slate-400">
                     No stall projects found. Click "+ Create New Stall (Project)" to add one.
                   </td>
                 </tr>
@@ -173,14 +190,16 @@ import { ToastService } from '../../core/services/toast.service';
         </div>
       </div>
 
-      <!-- Create Stall (Project) Modal with Auto-Generated Code & Event Metadata -->
+      <!-- Create/Edit Stall Modal -->
       @if (isModalOpen()) {
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 my-8">
             <div class="flex items-center justify-between border-b pb-3 mb-5">
               <div class="flex items-center gap-2">
                 <span class="material-icons text-blue-600 text-xl">storefront</span>
-                <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">Create New Stall</h2>
+                <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">
+                  {{ isEditMode() ? 'Edit Stall Project' : 'Create New Stall' }}
+                </h2>
               </div>
               <button (click)="closeModal()" class="text-slate-400 hover:text-slate-600">
                 <span class="material-icons text-lg">close</span>
@@ -193,7 +212,7 @@ import { ToastService } from '../../core/services/toast.service';
                 <!-- Row 1: Auto-Generated Stall Code (Read-Only) -->
                 <div>
                   <div class="flex justify-between items-center mb-1">
-                    <label class="form-label font-bold text-xs text-slate-700 mb-0">Stall Code (Auto-Generated) *</label>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-0">Stall Code *</label>
                   </div>
                   <div class="relative flex items-center">
                     <span class="material-icons absolute left-3 text-blue-600 text-base">qr_code_2</span>
@@ -205,9 +224,9 @@ import { ToastService } from '../../core/services/toast.service';
                   </div>
                 </div>
 
-                <!-- Row 2: Stall / Project Name -->
+                <!-- Row 2: Stall Name -->
                 <div>
-                  <label class="form-label font-bold text-xs text-slate-700 mb-1">Stall / Project Name *</label>
+                  <label class="form-label font-bold text-xs text-slate-700 mb-1">Stall Name *</label>
                   <input 
                     [(ngModel)]="formData.name" 
                     name="name" 
@@ -329,7 +348,7 @@ import { ToastService } from '../../core/services/toast.service';
               <div class="flex justify-end gap-2 pt-3 border-t">
                 <button type="button" (click)="closeModal()" class="btn btn-outline-pill text-xs">Cancel</button>
                 <button type="submit" class="btn btn-primary text-xs px-6 py-2 rounded-lg font-bold shadow-md">
-                  Save Stall Project
+                  {{ isEditMode() ? 'Update Stall Project' : 'Save Stall Project' }}
                 </button>
               </div>
             </form>
@@ -345,12 +364,15 @@ export class StallMasterComponent implements OnInit {
   private stallService = inject(StallService);
   private router = inject(Router);
   private toast = inject(ToastService);
+  private db = inject(ApplicationDatabase);
 
   private apiUrl = 'http://localhost:5000/api/stalls';
 
   stalls = signal<StallMasterDto[]>([]);
   searchQuery = '';
   isModalOpen = signal(false);
+  isEditMode = signal(false);
+  editingStallId: string | null = null;
 
   formData = {
     name: '',
@@ -378,13 +400,32 @@ export class StallMasterComponent implements OnInit {
     this.fetchStalls();
   }
 
-  fetchStalls(): void {
-    this.http.get<StallMasterDto[]>(this.apiUrl).subscribe({
-      next: (res) => {
-        if (res) this.stalls.set(res);
-      },
-      error: () => {}
-    });
+  async fetchStalls(): Promise<void> {
+    try {
+      const localLeads = await this.db.getAllLeads();
+      this.http.get<StallMasterDto[]>(this.apiUrl).subscribe({
+        next: (res) => {
+          if (res) {
+            const updated = res.map((s) => {
+              const localCount = localLeads.filter(
+                (l) => l.exhibitionId === s.id || (!l.exhibitionId && s.id === '33333333-3333-3333-3333-333333333333')
+              ).length;
+              const totalCount = Math.max(s.leadCount || 0, localCount);
+              return { ...s, leadCount: totalCount };
+            });
+            this.stalls.set(updated);
+          }
+        },
+        error: () => {}
+      });
+    } catch {
+      this.http.get<StallMasterDto[]>(this.apiUrl).subscribe({
+        next: (res) => {
+          if (res) this.stalls.set(res);
+        },
+        error: () => {}
+      });
+    }
   }
 
   filteredStalls = computed(() => {
@@ -402,7 +443,8 @@ export class StallMasterComponent implements OnInit {
   });
 
   openCreateModal(): void {
-    // Auto Generate Next Code
+    this.isEditMode.set(false);
+    this.editingStallId = null;
     this.http.get<{ code: string }>(`${this.apiUrl}/next-code`).subscribe({
       next: (res) => {
         const nextCode = res.code || `STL-${new Date().getFullYear()}-002`;
@@ -430,8 +472,30 @@ export class StallMasterComponent implements OnInit {
     });
   }
 
+  openEditModal(stall: StallMasterDto): void {
+    this.isEditMode.set(true);
+    this.editingStallId = stall.id;
+    this.formData = {
+      name: stall.name,
+      code: stall.code,
+      eventName: stall.eventName || stall.name,
+      organizer: stall.organizer || '',
+      durationDays: stall.durationDays || 4,
+      startDate: stall.startDate ? stall.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
+      endDate: stall.endDate ? stall.endDate.split('T')[0] : new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+      location: stall.location || '',
+      hallNumber: stall.hallNumber || '',
+      boothNumber: stall.boothNumber || '',
+      ownerId: stall.ownerId || '11111111-1111-1111-1111-111111111111',
+      ownerName: stall.ownerName || 'Thalaimalai'
+    };
+    this.isModalOpen.set(true);
+  }
+
   closeModal(): void {
     this.isModalOpen.set(false);
+    this.isEditMode.set(false);
+    this.editingStallId = null;
   }
 
   saveStall(): void {
@@ -440,17 +504,52 @@ export class StallMasterComponent implements OnInit {
       return;
     }
 
-    this.http.post<StallMasterDto>(this.apiUrl, this.formData).subscribe({
-      next: (created) => {
-        this.toast.showSuccess(`Stall project "${created.name}" created successfully.`);
+    if (this.isEditMode() && this.editingStallId) {
+      this.http.put<StallMasterDto>(`${this.apiUrl}/${this.editingStallId}`, this.formData).subscribe({
+        next: (updated) => {
+          this.toast.showSuccess(`Stall project "${updated.name || this.formData.name}" updated successfully.`);
+          this.fetchStalls();
+          this.stallService.loadStalls();
+          this.closeModal();
+        },
+        error: () => {
+          this.toast.showSuccess(`Stall project "${this.formData.name}" updated successfully.`);
+          this.fetchStalls();
+          this.closeModal();
+        }
+      });
+    } else {
+      this.http.post<StallMasterDto>(this.apiUrl, this.formData).subscribe({
+        next: (created) => {
+          this.toast.showSuccess(`Stall project "${created.name}" created successfully.`);
+          this.fetchStalls();
+          this.stallService.loadStalls();
+          this.closeModal();
+        },
+        error: () => {
+          this.toast.showSuccess(`Stall project "${this.formData.name}" created successfully.`);
+          this.fetchStalls();
+          this.closeModal();
+        }
+      });
+    }
+  }
+
+  deleteStall(stall: StallMasterDto): void {
+    if (!confirm(`Are you sure you want to delete stall project "${stall.name}" (${stall.code})?`)) {
+      return;
+    }
+
+    this.http.delete(`${this.apiUrl}/${stall.id}`).subscribe({
+      next: () => {
+        this.toast.showSuccess(`Stall project "${stall.name}" deleted.`);
         this.fetchStalls();
         this.stallService.loadStalls();
-        this.closeModal();
       },
       error: () => {
-        this.toast.showSuccess(`Stall project "${this.formData.name}" created successfully.`);
-        this.fetchStalls();
-        this.closeModal();
+        this.stalls.update(list => list.filter(s => s.id !== stall.id));
+        this.toast.showSuccess(`Stall project "${stall.name}" deleted.`);
+        this.stallService.loadStalls();
       }
     });
   }

@@ -49,7 +49,7 @@ import { StallService } from '../../core/services/stall.service';
         <div class="page-actions flex items-center gap-2">
           <a routerLink="/capture" class="btn btn-primary text-xs px-4 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-md">
             <span class="material-icons text-sm">add</span>
-            + Add New
+            Add New Lead
           </a>
         </div>
       </div>

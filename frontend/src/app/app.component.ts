@@ -49,11 +49,11 @@ import { ToastService } from './core/services/toast.service';
 
         <!-- Exact AriyAI Sidebar -->
         <aside class="sidebar">
-          <!-- Logo Box -->
+          <!-- Logo Box (Clickable -> Dashboard) -->
           <div class="sidebar-logo">
-            <div class="logo-box">
+            <a routerLink="/dashboard" class="logo-box cursor-pointer hover:opacity-90 transition block">
               <span class="logo-text">AriyAI</span>
-            </div>
+            </a>
           </div>
 
           <!-- Sidebar Navigation Menu -->
@@ -65,33 +65,7 @@ import { ToastService } from './core/services/toast.service';
               <span class="nav-text">Dashboard</span>
             </a>
 
-            <!-- 2. Expandable Master Folder -->
-            <div>
-              <div (click)="toggleMasterMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
-                <div class="flex items-center">
-                  <span class="material-icons nav-chevron">
-                    {{ isMasterExpanded() ? 'expand_more' : 'chevron_right' }}
-                  </span>
-                  <span class="material-icons nav-icon">dataset</span>
-                  <span class="nav-text font-semibold">Master</span>
-                </div>
-              </div>
-
-              @if (isMasterExpanded()) {
-                <div class="pl-6 bg-black/10">
-                  <a routerLink="/stalls" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm">storefront</span>
-                    <span class="nav-text">Stalls</span>
-                  </a>
-                  <a routerLink="/ums/user" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm">group</span>
-                    <span class="nav-text">User Master</span>
-                  </a>
-                </div>
-              }
-            </div>
-
-            <!-- 3. Expandable Admin Folder -->
+            <!-- 2. Expandable Admin Folder -->
             <div>
               <div (click)="toggleAdminMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
                 <div class="flex items-center">
@@ -116,6 +90,32 @@ import { ToastService } from './core/services/toast.service';
                   <a routerLink="/admin/notification-logs" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm">history</span>
                     <span class="nav-text">Notification Logs</span>
+                  </a>
+                </div>
+              }
+            </div>
+
+            <!-- 3. Expandable Master Folder (User Master first, then Stalls) -->
+            <div>
+              <div (click)="toggleMasterMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
+                <div class="flex items-center">
+                  <span class="material-icons nav-chevron">
+                    {{ isMasterExpanded() ? 'expand_more' : 'chevron_right' }}
+                  </span>
+                  <span class="material-icons nav-icon">dataset</span>
+                  <span class="nav-text font-semibold">Master</span>
+                </div>
+              </div>
+
+              @if (isMasterExpanded()) {
+                <div class="pl-6 bg-black/10">
+                  <a routerLink="/ums/user" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                    <span class="material-icons nav-icon text-sm">group</span>
+                    <span class="nav-text">User Master</span>
+                  </a>
+                  <a routerLink="/stalls" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                    <span class="material-icons nav-icon text-sm">storefront</span>
+                    <span class="nav-text">Stalls</span>
                   </a>
                 </div>
               }

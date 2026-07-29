@@ -149,4 +149,36 @@ public class StallsController : ControllerBase
 
         return Ok(stall);
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateStall(Guid id, [FromBody] CreateStallRequest request)
+    {
+        var stall = await _context.Stalls.FindAsync(id);
+        if (stall == null) return NotFound(new { message = "Stall not found." });
+
+        stall.Name = request.Name;
+        if (!string.IsNullOrWhiteSpace(request.EventName)) stall.EventName = request.EventName;
+        if (!string.IsNullOrWhiteSpace(request.Organizer)) stall.Organizer = request.Organizer;
+        if (request.DurationDays.HasValue && request.DurationDays.Value > 0) stall.DurationDays = request.DurationDays.Value;
+        if (request.StartDate.HasValue) stall.StartDate = request.StartDate.Value;
+        if (request.EndDate.HasValue) stall.EndDate = request.EndDate.Value;
+        if (!string.IsNullOrWhiteSpace(request.Location)) stall.Location = request.Location;
+        if (!string.IsNullOrWhiteSpace(request.HallNumber)) stall.HallNumber = request.HallNumber;
+        if (!string.IsNullOrWhiteSpace(request.BoothNumber)) stall.BoothNumber = request.BoothNumber;
+        if (!string.IsNullOrWhiteSpace(request.OwnerName)) stall.OwnerName = request.OwnerName;
+
+        await _context.SaveChangesAsync();
+        return Ok(stall);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteStall(Guid id)
+    {
+        var stall = await _context.Stalls.FindAsync(id);
+        if (stall == null) return NotFound(new { message = "Stall not found." });
+
+        _context.Stalls.Remove(stall);
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Stall deleted successfully." });
+    }
 }

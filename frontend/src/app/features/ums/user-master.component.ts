@@ -37,7 +37,7 @@ export interface UserMasterItem {
 
           <button (click)="openAddModal()" class="btn btn-primary text-xs px-3.5 py-1.5 rounded-md font-semibold flex items-center gap-1 shadow-sm">
             <span class="material-icons text-sm">add</span>
-            + Add New User
+            Add New User
           </button>
         </div>
       </div>

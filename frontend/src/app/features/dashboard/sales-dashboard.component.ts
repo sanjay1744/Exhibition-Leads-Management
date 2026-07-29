@@ -42,7 +42,7 @@ import { AuthService } from '../../core/services/auth.service';
           @if (canCreateStall()) {
             <button (click)="openCreateStallModal()" class="btn btn-outline-pill text-xs px-3 py-1.5 font-semibold text-slate-700 flex items-center gap-1">
               <span class="material-icons text-sm text-blue-600">add_business</span>
-              + Create New Stall
+              Create New Stall
             </button>
           }
 
@@ -62,7 +62,7 @@ import { AuthService } from '../../core/services/auth.service';
         <div class="page-actions">
           <a routerLink="/capture" class="btn btn-primary">
             <span class="material-icons text-sm">add</span>
-            + New Lead
+            New Lead
           </a>
         </div>
       </div>
@@ -146,9 +146,9 @@ import { AuthService } from '../../core/services/auth.service';
                   </div>
                 </div>
 
-                <!-- Row 2: Stall / Project Name -->
+                <!-- Row 2: Stall Name -->
                 <div>
-                  <label class="form-label font-bold text-xs text-slate-700 mb-1">Stall / Project Name *</label>
+                  <label class="form-label font-bold text-xs text-slate-700 mb-1">Stall Name *</label>
                   <input 
                     [(ngModel)]="newStallData.name" 
                     name="name" 
@@ -369,7 +369,7 @@ export class SalesDashboardComponent implements OnInit {
 
   saveNewStall(): void {
     if (!this.newStallData.name) {
-      alert('Stall / Project Name is required.');
+      alert('Stall Name is required.');
       return;
     }
 
