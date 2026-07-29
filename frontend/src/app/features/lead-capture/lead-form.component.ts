@@ -278,6 +278,20 @@ export class LeadFormComponent implements OnInit {
     if (data.phone) this.phone = data.phone;
     if (data.email) this.email = data.email;
     if (data.designation) this.designation = data.designation;
+    
+    const extraParts: string[] = [];
+    if (data.website) extraParts.push(`Web: ${data.website}`);
+    if (data.address) extraParts.push(`Addr: ${data.address}`);
+    
+    if (extraParts.length > 0) {
+      const ocrNotes = extraParts.join(' | ');
+      if (this.remarks && !this.remarks.includes(ocrNotes)) {
+        this.remarks += `, ${ocrNotes}`;
+      } else if (!this.remarks) {
+        this.remarks = ocrNotes;
+      }
+    }
+    
     this.isAutoFilled.set(true);
   }
 

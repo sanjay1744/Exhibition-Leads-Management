@@ -1,11 +1,9 @@
 import { Injectable } from '@angular/core';
 
 export interface PreprocessOptions {
-  contrast?: number; // 1.0 = normal, 1.4 = high contrast
-  grayscale?: boolean;
-  binarize?: boolean; // black & white threshold
-  thresholdValue?: number; // 0-255 (default auto ~128)
-  minWidth?: number; // scale up if smaller than this
+  mode?: 'natural' | 'grayscale' | 'binary';
+  minWidth?: number;
+  rotation?: number; // 0, 90, 180, 270
 }
 
 @Injectable({
@@ -14,85 +12,87 @@ export interface PreprocessOptions {
 export class OcrPreprocessorService {
 
   /**
-   * Processes a card image file and returns an optimized Data URL string and dimensions
+   * Preprocesses a card image file cleanly without introducing noise artifacts
    */
   async preprocessImage(file: File, options: PreprocessOptions = {}): Promise<{ dataUrl: string; width: number; height: number }> {
     const defaultOpts: Required<PreprocessOptions> = {
-      contrast: 1.4,
-      grayscale: true,
-      binarize: true,
-      thresholdValue: 130,
-      minWidth: 1200,
+      mode: 'natural',
+      minWidth: 1600,
+      rotation: 0,
       ...options
     };
 
     const img = await this.loadImage(file);
+    return this.processImageElement(img, defaultOpts);
+  }
+
+  /**
+   * Rotates a Data URL image cleanly by specified degrees
+   */
+  async rotateDataUrl(dataUrl: string, degrees: number): Promise<string> {
+    const img = await this.loadImageFromUrl(dataUrl);
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('2D Canvas unavailable');
 
-    if (!ctx) {
-      throw new Error('Canvas context 2D not supported');
+    const rad = (degrees * Math.PI) / 180;
+    const isQuadrant = (degrees / 90) % 2 !== 0;
+
+    canvas.width = isQuadrant ? img.height : img.width;
+    canvas.height = isQuadrant ? img.width : img.height;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(rad);
+    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+    return canvas.toDataURL('image/png');
+  }
+
+  /**
+   * Clean rendering pipeline: scales and rotates without destructive pixel noise
+   */
+  processImageElement(img: HTMLImageElement, opts: Required<PreprocessOptions>): { dataUrl: string; width: number; height: number } {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas context 2D not supported');
+
+    const rotationRad = (opts.rotation * Math.PI) / 180;
+    const isQuadrant = (opts.rotation / 90) % 2 !== 0;
+
+    let srcWidth = img.width;
+    let srcHeight = img.height;
+
+    if (isQuadrant) {
+      srcWidth = img.height;
+      srcHeight = img.width;
     }
 
-    // 1. Calculate scaling factor for high DPI / high resolution Tesseract reading
+    // Scale up if resolution is low for optimal OCR font size
     let scale = 1;
-    if (img.width < defaultOpts.minWidth) {
-      scale = defaultOpts.minWidth / img.width;
-    }
-    canvas.width = Math.floor(img.width * scale);
-    canvas.height = Math.floor(img.height * scale);
-
-    // 2. Draw scaled original image
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    // 3. Pixel manipulation for high contrast & binarization
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    // First pass: compute average luminance for adaptive thresholding if needed
-    let totalLuminance = 0;
-    const pixelCount = data.length / 4;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-      totalLuminance += lum;
+    if (srcWidth < opts.minWidth) {
+      scale = opts.minWidth / srcWidth;
     }
 
-    const avgLuminance = totalLuminance / pixelCount;
-    const dynamicThreshold = defaultOpts.thresholdValue ?? (avgLuminance * 0.95);
+    const targetWidth = Math.floor(srcWidth * scale);
+    const targetHeight = Math.floor(srcHeight * scale);
 
-    // Second pass: apply grayscale, contrast, and thresholding
-    const contrastFactor = (259 * (defaultOpts.contrast * 255 + 255)) / (255 * (259 - defaultOpts.contrast * 255));
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
 
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
-      // Grayscale
-      let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-
-      // Apply contrast stretch
-      gray = contrastFactor * (gray - 128) + 128;
-      gray = Math.min(255, Math.max(0, gray));
-
-      if (defaultOpts.binarize) {
-        // Binarize to pure black (0) or white (255)
-        const bw = gray > dynamicThreshold ? 255 : 0;
-        data[i] = bw;
-        data[i + 1] = bw;
-        data[i + 2] = bw;
-      } else if (defaultOpts.grayscale) {
-        data[i] = gray;
-        data[i + 1] = gray;
-        data[i + 2] = gray;
-      }
-    }
-
-    ctx.putImageData(imageData, 0, 0);
+    ctx.save();
+    ctx.translate(targetWidth / 2, targetHeight / 2);
+    ctx.rotate(rotationRad);
+    
+    const drawW = isQuadrant ? targetHeight : targetWidth;
+    const drawH = isQuadrant ? targetWidth : targetHeight;
+    ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
 
     return {
       dataUrl: canvas.toDataURL('image/png'),
@@ -112,6 +112,15 @@ export class OcrPreprocessorService {
       };
       reader.onerror = (err) => reject(err);
       reader.readAsDataURL(file);
+    });
+  }
+
+  private loadImageFromUrl(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (err) => reject(err);
+      img.src = url;
     });
   }
 }

@@ -9,44 +9,46 @@ describe('CardParserService', () => {
     service = TestBed.inject(CardParserService);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
-
-  it('should parse email, phone, designation, company, and name correctly', () => {
+  it('should parse Maria Olivia card accurately including domain company fallback', () => {
     const rawCardText = `
-      Rajesh Kumar
-      Managing Director
-      Apex Tech Solutions Pvt Ltd
-      Phone: +91 9876543210
-      Email: rajesh.kumar@apextech.com
-      Web: www.apextech.com
-      Plot 42, Industrial Area, Mumbai
+      MARIA OLIVIA
+      Manager
+      +011 123 456 789
+      maria.olivia@aurora.com
+      www.aurora.com
     `;
 
     const parsed = service.parseCardText(rawCardText);
 
-    expect(parsed.email).toBe('rajesh.kumar@apextech.com');
-    expect(parsed.phone).toContain('9876543210');
-    expect(parsed.designation).toBe('Managing Director');
-    expect(parsed.company).toBe('Apex Tech Solutions Pvt Ltd');
-    expect(parsed.name).toBe('Rajesh Kumar');
-    expect(parsed.website).toBe('www.apextech.com');
+    expect(parsed.name).toBe('MARIA OLIVIA');
+    expect(parsed.designation).toBe('Manager');
+    expect(parsed.email).toBe('maria.olivia@aurora.com');
+    expect(parsed.phone).toBe('+011 123 456 789');
+    expect(parsed.website).toBe('www.aurora.com');
+    expect(parsed.company).toBe('Aurora');
   });
 
-  it('should handle cards without emails or websites gracefully', () => {
+  it('should parse Pushparaj Subramaniam card accurately without address leaking into company', () => {
     const rawCardText = `
-      Dr. Anita Sharma
-      Senior Manager
-      Global Exports Inc
-      Tel: 022-28374650
+      AriyAI
+      Tech Private Limited
+      PUSHPARAJ SUBRAMANIAM
+      Chief Development Officer
+      9/10-B, First Floor, Pariyar Nagar,
+      Coimbatore - 641014
+      +91 93444 21012
+      pushparaj.s@ariyitech.com
+      https://ariyitech.com/
     `;
 
     const parsed = service.parseCardText(rawCardText);
 
-    expect(parsed.name).toBe('Dr. Anita Sharma');
-    expect(parsed.designation).toBe('Senior Manager');
-    expect(parsed.company).toBe('Global Exports Inc');
-    expect(parsed.email).toBeUndefined();
+    expect(parsed.name).toBe('PUSHPARAJ SUBRAMANIAM');
+    expect(parsed.designation).toBe('Chief Development Officer');
+    expect(parsed.company).toBe('Tech Private Limited');
+    expect(parsed.email).toBe('pushparaj.s@ariyitech.com');
+    expect(parsed.phone).toBe('+91 93444 21012');
+    expect(parsed.website).toBe('https://ariyitech.com/');
+    expect(parsed.address).toContain('Coimbatore');
   });
 });

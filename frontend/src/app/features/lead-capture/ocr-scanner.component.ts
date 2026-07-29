@@ -24,10 +24,10 @@ export { ExtractedCardData };
             <span class="material-icons text-[12px]">wifi_off</span> Offline Wasm
           </span>
         </div>
-        <p class="text-xs text-slate-500 mb-3">Snap or upload a card image to auto-extract contact details completely offline.</p>
+        <p class="text-xs text-slate-500 mb-3">Snap horizontal or vertical cards to auto-extract contact details offline.</p>
 
         <!-- Image Upload Button -->
-        <label class="cursor-pointer block border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-3 text-center bg-slate-50 hover:bg-blue-50/50 transition">
+        <label class="cursor-pointer block border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-3 text-center bg-slate-50 hover:bg-blue-50/50 transition mb-2">
           <input 
             type="file" 
             accept="image/*" 
@@ -71,7 +71,7 @@ export { ExtractedCardData };
               (click)="openEditModal()"
               class="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5"
             >
-              <span class="material-icons text-xs">edit</span> Review & Apply
+              <span class="material-icons text-xs">edit</span> Review & Edit
             </button>
           </div>
 
@@ -106,6 +106,12 @@ export { ExtractedCardData };
                 {{ extractedData()?.email }}
               </div>
             }
+            @if (extractedData()?.website) {
+              <div class="flex items-center gap-1 text-slate-600">
+                <span class="material-icons text-slate-400 text-xs">language</span>
+                {{ extractedData()?.website }}
+              </div>
+            }
           </div>
 
           <button 
@@ -133,44 +139,74 @@ export { ExtractedCardData };
             </button>
           </div>
 
-          <!-- Card Canvas Preview -->
+          <!-- Card Image & Rotation Controls -->
           @if (previewDataUrl()) {
-            <div class="mb-4 bg-slate-900 rounded-lg overflow-hidden border border-slate-700 max-h-36 flex items-center justify-center">
-              <img [src]="previewDataUrl()" alt="Card Preview" class="max-h-36 object-contain" />
+            <div class="mb-4 bg-slate-900 rounded-lg p-2 border border-slate-700 flex flex-col items-center justify-center relative group">
+              <img [src]="previewDataUrl()" alt="Card Preview" class="max-h-48 object-contain rounded" />
+              <div class="flex items-center gap-2 mt-2">
+                <button 
+                  type="button" 
+                  (click)="rotateCard(-90)" 
+                  class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-2.5 py-1 rounded flex items-center gap-1"
+                  title="Rotate Left"
+                >
+                  <span class="material-icons text-xs">rotate_left</span> Rotate 90° Left
+                </button>
+                <button 
+                  type="button" 
+                  (click)="rotateCard(90)" 
+                  class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-2.5 py-1 rounded flex items-center gap-1"
+                  title="Rotate Right"
+                >
+                  <span class="material-icons text-xs">rotate_right</span> Rotate 90° Right
+                </button>
+                <button 
+                  type="button" 
+                  (click)="reScanCurrentOrientation()" 
+                  class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1 rounded flex items-center gap-1 font-bold"
+                >
+                  <span class="material-icons text-xs">refresh</span> Re-Scan
+                </button>
+              </div>
             </div>
           }
 
           <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
-              <input type="text" [(ngModel)]="modalData.name" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Rahul Sharma" />
+              <input type="text" [(ngModel)]="modalData.name" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Maria Olivia" />
             </div>
 
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Designation / Title</label>
-              <input type="text" [(ngModel)]="modalData.designation" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Managing Director" />
+              <input type="text" [(ngModel)]="modalData.designation" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Manager / Director" />
             </div>
 
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Company Name</label>
-              <input type="text" [(ngModel)]="modalData.company" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Apex Innovations Pvt Ltd" />
+              <input type="text" [(ngModel)]="modalData.company" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Aurora Tech Pvt Ltd" />
             </div>
 
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Phone / Mobile</label>
-                <input type="text" [(ngModel)]="modalData.phone" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="+91 9876543210" />
+                <input type="text" [(ngModel)]="modalData.phone" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="+011 123 456 789" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                <input type="email" [(ngModel)]="modalData.email" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="name@company.com" />
+                <input type="email" [(ngModel)]="modalData.email" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="maria.olivia@aurora.com" />
               </div>
             </div>
 
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Website URL</label>
-              <input type="text" [(ngModel)]="modalData.website" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="www.company.com" />
+              <input type="text" [(ngModel)]="modalData.website" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="www.aurora.com" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Address / Office Location</label>
+              <input type="text" [(ngModel)]="modalData.address" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Office location or address" />
             </div>
           </div>
 
@@ -196,6 +232,8 @@ export class OcrScannerComponent {
   statusMessage = signal('Preparing...');
   extractedData = signal<ExtractedCardData | null>(null);
   previewDataUrl = signal<string | null>(null);
+  currentRotation = 0;
+  rawSelectedFile: File | null = null;
 
   showModal = signal(false);
   modalData: ExtractedCardData = {};
@@ -204,38 +242,82 @@ export class OcrScannerComponent {
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
 
-    const file = input.files[0];
+    this.rawSelectedFile = input.files[0];
+    this.currentRotation = 0;
+    await this.processCardPipeline(this.rawSelectedFile, 0);
+  }
+
+  private async processCardPipeline(file: File, rotationDegrees: number): Promise<void> {
     this.isProcessing.set(true);
     this.progressPercent.set(10);
-    this.statusMessage.set('Enhancing Image (B&W Filter)...');
+    this.statusMessage.set('Enhancing Card Image...');
 
     try {
-      // 1. Preprocess card image with HTML5 Canvas grayscale + adaptive binarization
+      // 1. Preprocess card image cleanly with high resolution scaling
       const processed = await this.preprocessor.preprocessImage(file, {
-        contrast: 1.4,
-        binarize: true,
-        minWidth: 1200
+        mode: 'natural',
+        minWidth: 1600,
+        rotation: rotationDegrees
       });
       this.previewDataUrl.set(processed.dataUrl);
 
       this.progressPercent.set(30);
       this.statusMessage.set('Initializing Offline Tesseract Wasm...');
 
-      // 2. Perform OCR using local Tesseract Wasm worker
-      const rawText = await this.runTesseractOcr(processed.dataUrl);
+      // 2. Perform OCR with Auto-Rotation check if initial scan produces minimal results
+      let bestRawText = await this.runTesseractOcr(processed.dataUrl);
+      let parsedData = this.parser.parseCardText(bestRawText);
 
-      this.progressPercent.set(90);
-      this.statusMessage.set('Structuring Contact Details...');
+      // Auto-Rotation check: if portrait orientation (height > width) or 0 fields matched, try 90° rotation
+      const matchedFieldCount = Object.values(parsedData).filter(v => typeof v === 'string' && v.trim().length > 0).length;
+      
+      if (matchedFieldCount <= 1 && processed.height > processed.width && rotationDegrees === 0) {
+        this.statusMessage.set('Vertical card detected, auto-rotating 90°...');
+        const rotatedUrl = await this.preprocessor.rotateDataUrl(processed.dataUrl, 90);
+        const rotRawText = await this.runTesseractOcr(rotatedUrl);
+        const rotParsed = this.parser.parseCardText(rotRawText);
 
-      // 3. Parse raw text into structured card model using NLP heuristics & regex
-      const parsedData = this.parser.parseCardText(rawText);
+        const rotMatchCount = Object.values(rotParsed).filter(v => typeof v === 'string' && v.trim().length > 0).length;
+        if (rotMatchCount > matchedFieldCount) {
+          bestRawText = rotRawText;
+          parsedData = rotParsed;
+          this.previewDataUrl.set(rotatedUrl);
+          this.currentRotation = 90;
+        }
+      }
 
       this.progressPercent.set(100);
       this.extractedData.set(parsedData);
       this.cardExtracted.emit(parsedData);
     } catch (err) {
       console.error('OCR Processing Error:', err);
-      alert('OCR Failed to process card image. Please ensure image is clear and try again.');
+      alert('OCR failed to read card image. Try rotating the card or uploading a clearer picture.');
+    } finally {
+      this.isProcessing.set(false);
+    }
+  }
+
+  async rotateCard(degreesDelta: number): Promise<void> {
+    if (!this.previewDataUrl()) return;
+    this.currentRotation = (this.currentRotation + degreesDelta + 360) % 360;
+    const rotatedUrl = await this.preprocessor.rotateDataUrl(this.previewDataUrl()!, degreesDelta);
+    this.previewDataUrl.set(rotatedUrl);
+  }
+
+  async reScanCurrentOrientation(): Promise<void> {
+    if (!this.previewDataUrl()) return;
+    this.isProcessing.set(true);
+    this.progressPercent.set(30);
+    this.statusMessage.set('Scanning Rotated Card...');
+
+    try {
+      const rawText = await this.runTesseractOcr(this.previewDataUrl()!);
+      const parsedData = this.parser.parseCardText(rawText);
+      this.extractedData.set(parsedData);
+      this.modalData = { ...parsedData };
+      this.cardExtracted.emit(parsedData);
+    } catch (err) {
+      console.error('Re-scan Error:', err);
     } finally {
       this.isProcessing.set(false);
     }
@@ -244,15 +326,14 @@ export class OcrScannerComponent {
   private async runTesseractOcr(imageDataUrl: string): Promise<string> {
     let worker: Worker | null = null;
     try {
-      // Initialize Tesseract worker configured for local offline worker & Wasm binary
       worker = await createWorker('eng', 1, {
         workerPath: '/ocr/worker.min.js',
         corePath: '/ocr/tesseract-core.wasm',
         logger: (m) => {
           if (m.status === 'recognizing text' && m.progress) {
-            const pct = Math.round(30 + m.progress * 55);
+            const pct = Math.round(30 + m.progress * 65);
             this.progressPercent.set(pct);
-            this.statusMessage.set(`Recognizing Text (${Math.round(m.progress * 100)}%)...`);
+            this.statusMessage.set(`Recognizing Card Text (${Math.round(m.progress * 100)}%)...`);
           }
         }
       });
@@ -260,8 +341,7 @@ export class OcrScannerComponent {
       const ret = await worker.recognize(imageDataUrl);
       return ret.data.text;
     } catch (err) {
-      console.warn('Local Wasm worker failed, attempting standard worker fallback...', err);
-      // Fallback in case local worker configuration has origin restrictions in dev mode
+      console.warn('Local Wasm worker error, executing standard worker fallback...', err);
       const fallbackWorker = await createWorker('eng');
       const ret = await fallbackWorker.recognize(imageDataUrl);
       await fallbackWorker.terminate();
