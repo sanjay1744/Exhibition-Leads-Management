@@ -13,8 +13,8 @@ import { AuthService } from '../../core/services/auth.service';
       <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
         <!-- AriyAI Navy Header Bar -->
         <div class="bg-[#0b4c79] p-6 text-center">
-          <div class="bg-white inline-block px-4 py-1.5 rounded mb-3 shadow">
-            <span class="text-2xl font-extrabold text-[#0b4c79] tracking-tight">AriyAI</span>
+          <div class="bg-white inline-block px-5 py-2 rounded mb-3 shadow">
+            <img src="ariyai-logo.png" alt="AriyAI" style="height: 32px; width: auto;" />
           </div>
           <h1 class="text-lg font-bold text-white">Enterprise Sign In</h1>
           <p class="text-xs text-blue-100 mt-1">Exhibition Lead Management System</p>

@@ -6,31 +6,37 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="card-panel h-full flex flex-col justify-between hover:shadow-md transition">
+    <div class="card-panel p-0 overflow-hidden h-full flex flex-col justify-between hover:shadow-md transition bg-white border border-slate-200 rounded-xl">
       <div>
-        <div class="flex items-center gap-2 mb-2">
-          <span class="material-icons text-red-600">mic</span>
-          <h3 class="text-sm font-bold text-gray-800">Voice Note Audio</h3>
+        <!-- Header with Table Blue (#1a3a5c) theme -->
+        <div class="bg-[#1a3a5c] text-white p-3.5 px-4 flex items-center justify-between shadow-xs">
+          <div class="flex items-center gap-2">
+            <span class="material-icons text-blue-300 text-lg">mic</span>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-white">Voice Note Audio</h3>
+          </div>
         </div>
-        <p class="text-xs text-gray-500 mb-3">Record quick spoken discussion notes.</p>
 
-        @if (!isRecording()) {
-          <button 
-            (click)="startRecording()" 
-            class="w-full btn bg-red-600 hover:bg-red-700 text-white justify-center text-xs py-2.5 rounded-lg font-medium shadow-sm transition"
-          >
-            <span class="material-icons text-sm">fiber_manual_record</span>
-            Record Voice Note
-          </button>
-        } @else {
-          <button 
-            (click)="stopRecording()" 
-            class="w-full btn bg-gray-900 hover:bg-black text-white justify-center text-xs py-2.5 rounded-lg font-medium shadow-sm transition animate-pulse"
-          >
-            <span class="material-icons text-sm">stop</span>
-            Stop & Save Audio
-          </button>
-        }
+        <div class="p-4">
+          <p class="text-xs text-slate-500 mb-3">Record quick spoken discussion notes.</p>
+
+          @if (!isRecording()) {
+            <button 
+              (click)="startRecording()" 
+              class="w-full btn bg-red-600 hover:bg-red-700 text-white justify-center text-xs py-2.5 rounded-lg font-bold shadow-sm transition flex items-center gap-2"
+            >
+              <span class="material-icons text-sm">fiber_manual_record</span>
+              Record Voice Note
+            </button>
+          } @else {
+            <button 
+              (click)="stopRecording()" 
+              class="w-full btn bg-gray-900 hover:bg-black text-white justify-center text-xs py-2.5 rounded-lg font-bold shadow-sm transition animate-pulse flex items-center gap-2"
+            >
+              <span class="material-icons text-sm">stop</span>
+              Stop & Save Audio
+            </button>
+          }
+        </div>
       </div>
 
       @if (audioRecorded()) {
