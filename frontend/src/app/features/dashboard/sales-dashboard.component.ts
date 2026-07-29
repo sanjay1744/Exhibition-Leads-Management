@@ -22,7 +22,7 @@ import { AuthService } from '../../core/services/auth.service';
             <span class="material-icons text-lg">storefront</span>
           </div>
           <div>
-            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ACTIVE STALL (PROJECT)</div>
+            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ACTIVE STALL</div>
             <div class="flex items-center gap-2">
               <select 
                 [ngModel]="stallService.activeStall()?.id" 
@@ -42,7 +42,7 @@ import { AuthService } from '../../core/services/auth.service';
           @if (canCreateStall()) {
             <button (click)="openCreateStallModal()" class="btn btn-outline-pill text-xs px-3 py-1.5 font-semibold text-slate-700 flex items-center gap-1">
               <span class="material-icons text-sm text-blue-600">add_business</span>
-              + Create New Stall (Project)
+              + Create New Stall
             </button>
           }
 
@@ -121,7 +121,7 @@ import { AuthService } from '../../core/services/auth.service';
             <div class="flex items-center justify-between border-b pb-3 mb-5">
               <div class="flex items-center gap-2">
                 <span class="material-icons text-blue-600 text-xl">storefront</span>
-                <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">CREATE NEW STALL (PROJECT)</h2>
+                <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">CREATE NEW STALL</h2>
               </div>
               <button (click)="isCreateStallModalOpen.set(false)" class="text-slate-400 hover:text-slate-600">
                 <span class="material-icons text-lg">close</span>
@@ -135,7 +135,6 @@ import { AuthService } from '../../core/services/auth.service';
                 <div>
                   <div class="flex justify-between items-center mb-1">
                     <label class="form-label font-bold text-xs text-slate-700 mb-0">Stall Code (Auto-Generated) *</label>
-                    <span class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">✨ Automatic System Code</span>
                   </div>
                   <div class="relative flex items-center">
                     <span class="material-icons absolute left-3 text-blue-600 text-base">qr_code_2</span>

@@ -61,73 +61,67 @@ else
 
 var app = builder.Build();
 
-// Recreate SQL Server DB Schema for new Stall & RBAC hierarchy
+// Ensure DB exists without deleting existing data
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try 
+    dbContext.Database.EnsureCreated();
+
+    if (!dbContext.Users.Any())
     {
-        dbContext.Database.EnsureDeleted();
-        dbContext.Database.EnsureCreated();
-    } 
-    catch 
-    {
-        dbContext.Database.EnsureCreated();
-    }
-
-    var defaultPasswordHash = AuthController.HashPassword("Admin@123");
-    
-    var thalaimalaiUser = new User 
-    { 
-        Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), 
-        FullName = "Thalaimalai", 
-        Username = "Thalaimalai", 
-        Email = "thalaimalai@ariyai.com",
-        UserGroup = "Naren-Marketing", 
-        Role = "StallOwner", 
-        Status = "Active", 
-        PasswordHash = defaultPasswordHash 
-    };
-
-    var sanjayUser = new User 
-    { 
-        Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), 
-        FullName = "Sanjay", 
-        Username = "sanjay", 
-        Email = "sanjay@ariyai.com",
-        UserGroup = "Naren Admin", 
-        Role = "Admin", 
-        Status = "Active", 
-        PasswordHash = defaultPasswordHash 
-    };
-
-    dbContext.Users.AddRange(thalaimalaiUser, sanjayUser);
-
-    // Initial Default Stall (Project) Owned by Thalaimalai
-    if (!dbContext.Stalls.Any())
-    {
-        var defaultStall = new Stall
-        {
-            Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-            Name = "Stall 01 - Main Exhibition",
-            Code = "STL-2026-001",
-            EventName = "International Industrial TexFair 2026",
-            Organizer = "SIMA Trade Association",
-            DurationDays = 4,
-            StartDate = DateTime.UtcNow.Date,
-            EndDate = DateTime.UtcNow.Date.AddDays(4),
-            Location = "Codissia Trade Fair Complex, Coimbatore",
-            HallNumber = "Hall A",
-            BoothNumber = "Booth 12",
-            OwnerId = thalaimalaiUser.Id,
-            OwnerName = thalaimalaiUser.FullName,
-            Status = "Active"
+        var defaultPasswordHash = AuthController.HashPassword("Admin@123");
+        
+        var thalaimalaiUser = new User 
+        { 
+            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), 
+            FullName = "Thalaimalai", 
+            Username = "Thalaimalai", 
+            Email = "thalaimalai@ariyai.com",
+            UserGroup = "Naren-Marketing", 
+            Role = "StallOwner", 
+            Status = "Active", 
+            PasswordHash = defaultPasswordHash 
         };
-        dbContext.Stalls.Add(defaultStall);
-        thalaimalaiUser.AssignedStallId = defaultStall.Id;
-    }
 
-    dbContext.SaveChanges();
+        var sanjayUser = new User 
+        { 
+            Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), 
+            FullName = "Sanjay", 
+            Username = "sanjay", 
+            Email = "sanjay@ariyai.com",
+            UserGroup = "Naren Admin", 
+            Role = "Admin", 
+            Status = "Active", 
+            PasswordHash = defaultPasswordHash 
+        };
+
+        dbContext.Users.AddRange(thalaimalaiUser, sanjayUser);
+
+        if (!dbContext.Stalls.Any())
+        {
+            var defaultStall = new Stall
+            {
+                Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                Name = "Stall 01 - Main Exhibition",
+                Code = "STL-2026-001",
+                EventName = "International Industrial TexFair 2026",
+                Organizer = "SIMA Trade Association",
+                DurationDays = 4,
+                StartDate = DateTime.UtcNow.Date,
+                EndDate = DateTime.UtcNow.Date.AddDays(4),
+                Location = "Codissia Trade Fair Complex, Coimbatore",
+                HallNumber = "Hall A",
+                BoothNumber = "Booth 12",
+                OwnerId = thalaimalaiUser.Id,
+                OwnerName = thalaimalaiUser.FullName,
+                Status = "Active"
+            };
+            dbContext.Stalls.Add(defaultStall);
+            thalaimalaiUser.AssignedStallId = defaultStall.Id;
+        }
+
+        dbContext.SaveChanges();
+    }
 }
 
 if (app.Environment.IsDevelopment())

@@ -25,6 +25,8 @@ export interface StallMasterDto {
   leadCount: number;
 }
 
+import { ToastService } from '../../core/services/toast.service';
+
 @Component({
   selector: 'app-stall-master',
   standalone: true,
@@ -47,7 +49,7 @@ export interface StallMasterDto {
           @if (canCreateStall()) {
             <button (click)="openCreateModal()" class="btn btn-primary text-xs px-4 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-md">
               <span class="material-icons text-sm">add_business</span>
-              + Create New Stall (Project)
+              + Create New Stall
             </button>
           }
         </div>
@@ -178,7 +180,7 @@ export interface StallMasterDto {
             <div class="flex items-center justify-between border-b pb-3 mb-5">
               <div class="flex items-center gap-2">
                 <span class="material-icons text-blue-600 text-xl">storefront</span>
-                <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">Create New Stall (Project)</h2>
+                <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">Create New Stall</h2>
               </div>
               <button (click)="closeModal()" class="text-slate-400 hover:text-slate-600">
                 <span class="material-icons text-lg">close</span>
@@ -192,7 +194,6 @@ export interface StallMasterDto {
                 <div>
                   <div class="flex justify-between items-center mb-1">
                     <label class="form-label font-bold text-xs text-slate-700 mb-0">Stall Code (Auto-Generated) *</label>
-                    <span class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">✨ Automatic System Code</span>
                   </div>
                   <div class="relative flex items-center">
                     <span class="material-icons absolute left-3 text-blue-600 text-base">qr_code_2</span>
@@ -343,6 +344,7 @@ export class StallMasterComponent implements OnInit {
   private auth = inject(AuthService);
   private stallService = inject(StallService);
   private router = inject(Router);
+  private toast = inject(ToastService);
 
   private apiUrl = 'http://localhost:5000/api/stalls';
 
@@ -434,19 +436,19 @@ export class StallMasterComponent implements OnInit {
 
   saveStall(): void {
     if (!this.formData.name) {
-      alert('Stall / Project Name is required.');
+      this.toast.showError('Stall Name is required.');
       return;
     }
 
     this.http.post<StallMasterDto>(this.apiUrl, this.formData).subscribe({
       next: (created) => {
-        alert(`Stall (Project) "${created.name}" created with Auto-Generated Code: ${created.code}!`);
+        this.toast.showSuccess(`Stall project "${created.name}" created successfully.`);
         this.fetchStalls();
         this.stallService.loadStalls();
         this.closeModal();
       },
       error: () => {
-        alert(`Stall (Project) "${this.formData.name}" created!`);
+        this.toast.showSuccess(`Stall project "${this.formData.name}" created successfully.`);
         this.fetchStalls();
         this.closeModal();
       }

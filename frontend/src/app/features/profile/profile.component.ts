@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-profile',
@@ -9,7 +10,7 @@ import { AuthService } from '../../core/services/auth.service';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="max-w-6xl mx-auto">
-      <!-- Page Header Bar (Matches Screenshot) -->
+      <!-- Page Header Bar -->
       <div class="page-title-bar flex items-center justify-between mb-6">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm">
@@ -159,7 +160,7 @@ import { AuthService } from '../../core/services/auth.service';
             </div>
           </div>
 
-          <!-- Card 3: Account Details Grid (3x3 Grid from Screenshot 3) -->
+          <!-- Card 3: Account Details Grid -->
           <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <h3 class="text-sm font-bold text-slate-800 border-b pb-4 mb-4 flex items-center gap-2">
               <span class="material-icons text-blue-600 text-base">security</span>
@@ -221,6 +222,8 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class ProfileComponent {
   private authService = inject(AuthService);
+  private toast = inject(ToastService);
+
   user = this.authService.currentUser();
 
   isEditing = signal(false);
@@ -237,7 +240,7 @@ export class ProfileComponent {
 
   toggleEdit(): void {
     if (this.isEditing()) {
-      alert('Profile details saved successfully!');
+      this.toast.showSuccess('Profile details updated successfully.');
     }
     this.isEditing.update((val) => !val);
   }

@@ -54,7 +54,7 @@ import { StallService } from '../../core/services/stall.service';
         </div>
       </div>
 
-      <!-- Main Data Table Container matching Exact Design from Screenshot -->
+      <!-- Main Data Table Container -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
         
         <!-- Table Header Title Row -->
@@ -109,7 +109,7 @@ import { StallService } from '../../core/services/stall.service';
                     {{ lead.designation || '-' }}
                   </td>
 
-                  <!-- Interest Level (Hot / Warm / Cold) -->
+                  <!-- Interest Level -->
                   <td class="py-2.5 px-4 text-center border-r border-slate-200/60">
                     <span 
                       class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-block"
@@ -133,9 +133,9 @@ import { StallService } from '../../core/services/stall.service';
                     </span>
                   </td>
 
-                  <!-- Action Column 1: View -->
+                  <!-- Action Column 1: View Modal Trigger -->
                   <td class="py-2.5 px-3 text-center border-r border-slate-200/60">
-                    <button (click)="viewLeadDetails(lead)" class="text-slate-500 hover:text-blue-600 p-0.5 transition" title="View Details">
+                    <button (click)="openViewModal(lead)" class="text-slate-500 hover:text-blue-600 p-0.5 transition" title="View Details">
                       <span class="material-icons text-base">visibility</span>
                     </button>
                   </td>
@@ -195,8 +195,112 @@ import { StallService } from '../../core/services/stall.service';
             </button>
           </div>
         </div>
-
       </div>
+
+      <!-- Premium View Visitor Lead Details Modal -->
+      @if (selectedLeadForView()) {
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            
+            <!-- Modal Header -->
+            <div class="bg-[#1a3a5c] text-white px-6 py-4 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <span class="material-icons text-blue-200">contact_page</span>
+                <div>
+                  <h3 class="text-sm font-bold uppercase tracking-wider">VISITOR LEAD DETAILS</h3>
+                  <p class="text-[11px] text-blue-200 font-mono">ENQ-{{ selectedLeadForView()?.id?.substring(0, 8)?.toUpperCase() }}</p>
+                </div>
+              </div>
+              <button (click)="closeViewModal()" class="text-white/80 hover:text-white transition">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="p-6 space-y-5">
+              <!-- Primary Visitor Info -->
+              <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div class="text-base font-extrabold text-slate-900 mb-1">
+                  {{ selectedLeadForView()?.name }}
+                </div>
+                <div class="text-xs font-semibold text-slate-600 mb-3 flex items-center gap-1.5">
+                  <span class="material-icons text-sm text-slate-400">business</span>
+                  {{ selectedLeadForView()?.company }}
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 text-xs border-t pt-3">
+                  <div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">MOBILE PHONE</span>
+                    <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.phone }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">EMAIL ADDRESS</span>
+                    <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.email || 'N/A' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">DESIGNATION</span>
+                    <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.designation || 'Visitor' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">CAPTURE DATE</span>
+                    <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.createdAt | date:'mediumDate' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metadata & Priority Pills -->
+              <div class="flex items-center justify-between bg-blue-50/60 rounded-xl p-4 border border-blue-100">
+                <div>
+                  <span class="text-[10px] text-slate-500 font-bold uppercase block mb-1">INTEREST PRIORITY</span>
+                  <span 
+                    class="px-3 py-1 rounded-full text-xs font-extrabold inline-block"
+                    [ngClass]="{
+                      'bg-red-100 text-red-700 border border-red-200': selectedLeadForView()?.interestLevel === 'Hot',
+                      'bg-amber-100 text-amber-700 border border-amber-200': selectedLeadForView()?.interestLevel === 'Warm',
+                      'bg-blue-100 text-blue-700 border border-blue-200': selectedLeadForView()?.interestLevel === 'Cold'
+                    }"
+                  >
+                    🔥 {{ selectedLeadForView()?.interestLevel }}
+                  </span>
+                </div>
+
+                <div class="text-right">
+                  <span class="text-[10px] text-slate-500 font-bold uppercase block mb-1">CRM SYNC STATUS</span>
+                  <span 
+                    class="px-3 py-1 rounded text-xs font-bold inline-block"
+                    [ngClass]="selectedLeadForView()?.syncStatus === 'Synced' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-orange-100 text-orange-700 border border-orange-200'"
+                  >
+                    {{ selectedLeadForView()?.syncStatus === 'Synced' ? 'Synced' : 'Pending Sync' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Discussion Remarks & Requirements -->
+              <div>
+                <label class="text-xs font-bold text-slate-700 block mb-1.5 uppercase tracking-wide">
+                  DISCUSSION REMARKS & REQUIREMENTS
+                </label>
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium leading-relaxed max-h-36 overflow-y-auto">
+                  {{ selectedLeadForView()?.remarks || 'No discussion remarks recorded.' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal Footer Action Bar -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <button (click)="closeViewModal()" class="btn btn-outline-pill text-xs">
+                Close
+              </button>
+
+              <button (click)="editFromViewModal()" class="btn btn-primary text-xs px-5 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-md">
+                <span class="material-icons text-sm">edit</span>
+                Edit Lead Record
+              </button>
+            </div>
+
+          </div>
+        </div>
+      }
     </div>
   `
 })
@@ -206,6 +310,8 @@ export class LeadListComponent implements OnInit {
   stallService = inject(StallService);
 
   allLeads = signal<LocalLead[]>([]);
+  selectedLeadForView = signal<LocalLead | null>(null);
+
   pageSize = signal(20);
   pageSizeSelect = 20;
   currentPage = signal(1);
@@ -267,8 +373,20 @@ export class LeadListComponent implements OnInit {
     this.currentPage.set(Math.max(1, totalPages));
   }
 
-  viewLeadDetails(lead: LocalLead): void {
-    alert(`Visitor Lead Details:\nName: ${lead.name}\nCompany: ${lead.company}\nPhone: ${lead.phone}\nDesignation: ${lead.designation || '-'}\nRemarks: ${lead.remarks || 'None'}`);
+  openViewModal(lead: LocalLead): void {
+    this.selectedLeadForView.set(lead);
+  }
+
+  closeViewModal(): void {
+    this.selectedLeadForView.set(null);
+  }
+
+  editFromViewModal(): void {
+    const lead = this.selectedLeadForView();
+    if (lead) {
+      this.closeViewModal();
+      this.editLead(lead);
+    }
   }
 
   editLead(lead: LocalLead): void {
