@@ -50,11 +50,6 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
               {{ isEditMode() ? 'Edit Visitor Record & Requirements' : 'Visitor Information & Requirements' }}
             </h2>
           </div>
-          @if (isAutoFilled()) {
-            <span class="status-pill green bg-emerald-500 text-white font-bold border border-emerald-400">
-              <span class="material-icons text-xs">auto_awesome</span> Auto-Filled from {{ captureMethod === 'qr_scan' ? 'QR Scanner' : captureMethod === 'card_ocr' ? 'OCR Card' : 'Scanner' }}
-            </span>
-          }
         </div>
 
         <form (ngSubmit)="saveLead()">
