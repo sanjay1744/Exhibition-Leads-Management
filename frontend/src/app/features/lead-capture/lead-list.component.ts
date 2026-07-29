@@ -22,10 +22,11 @@ import { StallService } from '../../core/services/stall.service';
             <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ACTIVE STALL (PROJECT)</div>
             <div class="flex items-center gap-2">
               <select 
-                [ngModel]="stallService.activeStall()?.id" 
-                (ngModelChange)="onStallChange($event)" 
+                [ngModel]="selectedStallId()" 
+                (ngModelChange)="onStallFilterChange($event)" 
                 class="border border-slate-300 rounded-md px-3 py-1 text-xs font-bold text-slate-800 bg-slate-50 outline-none focus:border-blue-600"
               >
+                <option value="ALL">All Stalls (All Leads)</option>
                 @for (stall of stallService.stalls(); track stall.id) {
                   <option [value]="stall.id">{{ stall.name }} ({{ stall.code }})</option>
                 }
@@ -35,7 +36,7 @@ import { StallService } from '../../core/services/stall.service';
         </div>
 
         <div class="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium border">
-          Owner: <strong>{{ stallService.activeStall()?.ownerName || 'Thalaimalai' }}</strong>
+          Owner: <strong>{{ selectedStallId() === 'ALL' ? 'All Owners' : (stallService.activeStall()?.ownerName || 'Thalaimalai') }}</strong>
         </div>
       </div>
 
@@ -43,7 +44,7 @@ import { StallService } from '../../core/services/stall.service';
       <div class="page-title-bar flex items-center justify-between mb-6">
         <div>
           <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">LEADS</h1>
-          <p class="text-xs text-slate-500">Live Grid of Captured Visitor Enquiries for {{ stallService.activeStall()?.name || 'Active Stall' }}</p>
+          <p class="text-xs text-slate-500">Live Grid of Captured Visitor Enquiries {{ selectedStallId() === 'ALL' ? 'for All Stalls' : ('for ' + (stallService.activeStall()?.name || 'Active Stall')) }}</p>
         </div>
 
         <div class="page-actions flex items-center gap-2">
@@ -60,10 +61,10 @@ import { StallService } from '../../core/services/stall.service';
         <!-- Table Header Title Row -->
         <div class="p-4 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
           <h2 class="text-sm font-bold text-slate-900">
-            Stall Leads (Isolated to {{ stallService.activeStall()?.code || 'STL-2026-001' }})
+            {{ selectedStallId() === 'ALL' ? 'All Captured Leads (All Stalls)' : ('Stall Leads (Isolated to ' + (stallService.activeStall()?.code || 'STL-2026-001') + ')') }}
           </h2>
           <span class="text-xs text-slate-400 font-medium">
-            Data collected in this stall will not mismatch with other stalls
+            Showing {{ filteredLeads().length }} total visitor leads
           </span>
         </div>
 
@@ -73,6 +74,7 @@ import { StallService } from '../../core/services/stall.service';
             <thead>
               <tr class="bg-[#1a3a5c] text-white text-[11px] font-bold uppercase tracking-wider">
                 <th class="py-2.5 px-4 border-r border-white/20">VISITOR NAME</th>
+                <th class="py-2.5 px-4 border-r border-white/20">STALL NAME</th>
                 <th class="py-2.5 px-4 border-r border-white/20">COMPANY</th>
                 <th class="py-2.5 px-4 border-r border-white/20">MOBILE</th>
                 <th class="py-2.5 px-4 border-r border-white/20">DESIGNATION</th>
@@ -92,6 +94,11 @@ import { StallService } from '../../core/services/stall.service';
                   <!-- Visitor Name -->
                   <td class="py-2.5 px-4 font-bold text-slate-900 border-r border-slate-200/60">
                     {{ lead.name }}
+                  </td>
+
+                  <!-- Stall Name -->
+                  <td class="py-2.5 px-4 text-slate-700 font-semibold border-r border-slate-200/60">
+                    {{ getStallName(lead.exhibitionId) }}
                   </td>
 
                   <!-- Company -->
@@ -142,22 +149,22 @@ import { StallService } from '../../core/services/stall.service';
 
                   <!-- Action Column 2: Edit -->
                   <td class="py-2.5 px-3 text-center border-r border-slate-200/60">
-                    <button (click)="editLead(lead)" class="text-indigo-500 hover:text-indigo-700 p-0.5 transition" title="Edit Lead">
+                    <button (click)="editLead(lead)" class="text-blue-600 hover:text-blue-800 p-0.5 transition" title="Edit Record">
                       <span class="material-icons text-base">edit</span>
                     </button>
                   </td>
 
                   <!-- Action Column 3: Delete -->
                   <td class="py-2.5 px-3 text-center">
-                    <button (click)="deleteLead(lead)" class="text-red-500 hover:text-red-700 p-0.5 transition" title="Delete Lead">
-                      <span class="material-icons text-base">delete_outline</span>
+                    <button (click)="deleteLead(lead)" class="text-rose-600 hover:text-rose-800 p-0.5 transition" title="Delete Record">
+                      <span class="material-icons text-base">delete</span>
                     </button>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="9" class="py-12 text-center text-slate-400 font-medium bg-white">
-                    No leads captured for this stall yet. Click "+ Add New" to capture.
+                  <td colspan="10" class="py-12 text-center text-slate-400">
+                    No visitor lead records found.
                   </td>
                 </tr>
               }
@@ -165,33 +172,40 @@ import { StallService } from '../../core/services/stall.service';
           </table>
         </div>
 
-        <!-- Pagination Footer Bar -->
-        <div class="p-3 bg-white border-t border-slate-200 flex items-center justify-end gap-6 text-xs text-slate-600 font-medium select-none">
+        <!-- Table Pagination Footer Bar -->
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-6 text-xs text-slate-600 font-medium select-none">
           <div class="flex items-center gap-2">
             <span>Items per page:</span>
-            <select [(ngModel)]="pageSizeSelect" (change)="onPageSizeChange()" class="border border-slate-300 rounded px-2 py-1 bg-white text-xs outline-none focus:border-blue-600">
+            <select [(ngModel)]="pageSizeSelect" (change)="onPageSizeChange()" class="border border-slate-300 rounded px-2.5 py-1 bg-white text-xs outline-none focus:border-blue-600 font-semibold cursor-pointer">
               <option [value]="10">10</option>
               <option [value]="20">20</option>
               <option [value]="50">50</option>
+              <option [value]="100">100</option>
             </select>
           </div>
 
-          <div class="font-mono text-slate-700">
+          <div>
             {{ startIndex() }} - {{ endIndex() }} of {{ filteredLeads().length }}
           </div>
 
+          <!-- Page Navigation Buttons -->
           <div class="flex items-center gap-1">
-            <button [disabled]="currentPage() === 1" (click)="goToFirstPage()" class="p-1 rounded hover:bg-slate-100 disabled:opacity-30 text-slate-500">
-              <span class="material-icons text-sm">first_page</span>
+            <button 
+              [disabled]="currentPage() === 1" 
+              (click)="prevPage()" 
+              class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-slate-600" 
+              title="Previous Page"
+            >
+              <span class="material-icons text-base">chevron_left</span>
             </button>
-            <button [disabled]="currentPage() === 1" (click)="prevPage()" class="p-1 rounded hover:bg-slate-100 disabled:opacity-30 text-slate-500">
-              <span class="material-icons text-sm">chevron_left</span>
-            </button>
-            <button [disabled]="endIndex() >= filteredLeads().length" (click)="nextPage()" class="p-1 rounded hover:bg-slate-100 disabled:opacity-30 text-slate-500">
-              <span class="material-icons text-sm">chevron_right</span>
-            </button>
-            <button [disabled]="endIndex() >= filteredLeads().length" (click)="goToLastPage()" class="p-1 rounded hover:bg-slate-100 disabled:opacity-30 text-slate-500">
-              <span class="material-icons text-sm">last_page</span>
+
+            <button 
+              [disabled]="endIndex() >= filteredLeads().length" 
+              (click)="nextPage()" 
+              class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-slate-600" 
+              title="Next Page"
+            >
+              <span class="material-icons text-base">chevron_right</span>
             </button>
           </div>
         </div>
@@ -242,8 +256,8 @@ import { StallService } from '../../core/services/stall.service';
                     <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.designation || 'Visitor' }}</span>
                   </div>
                   <div>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase block">CAPTURE DATE</span>
-                    <span class="font-semibold text-slate-800">{{ selectedLeadForView()?.createdAt | date:'mediumDate' }}</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">STALL NAME</span>
+                    <span class="font-semibold text-slate-800">{{ getStallName(selectedLeadForView()?.exhibitionId) }}</span>
                   </div>
                 </div>
               </div>
@@ -260,7 +274,7 @@ import { StallService } from '../../core/services/stall.service';
                       'bg-blue-100 text-blue-700 border border-blue-200': selectedLeadForView()?.interestLevel === 'Cold'
                     }"
                   >
-                    🔥 {{ selectedLeadForView()?.interestLevel }}
+                    {{ selectedLeadForView()?.interestLevel }}
                   </span>
                 </div>
 
@@ -311,6 +325,7 @@ export class LeadListComponent implements OnInit {
 
   allLeads = signal<LocalLead[]>([]);
   selectedLeadForView = signal<LocalLead | null>(null);
+  selectedStallId = signal<string>('ALL');
 
   pageSize = signal(20);
   pageSizeSelect = 20;
@@ -325,18 +340,29 @@ export class LeadListComponent implements OnInit {
     this.allLeads.set(list);
   }
 
-  onStallChange(stallId: string): void {
-    const found = this.stallService.stalls().find((s) => s.id === stallId);
-    if (found) {
-      this.stallService.setActiveStall(found);
-      this.currentPage.set(1);
+  onStallFilterChange(stallId: string): void {
+    this.selectedStallId.set(stallId);
+    if (stallId !== 'ALL') {
+      const found = this.stallService.stalls().find((s) => s.id === stallId);
+      if (found) {
+        this.stallService.setActiveStall(found);
+      }
     }
+    this.currentPage.set(1);
+  }
+
+  getStallName(exhibitionId?: string): string {
+    if (!exhibitionId) return 'Stall 01 - Main Exhibition';
+    const stall = this.stallService.stalls().find((s) => s.id === exhibitionId);
+    return stall ? stall.name : 'Stall 01 - Main Exhibition';
   }
 
   filteredLeads = computed(() => {
-    const activeStallId = this.stallService.activeStall()?.id;
-    if (!activeStallId) return this.allLeads();
-    return this.allLeads().filter((l) => l.exhibitionId === activeStallId || !l.exhibitionId);
+    const stallId = this.selectedStallId();
+    if (stallId === 'ALL' || !stallId) {
+      return this.allLeads();
+    }
+    return this.allLeads().filter((l) => l.exhibitionId === stallId || (!l.exhibitionId && stallId === '33333333-3333-3333-3333-333333333333'));
   });
 
   paginatedLeads = computed(() => {

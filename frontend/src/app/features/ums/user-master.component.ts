@@ -45,8 +45,8 @@ export interface UserMasterItem {
       <!-- Main Data Table Container Card -->
       <div class="card-panel p-0 overflow-hidden bg-white rounded-lg border border-slate-200 shadow-sm">
         
-        <!-- Filter Search Bar & Total Counter Row -->
-        <div class="p-4 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <!-- Filter Search Bar -->
+        <div class="p-4 bg-white border-b border-slate-200 flex items-center justify-between gap-4">
           <div class="w-72">
             <input 
               type="text" 
@@ -55,41 +55,40 @@ export interface UserMasterItem {
               class="w-full border border-slate-300 rounded px-3 py-1.5 text-xs outline-none focus:border-blue-600"
             />
           </div>
-
-          <div class="text-xs font-semibold text-slate-500">
-            {{ filteredUsers().length }} users registered in SQL Server DB
-          </div>
         </div>
 
         <!-- Table Data Grid (Dynamic SQL Server Data Only) -->
         <div class="overflow-x-auto">
-          <table class="erp-table w-full text-left border-collapse">
+          <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="bg-[#1a3a5c] text-white text-xs font-semibold">
-                <th class="py-2.5 px-4 w-12 text-center">#</th>
-                <th class="py-2.5 px-4">Full Name</th>
-                <th class="py-2.5 px-4">Username</th>
-                <th class="py-2.5 px-4">User Group</th>
-                <th class="py-2.5 px-4">Role </th>
-                <th class="py-2.5 px-4 text-center">Status</th>
+              <tr class="bg-[#1a3a5c] text-white text-[11px] font-bold uppercase tracking-wider">
+                <th class="py-2.5 px-4 w-12 text-center border-r border-white/20">#</th>
+                <th class="py-2.5 px-4 border-r border-white/20">Full Name</th>
+                <th class="py-2.5 px-4 border-r border-white/20">Username</th>
+                <th class="py-2.5 px-4 border-r border-white/20">User Group</th>
+                <th class="py-2.5 px-4 border-r border-white/20">Role</th>
+                <th class="py-2.5 px-4 text-center border-r border-white/20">Status</th>
                 <th class="py-2.5 px-4 text-center w-28">Actions</th>
               </tr>
             </thead>
-            <tbody class="text-xs text-slate-700">
+            <tbody class="text-xs text-slate-700 font-medium">
               @for (user of paginatedUsers(); track user.id; let idx = $index) {
-                <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition">
-                  <td class="py-3 px-4 text-center text-slate-500 font-medium">{{ (currentPage() - 1) * pageSize() + idx + 1 }}</td>
+                <tr 
+                  class="border-b border-slate-100 transition"
+                  [ngClass]="idx % 2 === 0 ? 'bg-[#f4f8fc]' : 'bg-white'"
+                >
+                  <td class="py-2.5 px-4 text-center text-slate-500 font-medium border-r border-slate-200/60">{{ (currentPage() - 1) * pageSize() + idx + 1 }}</td>
                   
-                  <td class="py-3 px-4">
+                  <td class="py-2.5 px-4 border-r border-slate-200/60">
                     <div class="font-bold text-slate-900 leading-tight">{{ user.fullName }}</div>
                     <div class="text-[11px] text-slate-400 font-mono">{{ user.username.toLowerCase() }}</div>
                   </td>
 
-                  <td class="py-3 px-4 font-semibold text-slate-800">{{ user.username }}</td>
+                  <td class="py-2.5 px-4 font-semibold text-slate-800 border-r border-slate-200/60">{{ user.username }}</td>
 
-                  <td class="py-3 px-4 text-slate-600 font-medium">{{ user.userGroup }}</td>
+                  <td class="py-2.5 px-4 text-slate-600 font-medium border-r border-slate-200/60">{{ user.userGroup }}</td>
 
-                  <td class="py-3 px-4">
+                  <td class="py-2.5 px-4 border-r border-slate-200/60">
                     <span 
                       class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1"
                       [ngClass]="{
@@ -105,7 +104,7 @@ export interface UserMasterItem {
                     </span>
                   </td>
 
-                  <td class="py-3 px-4 text-center">
+                  <td class="py-2.5 px-4 text-center border-r border-slate-200/60">
                     <span 
                       class="px-2.5 py-0.5 rounded text-[11px] font-bold inline-block"
                       [ngClass]="user.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'"
@@ -114,16 +113,16 @@ export interface UserMasterItem {
                     </span>
                   </td>
 
-                  <td class="py-3 px-4 text-center">
+                  <td class="py-2.5 px-4 text-center">
                     <div class="flex items-center justify-center gap-2">
-                      <button (click)="openEditModal(user)" class="text-indigo-600 hover:text-indigo-800 p-1" title="Edit User">
+                      <button (click)="openEditModal(user)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit User">
                         <span class="material-icons text-base">edit</span>
                       </button>
-                      <button (click)="openPasswordModal(user)" class="text-amber-600 hover:text-amber-800 p-1" title="Reset Key">
+                      <button (click)="openPasswordModal(user)" class="text-amber-600 hover:text-amber-800 p-0.5" title="Reset Key">
                         <span class="material-icons text-base">vpn_key</span>
                       </button>
                       @if (isAdmin()) {
-                        <button (click)="deleteUser(user)" class="text-red-600 hover:text-red-800 p-1" title="Delete User (Admin Only)">
+                        <button (click)="deleteUser(user)" class="text-rose-600 hover:text-rose-800 p-0.5" title="Delete User (Admin Only)">
                           <span class="material-icons text-base">delete</span>
                         </button>
                       }
@@ -188,11 +187,11 @@ export interface UserMasterItem {
                 </div>
 
                 <div>
-                  <label class="form-label">Role Hierarchy *</label>
+                  <label class="form-label font-bold text-xs text-slate-700 mb-1">Role Hierarchy *</label>
                   <select [(ngModel)]="formData.role" name="role" class="form-control font-semibold">
-                    <option value="Admin">🛡️ Admin (All Access)</option>
-                    <option value="StallOwner">🏪 Stall Owner (Stall Admin, Cannot Delete Users)</option>
-                    <option value="Marketing">👤 Marketing Rep (Stall Lead Collector)</option>
+                    <option value="Admin">Admin (All Access)</option>
+                    <option value="StallOwner">Stall Owner (Stall Admin, Cannot Delete Users)</option>
+                    <option value="Marketing">Marketing Rep (Stall Lead Collector)</option>
                   </select>
                 </div>
 

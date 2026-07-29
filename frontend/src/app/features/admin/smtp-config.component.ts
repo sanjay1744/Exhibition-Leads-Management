@@ -34,7 +34,7 @@ export interface SmtpConfigModel {
         </div>
 
         <div class="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-md font-semibold">
-          👤 Setting SMTP for logged user: <span class="font-bold text-slate-900">{{ currentUsername() }}</span>
+          Setting SMTP for logged user: <span class="font-bold text-slate-900">{{ currentUsername() }}</span>
         </div>
       </div>
 

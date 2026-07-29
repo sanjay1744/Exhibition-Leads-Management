@@ -142,7 +142,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
                   class="flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1"
                   [ngClass]="interestLevel === 'Hot' ? 'bg-red-50 border-red-500 text-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
                 >
-                  🔥 Hot
+                  Hot
                 </button>
 
                 <button 
@@ -151,7 +151,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
                   class="flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1"
                   [ngClass]="interestLevel === 'Warm' ? 'bg-amber-50 border-amber-500 text-amber-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
                 >
-                  ⚡ Warm
+                  Warm
                 </button>
 
                 <button 
@@ -160,7 +160,7 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
                   class="flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1"
                   [ngClass]="interestLevel === 'Cold' ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
                 >
-                  ❄️ Cold
+                  Cold
                 </button>
               </div>
             </div>
@@ -341,7 +341,7 @@ export class LeadFormComponent implements OnInit {
 
     await this.db.saveLead(leadToSave);
     const actionText = this.isEditMode() ? 'updated' : 'saved';
-    this.savedMessage.set(`✓ Lead ${actionText} successfully! Redirecting to Leads list...`);
+    this.savedMessage.set(`Lead ${actionText} successfully! Redirecting to Leads list...`);
 
     setTimeout(() => {
       this.router.navigate(['/leads']);

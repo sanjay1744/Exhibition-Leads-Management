@@ -41,7 +41,7 @@ import { ToastService } from '../../core/services/toast.service';
             <span class="material-icons text-xl">storefront</span>
           </div>
           <div>
-            <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">STALL MASTER (PROJECTS)</h1>
+            <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">STALL MASTER</h1>
             <p class="text-xs text-slate-500">Exhibition Stall Projects, Event Details, Organizers & Hall Metadata</p>
           </div>
         </div>
@@ -60,7 +60,7 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="card-panel p-0 overflow-hidden bg-white rounded-xl border border-slate-200 shadow-sm">
         
         <!-- Search & Filter Bar -->
-        <div class="p-4 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <div class="p-4 bg-white border-b border-slate-200 flex items-center justify-between gap-4">
           <div class="w-80 relative">
             <span class="material-icons absolute left-3 top-2.5 text-slate-400 text-sm">search</span>
             <input 
@@ -70,46 +70,45 @@ import { ToastService } from '../../core/services/toast.service';
               class="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-600 font-medium"
             />
           </div>
-
-          <div class="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-md border">
-            Showing <strong class="text-slate-900">{{ filteredStalls().length }}</strong> Exhibition Stall Projects
-          </div>
         </div>
 
         <!-- Data Grid Table -->
         <div class="overflow-x-auto">
-          <table class="erp-table w-full text-left border-collapse">
+          <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="bg-[#1a3a5c] text-white text-xs font-semibold uppercase tracking-wider">
-                <th class="py-3 px-4">Stall Code</th>
-                <th class="py-3 px-4">Stall Name</th>
-                <th class="py-3 px-4">Event & Organizer</th>
-                <th class="py-3 px-4">Duration</th>
-                <th class="py-3 px-4">Venue & Hall / Booth</th>
-                <th class="py-3 px-4">Stall Owner</th>
-                <th class="py-3 px-4 text-center">Leads</th>
-                <th class="py-3 px-4 text-center">Status</th>
-                <th class="py-3 px-3 text-center w-16">Edit</th>
-                <th class="py-3 px-3 text-center w-16">Delete</th>
+              <tr class="bg-[#1a3a5c] text-white text-[11px] font-bold uppercase tracking-wider">
+                <th class="py-2.5 px-4 border-r border-white/20">Stall Code</th>
+                <th class="py-2.5 px-4 border-r border-white/20">Stall Name</th>
+                <th class="py-2.5 px-4 border-r border-white/20">Event & Organizer</th>
+                <th class="py-2.5 px-4 border-r border-white/20">Duration</th>
+                <th class="py-2.5 px-4 border-r border-white/20">Venue & Hall / Booth</th>
+                <th class="py-2.5 px-4 border-r border-white/20">Stall Owner</th>
+                <th class="py-2.5 px-4 border-r border-white/20 text-center">Leads</th>
+                <th class="py-2.5 px-4 border-r border-white/20 text-center">Status</th>
+                <th class="py-2.5 px-3 border-r border-white/20 text-center w-14">Edit</th>
+                <th class="py-2.5 px-3 text-center w-14">Delete</th>
               </tr>
             </thead>
-            <tbody class="text-xs text-slate-700">
-              @for (stall of filteredStalls(); track stall.id) {
-                <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition">
+            <tbody class="text-xs text-slate-700 font-medium">
+              @for (stall of paginatedStalls(); track stall.id; let idx = $index) {
+                <tr 
+                  class="border-b border-slate-100 transition"
+                  [ngClass]="idx % 2 === 0 ? 'bg-[#f4f8fc]' : 'bg-white'"
+                >
                   <!-- Stall Code Badge -->
-                  <td class="py-3.5 px-4 font-mono font-bold">
-                    <span class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded text-[11px] inline-block shadow-2xs">
+                  <td class="py-2.5 px-4 font-mono font-bold border-r border-slate-200/60">
+                    <span class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded text-[11px] inline-block shadow-2xs">
                       {{ stall.code }}
                     </span>
                   </td>
 
                   <!-- Stall Name -->
-                  <td class="py-3.5 px-4">
+                  <td class="py-2.5 px-4 border-r border-slate-200/60">
                     <div class="font-bold text-slate-900 text-xs">{{ stall.name }}</div>
                   </td>
 
                   <!-- Event Name & Conducting Organizer -->
-                  <td class="py-3.5 px-4">
+                  <td class="py-2.5 px-4 border-r border-slate-200/60">
                     <div class="font-semibold text-slate-800">{{ stall.eventName || stall.name }}</div>
                     <div class="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                       <span class="material-icons text-[12px] text-slate-400">corporate_fare</span>
@@ -118,13 +117,13 @@ import { ToastService } from '../../core/services/toast.service';
                   </td>
 
                   <!-- Duration Days -->
-                  <td class="py-3.5 px-4">
+                  <td class="py-2.5 px-4 border-r border-slate-200/60">
                     <div class="font-semibold text-slate-800">{{ stall.durationDays }} Days</div>
                     <div class="text-[10px] text-slate-400">Active Fair Period</div>
                   </td>
 
                   <!-- Venue Location & Hall / Booth -->
-                  <td class="py-3.5 px-4">
+                  <td class="py-2.5 px-4 border-r border-slate-200/60">
                     <div class="font-medium text-slate-800">{{ stall.location }}</div>
                     <div class="text-[11px] text-blue-600 font-semibold flex items-center gap-1 mt-0.5">
                       <span class="material-icons text-[12px]">meeting_room</span>
@@ -133,7 +132,7 @@ import { ToastService } from '../../core/services/toast.service';
                   </td>
 
                   <!-- Stall Owner -->
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">
+                  <td class="py-2.5 px-4 font-semibold text-slate-800 border-r border-slate-200/60">
                     <div class="flex items-center gap-1.5">
                       <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center justify-center">
                         {{ stall.ownerName[0] }}
@@ -143,24 +142,24 @@ import { ToastService } from '../../core/services/toast.service';
                   </td>
 
                   <!-- Leads Captured Counter -->
-                  <td class="py-3.5 px-4 text-center font-bold text-slate-900">
-                    <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 font-bold">
+                  <td class="py-2.5 px-4 text-center font-bold text-slate-900 border-r border-slate-200/60">
+                    <span class="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 font-bold">
                       {{ stall.leadCount }}
                     </span>
                   </td>
 
                   <!-- Status -->
-                  <td class="py-3.5 px-4 text-center">
+                  <td class="py-2.5 px-4 text-center border-r border-slate-200/60">
                     <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">
                       {{ stall.status || 'Active' }}
                     </span>
                   </td>
 
                   <!-- Edit Column -->
-                  <td class="py-3.5 px-3 text-center">
+                  <td class="py-2.5 px-3 text-center border-r border-slate-200/60">
                     <button 
                       (click)="openEditModal(stall)" 
-                      class="p-1.5 text-blue-600 hover:bg-blue-100 hover:text-blue-800 rounded-lg transition inline-flex items-center justify-center"
+                      class="text-blue-600 hover:text-blue-800 p-0.5 transition inline-flex items-center justify-center"
                       title="Edit Stall Project"
                     >
                       <span class="material-icons text-base">edit</span>
@@ -168,10 +167,10 @@ import { ToastService } from '../../core/services/toast.service';
                   </td>
 
                   <!-- Delete Column -->
-                  <td class="py-3.5 px-3 text-center">
+                  <td class="py-2.5 px-3 text-center">
                     <button 
                       (click)="deleteStall(stall)" 
-                      class="p-1.5 text-rose-600 hover:bg-rose-100 hover:text-rose-800 rounded-lg transition inline-flex items-center justify-center"
+                      class="text-rose-600 hover:text-rose-800 p-0.5 transition inline-flex items-center justify-center"
                       title="Delete Stall Project"
                     >
                       <span class="material-icons text-base">delete</span>
@@ -181,12 +180,49 @@ import { ToastService } from '../../core/services/toast.service';
               } @empty {
                 <tr>
                   <td colspan="10" class="py-12 text-center text-slate-400">
-                    No stall projects found. Click "+ Create New Stall (Project)" to add one.
+                    No stall projects found. Click "Create New Stall" to add one.
                   </td>
                 </tr>
               }
             </tbody>
           </table>
+        </div>
+
+        <!-- Table Pagination Footer Bar -->
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-6 text-xs text-slate-600 font-medium select-none">
+          <div class="flex items-center gap-2">
+            <span>Items per page:</span>
+            <select [(ngModel)]="pageSizeSelect" (change)="onPageSizeChange()" class="border border-slate-300 rounded px-2.5 py-1 bg-white text-xs outline-none focus:border-blue-600 font-semibold cursor-pointer">
+              <option [value]="10">10</option>
+              <option [value]="20">20</option>
+              <option [value]="50">50</option>
+            </select>
+          </div>
+
+          <div>
+            {{ startIndex() }} - {{ endIndex() }} of {{ filteredStalls().length }}
+          </div>
+
+          <!-- Page Navigation Buttons -->
+          <div class="flex items-center gap-1">
+            <button 
+              [disabled]="currentPage() === 1" 
+              (click)="prevPage()" 
+              class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-slate-600" 
+              title="Previous Page"
+            >
+              <span class="material-icons text-base">chevron_left</span>
+            </button>
+
+            <button 
+              [disabled]="endIndex() >= filteredStalls().length" 
+              (click)="nextPage()" 
+              class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-slate-600" 
+              title="Next Page"
+            >
+              <span class="material-icons text-base">chevron_right</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -441,6 +477,44 @@ export class StallMasterComponent implements OnInit {
         s.hallNumber.toLowerCase().includes(q)
     );
   });
+
+  pageSize = signal(10);
+  pageSizeSelect = 10;
+  currentPage = signal(1);
+
+  paginatedStalls = computed(() => {
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return this.filteredStalls().slice(start, start + this.pageSize());
+  });
+
+  startIndex = computed(() => {
+    if (this.filteredStalls().length === 0) return 0;
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  });
+
+  endIndex = computed(() => Math.min(this.currentPage() * this.pageSize(), this.filteredStalls().length));
+
+  onPageSizeChange(): void {
+    this.pageSize.set(Number(this.pageSizeSelect));
+    this.currentPage.set(1);
+  }
+
+  prevPage(): void {
+    if (this.currentPage() > 1) this.currentPage.update((p) => p - 1);
+  }
+
+  nextPage(): void {
+    if (this.endIndex() < this.filteredStalls().length) this.currentPage.update((p) => p + 1);
+  }
+
+  goToFirstPage(): void {
+    this.currentPage.set(1);
+  }
+
+  goToLastPage(): void {
+    const totalPages = Math.ceil(this.filteredStalls().length / this.pageSize());
+    this.currentPage.set(Math.max(1, totalPages));
+  }
 
   openCreateModal(): void {
     this.isEditMode.set(false);
