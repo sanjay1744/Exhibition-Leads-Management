@@ -30,21 +30,13 @@ export interface QrParsedContact {
           </div>
         }
 
-        <div class="grid grid-cols-2 gap-2">
+        <div>
           <button 
             (click)="toggleScan()" 
-            class="btn btn-primary justify-center text-xs text-center py-2.5 rounded-lg"
+            class="btn btn-primary w-full justify-center text-xs text-center py-2.5 rounded-lg font-bold shadow-sm"
           >
             <span class="material-icons text-sm">camera_alt</span>
             {{ isScanning() ? 'Stop Camera' : 'Scan QR' }}
-          </button>
-
-          <button 
-            (click)="simulateScan()" 
-            class="btn btn-outline-pill justify-center text-xs text-center py-2.5 rounded-lg"
-          >
-            <span class="material-icons text-sm">auto_fix_high</span>
-            Demo Scan
           </button>
         </div>
       </div>
