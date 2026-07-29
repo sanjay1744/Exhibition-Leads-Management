@@ -32,14 +32,18 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
         </div>
       </div>
 
-      <!-- Quick Acquisition Tools Grid (Shown when creating or optional) -->
-      @if (!isEditMode()) {
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <app-ocr-scanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
-          <app-qr-scanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
-          <app-voice-recorder (voiceRecorded)="onVoiceRecorded($event)"></app-voice-recorder>
-        </div>
-      }
+      <!-- Quick Acquisition Tools Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <app-ocr-scanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
+        <app-qr-scanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
+        <app-voice-recorder 
+          [initialAudio]="voiceBlob" 
+          [initialTranscript]="voiceNotesTranscript" 
+          (voiceRecorded)="onVoiceRecorded($event)" 
+          (transcriptGenerated)="onTranscriptGenerated($event)"
+          (voiceCleared)="onVoiceCleared()"
+        ></app-voice-recorder>
+      </div>
 
       <!-- Visitor Information Form Card -->
       <div class="card-panel bg-white rounded-xl border border-slate-200 p-6 shadow-sm overflow-hidden">
@@ -257,7 +261,8 @@ export class LeadFormComponent implements OnInit {
   address = '';
   interestLevel: 'Hot' | 'Warm' | 'Cold' = 'Warm';
   remarks = '';
-  voiceBlob: Blob | null = null;
+  voiceBlob: Blob | string | null = null;
+  voiceNotesTranscript: string = '';
 
   captureMethod: CaptureMethod = 'manual';
   isAutoFilled = signal(false);
@@ -292,6 +297,8 @@ export class LeadFormComponent implements OnInit {
       this.address = lead.address || '';
       this.interestLevel = lead.interestLevel;
       this.remarks = lead.remarks || '';
+      this.voiceBlob = lead.voiceBlob || null;
+      this.voiceNotesTranscript = lead.voiceNotesTranscript || '';
       this.captureMethod = lead.captureMethod || 'manual';
       this.existingCreatedAt = lead.createdAt;
     } else {
@@ -332,6 +339,23 @@ export class LeadFormComponent implements OnInit {
     }
   }
 
+  onTranscriptGenerated(transcript: string): void {
+    this.voiceNotesTranscript = transcript;
+    if (transcript) {
+      if (!this.remarks) {
+        this.remarks = transcript;
+      } else if (!this.remarks.includes(transcript)) {
+        // If remarks already has text, append transcript nicely
+        this.remarks = `${this.remarks.trim()}\n[Voice Note]: ${transcript}`;
+      }
+    }
+  }
+
+  onVoiceCleared(): void {
+    this.voiceBlob = null;
+    this.voiceNotesTranscript = '';
+  }
+
   addQuickRemark(chip: string): void {
     if (this.remarks) {
       this.remarks += `, ${chip}`;
@@ -349,6 +373,8 @@ export class LeadFormComponent implements OnInit {
     this.website = '';
     this.address = '';
     this.remarks = '';
+    this.voiceBlob = null;
+    this.voiceNotesTranscript = '';
     this.interestLevel = 'Warm';
     this.captureMethod = 'manual';
     this.isAutoFilled.set(false);
@@ -374,6 +400,8 @@ export class LeadFormComponent implements OnInit {
       website: this.website,
       address: this.address,
       captureMethod: this.captureMethod,
+      voiceBlob: this.voiceBlob || undefined,
+      voiceNotesTranscript: this.voiceNotesTranscript || undefined,
       interestLevel: this.interestLevel,
       productCategory: ['Enterprise'],
       priority: 'High',

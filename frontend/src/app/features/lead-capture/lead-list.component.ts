@@ -93,7 +93,12 @@ import { StallService } from '../../core/services/stall.service';
                 >
                   <!-- Visitor Name -->
                   <td class="py-2.5 px-4 font-bold text-slate-900 border-r border-slate-200/60">
-                    {{ lead.name }}
+                    <div class="flex items-center justify-between gap-1">
+                      <span>{{ lead.name }}</span>
+                      @if (lead.voiceBlob || lead.voiceNotesTranscript) {
+                        <span class="material-icons text-sm text-red-600 bg-red-50 p-0.5 rounded" title="Voice Note Audio Attached">mic</span>
+                      }
+                    </div>
                   </td>
 
                   <!-- Stall Name -->
@@ -302,6 +307,30 @@ import { StallService } from '../../core/services/stall.service';
                   {{ selectedLeadForView()?.remarks || 'No discussion remarks recorded.' }}
                 </div>
               </div>
+
+              <!-- Voice Note Audio & Transcript Section -->
+              @if (selectedLeadForView()?.voiceBlob || selectedLeadForView()?.voiceNotesTranscript) {
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                  <div class="flex items-center justify-between text-xs font-bold text-[#1a3a5c] uppercase tracking-wide">
+                    <span class="flex items-center gap-1.5">
+                      <span class="material-icons text-sm text-red-600">mic</span>
+                      Voice Note Audio
+                    </span>
+                    <span class="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Attached
+                    </span>
+                  </div>
+                  @if (getVoiceAudioUrl(selectedLeadForView())) {
+                    <audio [src]="getVoiceAudioUrl(selectedLeadForView())" controls class="w-full h-8 rounded focus:outline-none"></audio>
+                  }
+                  @if (selectedLeadForView()?.voiceNotesTranscript) {
+                    <div class="text-[11px] text-slate-600 bg-white p-2 rounded border border-slate-200 italic">
+                      <span class="font-semibold text-blue-700 not-italic block mb-0.5">Live Transcript:</span>
+                      "{{ selectedLeadForView()?.voiceNotesTranscript }}"
+                    </div>
+                  }
+                </div>
+              }
             </div>
 
             <!-- Modal Footer Action Bar -->
@@ -421,6 +450,17 @@ export class LeadListComponent implements OnInit {
 
   editLead(lead: LocalLead): void {
     this.router.navigate(['/capture', lead.id]);
+  }
+
+  getVoiceAudioUrl(lead: LocalLead | null): string | null {
+    if (!lead || !lead.voiceBlob) return null;
+    if (lead.voiceBlob instanceof Blob) {
+      return URL.createObjectURL(lead.voiceBlob);
+    }
+    if (typeof lead.voiceBlob === 'string') {
+      return lead.voiceBlob;
+    }
+    return null;
   }
 
   async deleteLead(lead: LocalLead): Promise<void> {
