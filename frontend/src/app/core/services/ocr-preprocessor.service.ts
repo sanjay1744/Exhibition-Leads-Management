@@ -1,5 +1,17 @@
 import { Injectable } from '@angular/core';
 
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
+export interface CardCorners {
+  topLeft: Point2D;
+  topRight: Point2D;
+  bottomRight: Point2D;
+  bottomLeft: Point2D;
+}
+
 export interface PreprocessOptions {
   mode?: 'natural' | 'grayscale' | 'binary';
   minWidth?: number;
@@ -406,6 +418,324 @@ export class OcrPreprocessorService {
       width: canvas.width,
       height: canvas.height
     };
+  }
+
+  /**
+   * Scans image edge gradients to automatically detect card 4 corners (TL, TR, BR, BL)
+   */
+  async autoDetectCardCorners(sourceUrlOrFile: string | File): Promise<CardCorners> {
+    const defaultQuad: CardCorners = {
+      topLeft: { x: 8, y: 12 },
+      topRight: { x: 92, y: 12 },
+      bottomRight: { x: 92, y: 88 },
+      bottomLeft: { x: 8, y: 88 }
+    };
+
+    try {
+      const img = typeof sourceUrlOrFile === 'string'
+        ? await this.loadImageFromUrl(sourceUrlOrFile)
+        : await this.loadImage(sourceUrlOrFile);
+
+      const W = 300;
+      const H = 200;
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return defaultQuad;
+
+      ctx.drawImage(img, 0, 0, W, H);
+      const imgData = ctx.getImageData(0, 0, W, H);
+      const d = imgData.data;
+
+      // Sobel Gradient Magnitude Map
+      const grad = new Float32Array(W * H);
+      for (let y = 1; y < H - 1; y++) {
+        for (let x = 1; x < W - 1; x++) {
+          const getLum = (px: number, py: number) => {
+            const idx = (py * W + px) * 4;
+            return 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
+          };
+
+          const gx = -getLum(x - 1, y - 1) + getLum(x + 1, y - 1)
+                   - 2 * getLum(x - 1, y) + 2 * getLum(x + 1, y)
+                   - getLum(x - 1, y + 1) + getLum(x + 1, y + 1);
+
+          const gy = -getLum(x - 1, y - 1) - 2 * getLum(x, y - 1) - getLum(x + 1, y - 1)
+                   + getLum(x - 1, y + 1) + 2 * getLum(x, y + 1) + getLum(x + 1, y + 1);
+
+          grad[y * W + x] = Math.sqrt(gx * gx + gy * gy);
+        }
+      }
+
+      let bestTL = { x: 0.08 * W, y: 0.12 * H }, maxTL = 0;
+      let bestTR = { x: 0.92 * W, y: 0.12 * H }, maxTR = 0;
+      let bestBR = { x: 0.92 * W, y: 0.88 * H }, maxBR = 0;
+      let bestBL = { x: 0.08 * W, y: 0.88 * H }, maxBL = 0;
+
+      for (let y = 10; y < H - 10; y++) {
+        for (let x = 10; x < W - 10; x++) {
+          const g = grad[y * W + x];
+          if (g < 30) continue;
+
+          const scoreTL = g / (1 + Math.hypot(x - W * 0.15, y - H * 0.18));
+          if (x < W * 0.45 && y < H * 0.45 && scoreTL > maxTL) {
+            maxTL = scoreTL;
+            bestTL = { x, y };
+          }
+
+          const scoreTR = g / (1 + Math.hypot(x - W * 0.85, y - H * 0.18));
+          if (x > W * 0.55 && y < H * 0.45 && scoreTR > maxTR) {
+            maxTR = scoreTR;
+            bestTR = { x, y };
+          }
+
+          const scoreBR = g / (1 + Math.hypot(x - W * 0.85, y - H * 0.82));
+          if (x > W * 0.55 && y > H * 0.55 && scoreBR > maxBR) {
+            maxBR = scoreBR;
+            bestBR = { x, y };
+          }
+
+          const scoreBL = g / (1 + Math.hypot(x - W * 0.15, y - H * 0.82));
+          if (x < W * 0.45 && y > H * 0.55 && scoreBL > maxBL) {
+            maxBL = scoreBL;
+            bestBL = { x, y };
+          }
+        }
+      }
+
+      return {
+        topLeft: { x: Math.round((bestTL.x / W) * 1000) / 10, y: Math.round((bestTL.y / H) * 1000) / 10 },
+        topRight: { x: Math.round((bestTR.x / W) * 1000) / 10, y: Math.round((bestTR.y / H) * 1000) / 10 },
+        bottomRight: { x: Math.round((bestBR.x / W) * 1000) / 10, y: Math.round((bestBR.y / H) * 1000) / 10 },
+        bottomLeft: { x: Math.round((bestBL.x / W) * 1000) / 10, y: Math.round((bestBL.y / H) * 1000) / 10 }
+      };
+    } catch {
+      return defaultQuad;
+    }
+  }
+
+  /**
+   * Applies 4-Point Perspective Transformation (Homography Warping)
+   * to unwarp an arbitrarily oriented quadrilateral card region into a clean flat rectangular image.
+   */
+  async warpPerspective(
+    sourceUrlOrFile: string | File,
+    corners: CardCorners,
+    filter: 'original' | 'vibrant' | 'bw' = 'vibrant',
+    targetWidth: number = 1600
+  ): Promise<{ dataUrl: string; width: number; height: number }> {
+    const img = typeof sourceUrlOrFile === 'string'
+      ? await this.loadImageFromUrl(sourceUrlOrFile)
+      : await this.loadImage(sourceUrlOrFile);
+
+    const srcW = img.width;
+    const srcH = img.height;
+
+    const p0 = { x: (corners.topLeft.x / 100) * srcW, y: (corners.topLeft.y / 100) * srcH };
+    const p1 = { x: (corners.topRight.x / 100) * srcW, y: (corners.topRight.y / 100) * srcH };
+    const p2 = { x: (corners.bottomRight.x / 100) * srcW, y: (corners.bottomRight.y / 100) * srcH };
+    const p3 = { x: (corners.bottomLeft.x / 100) * srcW, y: (corners.bottomLeft.y / 100) * srcH };
+
+    const dist = (a: Point2D, b: Point2D) => Math.hypot(a.x - b.x, a.y - b.y);
+    const topW = dist(p0, p1);
+    const botW = dist(p3, p2);
+    const leftH = dist(p0, p3);
+    const rightH = dist(p1, p2);
+
+    const calcW = Math.max(topW, botW);
+    const calcH = Math.max(leftH, rightH);
+
+    const scale = Math.max(1, targetWidth / (calcW || 1));
+    const outW = Math.round(calcW * scale);
+    const outH = Math.round(calcH * scale);
+
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = srcW;
+    srcCanvas.height = srcH;
+    const srcCtx = srcCanvas.getContext('2d');
+    if (!srcCtx) throw new Error('2D Canvas unavailable');
+    srcCtx.drawImage(img, 0, 0);
+    const srcImgData = srcCtx.getImageData(0, 0, srcW, srcH);
+    const sData = srcImgData.data;
+
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = outW;
+    outCanvas.height = outH;
+    const outCtx = outCanvas.getContext('2d');
+    if (!outCtx) throw new Error('2D Canvas unavailable');
+    const outImgData = outCtx.createImageData(outW, outH);
+    const oData = outImgData.data;
+
+    const H = this.findHomography(
+      [
+        { x: 0, y: 0 },
+        { x: outW, y: 0 },
+        { x: outW, y: outH },
+        { x: 0, y: outH }
+      ],
+      [p0, p1, p2, p3]
+    );
+
+    for (let y = 0; y < outH; y++) {
+      for (let x = 0; x < outW; x++) {
+        const denom = H[6] * x + H[7] * y + 1.0;
+        const srcX = (H[0] * x + H[1] * y + H[2]) / denom;
+        const srcY = (H[3] * x + H[4] * y + H[5]) / denom;
+
+        const outIdx = (y * outW + x) * 4;
+
+        if (srcX >= 0 && srcX < srcW - 1 && srcY >= 0 && srcY < srcH - 1) {
+          const x0 = Math.floor(srcX);
+          const y0 = Math.floor(srcY);
+          const x1 = x0 + 1;
+          const y1 = y0 + 1;
+
+          const dx = srcX - x0;
+          const dy = srcY - y0;
+
+          const i00 = (y0 * srcW + x0) * 4;
+          const i10 = (y0 * srcW + x1) * 4;
+          const i01 = (y1 * srcW + x0) * 4;
+          const i11 = (y1 * srcW + x1) * 4;
+
+          for (let c = 0; c < 3; c++) {
+            const val =
+              (1 - dx) * (1 - dy) * sData[i00 + c] +
+              dx * (1 - dy) * sData[i10 + c] +
+              (1 - dx) * dy * sData[i01 + c] +
+              dx * dy * sData[i11 + c];
+            oData[outIdx + c] = Math.round(val);
+          }
+          oData[outIdx + 3] = 255;
+        } else {
+          oData[outIdx] = 255;
+          oData[outIdx + 1] = 255;
+          oData[outIdx + 2] = 255;
+          oData[outIdx + 3] = 255;
+        }
+      }
+    }
+
+    outCtx.putImageData(outImgData, 0, 0);
+
+    if (filter === 'vibrant') {
+      this.applyVibrantMagicFilter(outCtx, outW, outH);
+    } else if (filter === 'bw') {
+      let binarizedData = outCtx.getImageData(0, 0, outW, outH);
+      binarizedData = this.sharpenImageData(binarizedData);
+      binarizedData = this.applyAdaptiveThreshold(binarizedData, false);
+      outCtx.putImageData(binarizedData, 0, 0);
+    } else {
+      this.applyContrastNormalization(outCtx, outW, outH);
+    }
+
+    return {
+      dataUrl: outCanvas.toDataURL('image/png'),
+      width: outW,
+      height: outH
+    };
+  }
+
+  private findHomography(srcPts: Point2D[], dstPts: Point2D[]): number[] {
+    const A: number[][] = [];
+    const B: number[] = [];
+
+    for (let i = 0; i < 4; i++) {
+      const sx = srcPts[i].x;
+      const sy = srcPts[i].y;
+      const dx = dstPts[i].x;
+      const dy = dstPts[i].y;
+
+      A.push([sx, sy, 1, 0, 0, 0, -sx * dx, -sy * dx]);
+      B.push(dx);
+
+      A.push([0, 0, 0, sx, sy, 1, -sx * dy, -sy * dy]);
+      B.push(dy);
+    }
+
+    return this.solveLinearSystem8x8(A, B);
+  }
+
+  private solveLinearSystem8x8(A: number[][], B: number[]): number[] {
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+      let maxRow = i;
+      for (let k = i + 1; k < n; k++) {
+        if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+      }
+      [A[i], A[maxRow]] = [A[maxRow], A[i]];
+      [B[i], B[maxRow]] = [B[maxRow], B[i]];
+
+      const pivot = A[i][i];
+      if (Math.abs(pivot) < 1e-10) continue;
+
+      for (let j = i; j < n; j++) A[i][j] /= pivot;
+      B[i] /= pivot;
+
+      for (let k = 0; k < n; k++) {
+        if (k !== i) {
+          const factor = A[k][i];
+          for (let j = i; j < n; j++) A[k][j] -= factor * A[i][j];
+          B[k] -= factor * B[i];
+        }
+      }
+    }
+    return B;
+  }
+
+  private applyVibrantMagicFilter(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const d = imgData.data;
+
+    let minL = 255;
+    let maxL = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const l = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+      if (l < minL) minL = l;
+      if (l > maxL) maxL = l;
+    }
+
+    const range = Math.max(1, maxL - minL);
+
+    for (let i = 0; i < d.length; i += 4) {
+      for (let c = 0; c < 3; c++) {
+        let v = d[i + c];
+        v = Math.round(((v - minL) / range) * 255);
+        v = Math.min(255, Math.max(0, Math.pow(v / 255, 0.9) * 255));
+        d[i + c] = Math.round(v);
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  private applyContrastNormalization(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+    try {
+      const imgData = ctx.getImageData(0, 0, width, height);
+      const d = imgData.data;
+      let minL = 255, maxL = 0;
+      const lums = new Uint8Array(d.length / 4);
+
+      for (let i = 0; i < d.length; i += 4) {
+        const l = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+        lums[i / 4] = l;
+        if (l < minL) minL = l;
+        if (l > maxL) maxL = l;
+      }
+
+      const range = Math.max(1, maxL - minL);
+      for (let i = 0; i < d.length; i += 4) {
+        let l = lums[i / 4];
+        l = Math.round(((l - minL) / range) * 255);
+        d[i] = l;
+        d[i + 1] = l;
+        d[i + 2] = l;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    } catch {
+      // fallback
+    }
   }
 
   private loadImage(file: File): Promise<HTMLImageElement> {

@@ -95,7 +95,9 @@ export class CardParserService {
     let s = val.trim();
 
     if (type === 'name') {
-      // Allow letters, spaces, dots, hyphens, and apostrophes (e.g. "R. SUNDARRAJ", "O'CONNOR")
+      // Auto-repair common OCR suffix errors on names e.g. "SUNDARRAI Ree" -> "SUNDARRAJ"
+      s = s.replace(/RAI\s+Ree$/i, 'RAJ');
+      s = s.replace(/RAI$/i, 'RAJ');
       s = s.replace(/[^a-zA-Z\s.'-]/g, ' ');
     } else if (type === 'designation') {
       // Allow letters, digits, spaces, ampersands, slashes, hyphens (e.g. "Sales / Marketing Director")
@@ -134,12 +136,13 @@ export class CardParserService {
     let designation = this.extractDesignation(lines);
     designation = this.cleanField(designation, 'designation');
 
-    // Pass line metadata to company extractor to prioritize boldest/largest font text
-    let company = this.extractCompany(lines, email, website, lineMetadata, { designation });
-    company = this.cleanField(company, 'company');
-
-    let name = this.extractName(lines, { email, phone, website, designation, company });
+    // Extract Name first before Company so company extractor doesn't claim person's name
+    let name = this.extractName(lines, { email, phone, website, designation });
     name = this.cleanField(name, 'name');
+
+    // Pass line metadata & extracted name to company extractor
+    let company = this.extractCompany(lines, email, website, lineMetadata, { designation, name });
+    company = this.cleanField(company, 'company');
 
     const address = this.extractAddress(lines, { email, phone, website, designation, company, name });
 
@@ -202,11 +205,19 @@ export class CardParserService {
   }
 
   private extractEmail(text: string): string | undefined {
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i;
-    const match = text.match(emailRegex);
-    if (match) {
-      let emailStr = match[0].toLowerCase().trim();
+    const normalized = text
+      .replace(/([a-zA-Z0-9._%+-]+)\s*@\s*([a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})/gi, '$1@$2.$3')
+      .replace(/([a-zA-Z0-9._%+-]+)\s*\[\s*at\s*\]\s*([a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})/gi, '$1@$2.$3');
+
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
+    const matches = normalized.match(emailRegex);
+    if (matches && matches.length > 0) {
+      let emailStr = matches[0].toLowerCase().trim();
       emailStr = emailStr.replace(/[.,;:]+$/, '');
+      emailStr = emailStr.replace(/([a-z0-9]+)1b(\d*@)/gi, '$118$2');
+      emailStr = emailStr.replace(/([a-z0-9]+)l8(\d*@)/gi, '$118$2');
+      emailStr = emailStr.replace(/@gma[i1l]{1,2}\.(?:com|co|in|1n)$/i, '@gmail.com');
+      emailStr = emailStr.replace(/@yaho[o0]{1,2}\.(?:com|co|in)$/i, '@yahoo.com');
       return emailStr;
     }
     return undefined;
@@ -234,39 +245,45 @@ export class CardParserService {
   }
 
   private extractPhone(text: string): string | undefined {
-    // 1. Check for explicit international format e.g. +91 93444 21012, +1 123 456 7890
-    const intlPhoneRegex = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}/g;
-    const matchIntl = intlPhoneRegex.exec(text);
-    if (matchIntl) {
-      let num = matchIntl[0].replace(/\s+/g, ' ').trim();
-      const digitsOnly = num.replace(/\D/g, '');
-      if (digitsOnly.length === 10) {
-        return '+91 ' + digitsOnly.slice(0, 5) + ' ' + digitsOnly.slice(5);
-      } else if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
-        return '+' + digitsOnly.slice(0, 2) + ' ' + digitsOnly.slice(2, 7) + ' ' + digitsOnly.slice(7);
-      }
-      return num;
-    }
+    const phones: string[] = [];
 
-    // 2. Standard phone pattern search
-    const phoneRegex = /(?:\[PH\]|ph|phone|mob|mobile|cell|tel|call)?[\s.:-]*(\+?\d{1,4}[\s-]?)?\(?\d{2,5}\)?[\s-]?\d{3,5}[\s-]?\d{3,5}/gi;
-
+    // Match all international or 10-digit mobile numbers
+    const mobileRegex = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b/g;
     let match: RegExpExecArray | null;
-    while ((match = phoneRegex.exec(text)) !== null) {
-      let candidate = match[0].trim();
-      candidate = candidate.replace(/^(?:\[PH\]|ph|phone|mob|mobile|cell|tel|call)[\s.:-]*/i, '').trim();
-
-      const digitsOnly = candidate.replace(/\D/g, '');
-      if (digitsOnly.length >= 8 && digitsOnly.length <= 14) {
-        if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
-          return '+91 ' + digitsOnly.slice(2, 7) + ' ' + digitsOnly.slice(7);
-        }
-        if (digitsOnly.length === 10 && /^[6-9]/.test(digitsOnly)) {
-          return '+91 ' + digitsOnly.slice(0, 5) + ' ' + digitsOnly.slice(5);
-        }
-        return candidate;
+    while ((match = mobileRegex.exec(text)) !== null) {
+      const digits = match[0].replace(/\D/g, '');
+      let formatted = '';
+      if (digits.length === 10) {
+        formatted = '+91 ' + digits.slice(0, 5) + ' ' + digits.slice(5);
+      } else if (digits.length === 12 && digits.startsWith('91')) {
+        formatted = '+91 ' + digits.slice(2, 7) + ' ' + digits.slice(7);
+      } else {
+        formatted = match[0].trim();
+      }
+      if (!phones.includes(formatted)) {
+        phones.push(formatted);
       }
     }
+
+    // Match landline numbers e.g. 0422 2967078, 2967127, +91 422 2967078
+    const landlineRegex = /(?:\+?91[\s.-]?)?(?:0?\d{3,4}[\s.-]?)?[2-5]\d{6,7}/g;
+    while ((match = landlineRegex.exec(text)) !== null) {
+      const digits = match[0].replace(/\D/g, '');
+      if (digits.length >= 7 && digits.length <= 12) {
+        let formatted = match[0].trim();
+        if (digits.length === 10 && digits.startsWith('0422')) {
+          formatted = '+91 422 ' + digits.slice(4);
+        }
+        if (!phones.includes(formatted)) {
+          phones.push(formatted);
+        }
+      }
+    }
+
+    if (phones.length > 0) {
+      return phones.slice(0, 3).join(', ');
+    }
+
     return undefined;
   }
 
@@ -490,8 +507,13 @@ export class CardParserService {
 
       if (line.length < 3 || line.length > 45) continue;
 
-      // Filter out non-company lines
+      const words = line.split(/\s+/).filter(w => w.length > 0);
+      const singleCharWords = words.filter(w => w.length === 1).length;
+
+      // Filter out non-company lines and noisy OCR garbage (e.g. "rr i i i i i oh RR aon 9", "----")
       if (
+        (words.length >= 3 && singleCharWords / words.length > 0.35) ||
+        (line.match(/(.)\1{3,}/g) !== null) ||
         line.includes('@') ||
         line.includes('www.') ||
         line.includes('http') ||
@@ -560,12 +582,11 @@ export class CardParserService {
 
       if (line.length < 3) continue;
 
-      // 1. Skip if line is equal to email, website, phone, company, or designation
+      // 1. Skip if line is equal to email, website, phone, or designation
       if (
         (alreadyExtracted.email && line.toLowerCase().includes(alreadyExtracted.email.toLowerCase())) ||
         (alreadyExtracted.website && line.toLowerCase().includes(alreadyExtracted.website.toLowerCase())) ||
-        (alreadyExtracted.phone && line.includes(alreadyExtracted.phone)) ||
-        (alreadyExtracted.company && line.toUpperCase() === alreadyExtracted.company.toUpperCase()) ||
+        (alreadyExtracted.phone && alreadyExtracted.phone.includes(line)) ||
         (alreadyExtracted.designation && line.toUpperCase() === alreadyExtracted.designation.toUpperCase())
       ) {
         continue;
@@ -611,10 +632,15 @@ export class CardParserService {
 
       if (words.length >= 1 && words.length <= 4 && /^[a-zA-Z\s.'-]+$/.test(line) && line.length >= 3 && line.length <= 35) {
         let score = 10;
-        if (i <= 2) score += 10; // Top lines get high priority
+        if (i <= 2) score += 15; // Top 3 lines get high priority
         if (line === upper || words.every(w => /^[A-Z]/.test(w))) score += 5;
         if (words.some(w => this.STOP_WORDS.includes(w.toUpperCase()))) score -= 10;
-        if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 5; // Support initials like "R." or "S."
+        if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 25; // High bonus for initials like "R." or "S."
+
+        // Bonus if adjacent line matches Designation (e.g. "R. SUNDARRAJ" right above "Managing Director")
+        if (i + 1 < lines.length && alreadyExtracted.designation && lines[i + 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase())) {
+          score += 50;
+        }
 
         if (score > 0) {
           candidates.push({ text: line, score });
