@@ -8,6 +8,13 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Disable file watchers to prevent inotify limit crash on Render/Linux free tier
+// (System.IO.IOException: configured user limit 128 on inotify instances reached)
+foreach (var source in builder.Configuration.Sources.OfType<Microsoft.Extensions.Configuration.Json.JsonConfigurationSource>())
+{
+    source.ReloadOnChange = false;
+}
+
 // Add Controllers & Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
