@@ -1,9 +1,30 @@
 {
   "outputDirectory": "dist/exhibition-lead-capture-client/browser",
+  "headers": [
+    {
+      "source": "/ocr/(.*).wasm",
+      "headers": [
+        { "key": "Content-Type", "value": "application/wasm" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/ocr/(.*).js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/ocr/:path*",
+      "destination": "/ocr/:path*"
+    },
+    {
+      "source": "/((?!.*\\.).*)",
       "destination": "/index.html"
     }
   ]
 }
+
