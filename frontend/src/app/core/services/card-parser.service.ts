@@ -419,6 +419,8 @@ export class CardParserService {
               cleaned = cleaned.substring(0, idx).trim();
             }
           }
+          // Clean trailing logo noise words like "TR" or "TM" from right side of logo
+          cleaned = cleaned.replace(/\s+(?:TR|TM|R|C|A|AN|THE|EMPOWERING|TRUST|LOCATION)$/i, '').trim();
           cleaned = cleaned.replace(/[-–—|:\s]+$/, '').trim();
 
           // Multi-Line Link: Check if line[i-1] contains the Brand Name
@@ -671,8 +673,8 @@ export class CardParserService {
   ): string | undefined {
     const scoredLines: { line: string; score: number; index: number }[] = [];
 
-    // Phone digits regex to filter out phone/fax lines
-    const phoneDigitRegex = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b\d{8,12}\b|\[PH\]|☎|📱|📞|tel|mob|phone|fax/i;
+    // Phone digits regex to filter out all mobile/landline digit lines
+    const phoneDigitRegex = /(?:\+?91[\s.-]?)?\d{3,5}[\s.-]?\d{5,7}|\b\d{7,12}\b|\[PH\]|☎|📱|📞|tel|mob|phone|fax/i;
 
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].trim();
@@ -692,6 +694,7 @@ export class CardParserService {
         cleanLine.includes('www.') ||
         cleanLine.includes('http') ||
         phoneDigitRegex.test(cleanLine) ||
+        (alreadyExtracted.phone && alreadyExtracted.phone.includes(cleanLine)) ||
         (alreadyExtracted.name && cleanLine === alreadyExtracted.name) ||
         (alreadyExtracted.designation && cleanLine === alreadyExtracted.designation) ||
         (alreadyExtracted.company && cleanLine.includes(alreadyExtracted.company))

@@ -904,20 +904,16 @@ export class OcrScannerComponent implements OnDestroy {
       let res1 = await this.runTesseractOcr(warped.dataUrl);
       let parsedData1 = this.parser.parseCardText(res1.text, res1.lineMetadata);
 
-      let currentFields = Object.values(parsedData1).filter(v => typeof v === 'string' && v.trim().length > 0).length;
-
-      // Pass 2: Contrast Binarization if fields < 5
-      if (currentFields < 5) {
-        this.statusMessage.set('Adaptive Binarization Pass (Pass 2)...');
-        this.progressPercent.set(65);
-        try {
-          const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
-          const res2 = await this.runTesseractOcr(binarizedUrl);
-          const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
-          parsedData1 = this.parser.mergeCardData(parsedData1, parsedData2);
-        } catch {
-          // fallback
-        }
+      // Pass 2: ALWAYS run Adaptive Contrast Binarization Pass to extract faint/grey text
+      this.statusMessage.set('Adaptive Binarization Pass (Pass 2)...');
+      this.progressPercent.set(65);
+      try {
+        const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
+        const res2 = await this.runTesseractOcr(binarizedUrl);
+        const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
+        parsedData1 = this.parser.mergeCardData(parsedData1, parsedData2);
+      } catch {
+        // fallback
       }
 
       this.progressPercent.set(100);
@@ -950,7 +946,7 @@ export class OcrScannerComponent implements OnDestroy {
       });
 
       await worker.setParameters({
-        tessedit_pageseg_mode: '6' as any
+        tessedit_pageseg_mode: '3' as any
       });
 
       const ret = await worker.recognize(imageDataUrl);
@@ -964,7 +960,7 @@ export class OcrScannerComponent implements OnDestroy {
       console.warn('Local Wasm worker error, executing standard worker fallback...', err);
       const fallbackWorker = await createWorker('eng');
       await fallbackWorker.setParameters({
-        tessedit_pageseg_mode: '6' as any
+        tessedit_pageseg_mode: '3' as any
       });
       const ret = await fallbackWorker.recognize(imageDataUrl);
       await fallbackWorker.terminate();
