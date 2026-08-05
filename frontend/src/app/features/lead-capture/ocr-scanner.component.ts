@@ -1184,10 +1184,12 @@ export class OcrScannerComponent implements OnDestroy {
   private async runTesseractOcr(imageDataUrl: string): Promise<{ text: string; lineMetadata: any[] }> {
     const { createWorker } = await import('tesseract.js');
     let worker: Worker | null = null;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
     try {
       worker = await createWorker('eng', 1, {
-        workerPath: '/ocr/worker.min.js',
-        corePath: '/ocr',
+        workerPath: `${origin}/ocr/worker.min.js`,
+        corePath: `${origin}/ocr`,
         logger: (m) => {
           if (m.status === 'recognizing text' && m.progress) {
             const pct = Math.round(30 + m.progress * 65);
@@ -1209,19 +1211,38 @@ export class OcrScannerComponent implements OnDestroy {
 
       return { text: ret.data.text, lineMetadata };
     } catch (err) {
-      console.warn('Local Wasm worker error, executing standard worker fallback...', err);
-      const fallbackWorker = await createWorker('eng');
-      await fallbackWorker.setParameters({
-        tessedit_pageseg_mode: '11' as any
-      });
-      const ret = await fallbackWorker.recognize(imageDataUrl);
-      await fallbackWorker.terminate();
-      const lineMetadata = (ret.data?.lines || []).map((l: any) => ({
-        text: (l.text || '').trim(),
-        fontSize: l.bbox ? (l.bbox.y1 - l.bbox.y0) : 0
-      })).filter((l: any) => l.text.length > 0);
+      console.warn('Local Wasm worker error, executing CDN worker fallback...', err);
+      try {
+        const fallbackWorker = await createWorker('eng', 1, {
+          workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@v5/dist/worker.min.js',
+          corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5'
+        });
+        await fallbackWorker.setParameters({
+          tessedit_pageseg_mode: '11' as any
+        });
+        const ret = await fallbackWorker.recognize(imageDataUrl);
+        await fallbackWorker.terminate();
+        const lineMetadata = (ret.data?.lines || []).map((l: any) => ({
+          text: (l.text || '').trim(),
+          fontSize: l.bbox ? (l.bbox.y1 - l.bbox.y0) : 0
+        })).filter((l: any) => l.text.length > 0);
 
-      return { text: ret.data.text, lineMetadata };
+        return { text: ret.data.text, lineMetadata };
+      } catch (cdnErr) {
+        console.warn('CDN worker fallback error, executing default worker fallback...', cdnErr);
+        const defaultWorker = await createWorker('eng');
+        await defaultWorker.setParameters({
+          tessedit_pageseg_mode: '11' as any
+        });
+        const ret = await defaultWorker.recognize(imageDataUrl);
+        await defaultWorker.terminate();
+        const lineMetadata = (ret.data?.lines || []).map((l: any) => ({
+          text: (l.text || '').trim(),
+          fontSize: l.bbox ? (l.bbox.y1 - l.bbox.y0) : 0
+        })).filter((l: any) => l.text.length > 0);
+
+        return { text: ret.data.text, lineMetadata };
+      }
     } finally {
       if (worker) {
         await worker.terminate();
