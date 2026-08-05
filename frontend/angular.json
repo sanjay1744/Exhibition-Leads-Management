@@ -24,12 +24,12 @@
                 "input": "public"
               },
               {
-                "glob": "*",
+                "glob": "**/*",
                 "input": "node_modules/tesseract.js-core",
                 "output": "ocr"
               },
               {
-                "glob": "worker.min.js",
+                "glob": "**/*",
                 "input": "node_modules/tesseract.js/dist",
                 "output": "ocr"
               }

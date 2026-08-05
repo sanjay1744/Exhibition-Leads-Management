@@ -1185,11 +1185,13 @@ export class OcrScannerComponent implements OnDestroy {
     const { createWorker } = await import('tesseract.js');
     let worker: Worker | null = null;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const langPath = 'https://tessdata.projectnaptha.com/4.00';
 
     try {
       worker = await createWorker('eng', 1, {
         workerPath: `${origin}/ocr/worker.min.js`,
         corePath: `${origin}/ocr`,
+        langPath: langPath,
         logger: (m) => {
           if (m.status === 'recognizing text' && m.progress) {
             const pct = Math.round(30 + m.progress * 65);
@@ -1215,7 +1217,15 @@ export class OcrScannerComponent implements OnDestroy {
       try {
         const fallbackWorker = await createWorker('eng', 1, {
           workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@v5/dist/worker.min.js',
-          corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5'
+          corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5',
+          langPath: langPath,
+          logger: (m) => {
+            if (m.status === 'recognizing text' && m.progress) {
+              const pct = Math.round(30 + m.progress * 65);
+              this.progressPercent.set(pct);
+              this.statusMessage.set(`Recognizing Card Text (${Math.round(m.progress * 100)}%)...`);
+            }
+          }
         });
         await fallbackWorker.setParameters({
           tessedit_pageseg_mode: '11' as any
@@ -1230,7 +1240,9 @@ export class OcrScannerComponent implements OnDestroy {
         return { text: ret.data.text, lineMetadata };
       } catch (cdnErr) {
         console.warn('CDN worker fallback error, executing default worker fallback...', cdnErr);
-        const defaultWorker = await createWorker('eng');
+        const defaultWorker = await createWorker('eng', 1, {
+          langPath: langPath
+        });
         await defaultWorker.setParameters({
           tessedit_pageseg_mode: '11' as any
         });
