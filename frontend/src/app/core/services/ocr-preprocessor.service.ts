@@ -57,7 +57,7 @@ export class OcrPreprocessorService {
       : await this.loadImage(sourceUrlOrFile);
 
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1600, img.width);
+    canvas.width = Math.max(2400, img.width);
     canvas.height = Math.floor(canvas.width * (img.height / (img.width || 1)));
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('2D Canvas context unsupported');
@@ -84,7 +84,7 @@ export class OcrPreprocessorService {
       : await this.loadImage(sourceUrlOrFile);
 
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1600, img.width);
+    canvas.width = Math.max(2400, img.width);
     canvas.height = Math.floor(canvas.width * (img.height / (img.width || 1)));
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('2D Canvas context unsupported');
@@ -523,7 +523,7 @@ export class OcrPreprocessorService {
     sourceUrlOrFile: string | File,
     corners: CardCorners,
     filter: 'original' | 'vibrant' | 'bw' = 'vibrant',
-    targetWidth: number = 1600
+    targetWidth: number = 1400
   ): Promise<{ dataUrl: string; width: number; height: number }> {
     const img = typeof sourceUrlOrFile === 'string'
       ? await this.loadImageFromUrl(sourceUrlOrFile)

@@ -159,25 +159,56 @@ export class CardParserService {
   }
 
   /**
-   * Merges primary and secondary multi-pass OCR parsed data, retaining the most complete fields
+   * Merges primary and secondary multi-pass OCR parsed data using quality heuristic scoring
    */
   mergeCardData(primary: ExtractedCardData, secondary: ExtractedCardData): ExtractedCardData {
-    const pickBest = (field1?: string, field2?: string): string | undefined => {
+    const scoreField = (str?: string, type?: string): number => {
+      if (!str || !str.trim()) return -100;
+      const val = str.trim();
+      let score = 10;
+
+      // Penalize strings with high proportion of single-character words or random noise
+      const words = val.split(/\s+/).filter(w => w.length > 0);
+      const singleChars = words.filter(w => w.length === 1 && !/^[AI]$/i.test(w)).length;
+      if (words.length >= 2 && singleChars / words.length > 0.25) score -= 50;
+
+      if (type === 'name') {
+        // High score for capitalized initials e.g. "R. SUNDARRAJ"
+        if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 35;
+        // High score for standard Title Case / ALL CAPS person names
+        if (words.every(w => /^[A-Z][a-z.]*$/i.test(w))) score += 20;
+        // Heavy penalty if string contains designation words or noise like "Directo", "Manager", "FN", "hts", "aka"
+        if (/\b(?:director|manager|officer|directo|fn|bs|hts|aka|saaf|saanfor|my)\b/i.test(val)) score -= 50;
+      } else if (type === 'company') {
+        // High score for explicit company suffixes
+        if (this.COMPANY_SUFFIXES.some(s => val.toUpperCase().includes(s))) score += 40;
+        // Penalty for trailing noise symbols like "FN bs"
+        if (/\b(?:fn|bs|hts|my|tr)\b/i.test(val)) score -= 30;
+      } else if (type === 'phone') {
+        if (/^\+91\s[6-9]\d{4}\s\d{5}/.test(val)) score += 30;
+        if (/^\+91\s422\s\d{6,7}/.test(val)) score += 30;
+      }
+
+      return score;
+    };
+
+    const pickBest = (field1?: string, field2?: string, type?: string): string | undefined => {
       if (!field1 && !field2) return undefined;
       if (!field1) return field2;
       if (!field2) return field1;
-      // Prefer field with valid letters/digits and longer length
-      return field1.length >= field2.length ? field1 : field2;
+      const s1 = scoreField(field1, type);
+      const s2 = scoreField(field2, type);
+      return s1 >= s2 ? field1 : field2;
     };
 
     return {
-      name: this.cleanField(pickBest(primary.name, secondary.name), 'name'),
-      designation: this.cleanField(pickBest(primary.designation, secondary.designation), 'designation'),
-      company: this.cleanField(pickBest(primary.company, secondary.company), 'company'),
-      phone: pickBest(primary.phone, secondary.phone),
-      email: pickBest(primary.email, secondary.email),
-      website: pickBest(primary.website, secondary.website),
-      address: pickBest(primary.address, secondary.address),
+      name: this.cleanField(pickBest(primary.name, secondary.name, 'name'), 'name'),
+      designation: this.cleanField(pickBest(primary.designation, secondary.designation, 'designation'), 'designation'),
+      company: this.cleanField(pickBest(primary.company, secondary.company, 'company'), 'company'),
+      phone: pickBest(primary.phone, secondary.phone, 'phone'),
+      email: pickBest(primary.email, secondary.email, 'email'),
+      website: pickBest(primary.website, secondary.website, 'website'),
+      address: pickBest(primary.address, secondary.address, 'address'),
       rawText: primary.rawText || secondary.rawText
     };
   }
@@ -213,7 +244,7 @@ export class CardParserService {
     const matches = normalized.match(emailRegex);
     if (matches && matches.length > 0) {
       let emailStr = matches[0].toLowerCase().trim();
-      emailStr = emailStr.replace(/[.,;:]+$/, '');
+      emailStr = emailStr.replace(/^[^\w]+|[.,;:]+$/g, '');
       emailStr = emailStr.replace(/([a-z0-9]+)1b(\d*@)/gi, '$118$2');
       emailStr = emailStr.replace(/([a-z0-9]+)l8(\d*@)/gi, '$118$2');
       emailStr = emailStr.replace(/@gma[i1l]{1,2}\.(?:com|co|in|1n)$/i, '@gmail.com');
@@ -224,8 +255,8 @@ export class CardParserService {
   }
 
   private extractWebsite(text: string): string | undefined {
-    const webRegex = /(https?:\/\/)?(www\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\/[^\s]*)?/i;
-    const domainRegex = /\b(https?:\/\/)?[a-zA-Z0-9.-]+\.(com|in|co|net|org|io|ai|biz|tech|me)\b(\/[^\s]*)?/i;
+    const webRegex = /(https?:\/\/)?(www\.)[a-zA-Z0-9.-]+\.(com|in|co|net|org|io|ai|biz|tech|me)\b(\/[^\s]*)?/i;
+    const domainRegex = /\b(https?:\/\/)?[a-zA-Z0-9.-]+\.(com|in|co\.in|co|net|org|io|ai|biz|tech|me)\b(\/[^\s]*)?/i;
 
     const lines = text.split('\n');
     for (const line of lines) {
@@ -234,7 +265,7 @@ export class CardParserService {
 
       const match = trimmed.match(webRegex) || trimmed.match(domainRegex);
       if (match) {
-        let url = match[0].toLowerCase().replace(/[.,;:]+$/, '');
+        let url = match[0].toLowerCase().replace(/^[^\w\s]*|[:.,;:]+$/g, '');
         if (!url.startsWith('http') && !url.startsWith('www.')) {
           url = 'https://' + url;
         }

@@ -893,7 +893,7 @@ export class OcrScannerComponent implements OnDestroy {
         src,
         this.docCorners(),
         this.activeDocFilter(),
-        1600
+        1400
       );
 
       this.previewDataUrl.set(warped.dataUrl);
@@ -904,9 +904,9 @@ export class OcrScannerComponent implements OnDestroy {
       let res1 = await this.runTesseractOcr(warped.dataUrl);
       let parsedData1 = this.parser.parseCardText(res1.text, res1.lineMetadata);
 
-      // Pass 2: ALWAYS run Adaptive Contrast Binarization Pass to extract faint/grey text
+      // Pass 2: Adaptive Contrast Binarization Pass (extracts faint/grey ink)
       this.statusMessage.set('Adaptive Binarization Pass (Pass 2)...');
-      this.progressPercent.set(65);
+      this.progressPercent.set(70);
       try {
         const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
         const res2 = await this.runTesseractOcr(binarizedUrl);
