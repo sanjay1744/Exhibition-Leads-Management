@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Output, signal, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { createWorker, Worker } from 'tesseract.js';
+import type { Worker } from 'tesseract.js';
 import { OcrPreprocessorService } from '../../core/services/ocr-preprocessor.service';
 import { CardParserService, ExtractedCardData } from '../../core/services/card-parser.service';
 
@@ -1182,6 +1182,7 @@ export class OcrScannerComponent implements OnDestroy {
   }
 
   private async runTesseractOcr(imageDataUrl: string): Promise<{ text: string; lineMetadata: any[] }> {
+    const { createWorker } = await import('tesseract.js');
     let worker: Worker | null = null;
     try {
       worker = await createWorker('eng', 1, {
