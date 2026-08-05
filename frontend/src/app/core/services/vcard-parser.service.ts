@@ -37,7 +37,7 @@ export class VCardParserService {
     }
 
     // 2. Check for standard vCard format (BEGIN:VCARD ... END:VCARD or containing VCARD keys)
-    if (trimmed.toUpperCase().includes('BEGIN:VCARD') || trimmed.toUpperCase().includes('END:VCARD') || /^(N|FN|ORG|TEL|EMAIL):/m.test(trimmed)) {
+    if (trimmed.toUpperCase().includes('BEGIN:VCARD') || trimmed.toUpperCase().includes('END:VCARD') || /^(N|FN|ORG|TITLE|TEL|EMAIL|URL|ADR):/mi.test(trimmed)) {
       return this.parseVCardFormat(trimmed);
     }
 

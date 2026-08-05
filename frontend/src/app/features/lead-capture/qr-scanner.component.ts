@@ -112,12 +112,15 @@ export { QrParsedContact };
 
     <!-- Live Camera Scanner Modal -->
     @if (showCameraModal()) {
-      <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn relative">
           <div class="flex items-center justify-between border-b pb-3 mb-4">
             <div class="flex items-center gap-2">
               <span class="material-icons text-blue-600">qr_code_scanner</span>
-              <h3 class="text-base font-bold text-slate-900">Scan QR Code / vCard Badge</h3>
+              <div>
+                <h3 class="text-base font-bold text-slate-900">Scan QR Code / vCard Badge</h3>
+                <p class="text-[11px] text-slate-400">Position QR code or vCard inside the scanning reticle</p>
+              </div>
             </div>
             <button (click)="closeCameraModal()" class="text-slate-400 hover:text-slate-600">
               <span class="material-icons">close</span>
@@ -125,23 +128,38 @@ export { QrParsedContact };
           </div>
 
           <!-- Camera Stream Container -->
-          <div class="relative bg-slate-900 rounded-xl overflow-hidden min-h-[260px] flex items-center justify-center border border-slate-800">
-            <div id="qr-scanner-viewport" class="w-full h-full"></div>
+          <div class="relative bg-slate-950 rounded-xl overflow-hidden min-h-[320px] h-[350px] w-full flex items-center justify-center border border-slate-800 shadow-inner">
+            <div id="qr-scanner-viewport" class="w-full h-full min-h-[320px] [&_#qr-shaded-region]:!hidden"></div>
+
+            <!-- Central Visual Target Reticle & Scan Laser Animation -->
+            <div class="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+              <div class="w-[85%] h-[85%] border-2 border-blue-400/80 border-dashed rounded-2xl shadow-[0_0_30px_rgba(59,130,246,0.5)] relative flex items-center justify-center">
+                <!-- Top Corner Brackets -->
+                <div class="absolute -top-1 -left-1 w-7 h-7 border-t-4 border-l-4 border-blue-400 rounded-tl-lg"></div>
+                <div class="absolute -top-1 -right-1 w-7 h-7 border-t-4 border-r-4 border-blue-400 rounded-tr-lg"></div>
+                <!-- Bottom Corner Brackets -->
+                <div class="absolute -bottom-1 -left-1 w-7 h-7 border-b-4 border-l-4 border-blue-400 rounded-bl-lg"></div>
+                <div class="absolute -bottom-1 -right-1 w-7 h-7 border-b-4 border-r-4 border-blue-400 rounded-br-lg"></div>
+
+                <!-- Animated Scan Laser -->
+                <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse shadow-[0_0_12px_#38bdf8]"></div>
+              </div>
+            </div>
 
             @if (isStartingCamera()) {
-              <div class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-white text-xs gap-2">
+              <div class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-white text-xs gap-2 z-20">
                 <span class="material-icons text-3xl animate-spin text-blue-400">sync</span>
-                <span>Initializing Camera...</span>
+                <span>Initializing HD Camera & Multi-Engine Decoder...</span>
               </div>
             }
 
             @if (cameraError()) {
-              <div class="absolute inset-0 bg-slate-900/90 p-4 flex flex-col items-center justify-center text-center text-white text-xs gap-2">
+              <div class="absolute inset-0 bg-slate-900/95 p-4 flex flex-col items-center justify-center text-center text-white text-xs gap-2 z-20">
                 <span class="material-icons text-red-400 text-3xl">videocam_off</span>
                 <span class="font-bold text-red-200">{{ cameraError() }}</span>
                 <button 
                   (click)="startCameraScanner()" 
-                  class="mt-2 bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs"
+                  class="mt-2 bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition"
                 >
                   Retry Camera
                 </button>
@@ -149,15 +167,30 @@ export { QrParsedContact };
             }
           </div>
 
-          <div class="mt-4 flex items-center justify-between text-xs text-slate-500">
-            <span class="flex items-center gap-1">
-              <span class="material-icons text-blue-500 text-sm">center_focus_strong</span>
-              Align QR Code within the frame
-            </span>
+          <div class="mt-4 flex items-center justify-between text-xs text-slate-600">
+            <div class="flex items-center gap-2">
+              @if (availableCameras().length > 1) {
+                <span class="text-[11px] font-bold text-slate-500">Camera:</span>
+                <select 
+                  [ngModel]="selectedCameraId()" 
+                  (ngModelChange)="onCameraSelectChange($event)"
+                  class="text-xs bg-slate-100 border border-slate-300 text-slate-800 font-semibold rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-blue-500 max-w-[200px]"
+                >
+                  @for (cam of availableCameras(); track cam.id) {
+                    <option [value]="cam.id">{{ cam.label || 'Camera ' + ($index + 1) }}</option>
+                  }
+                </select>
+              } @else {
+                <span class="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+                  <span class="material-icons text-blue-500 text-sm">center_focus_strong</span>
+                  Hold phone QR inside frame; system scans full video
+                </span>
+              }
+            </div>
             <button 
               type="button" 
               (click)="closeCameraModal()" 
-              class="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-lg"
+              class="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition"
             >
               Cancel
             </button>
@@ -239,6 +272,9 @@ export class QrScannerComponent implements OnDestroy {
   isStartingCamera = signal(false);
   cameraError = signal<string | null>(null);
 
+  availableCameras = signal<Array<{ id: string; label: string }>>([]);
+  selectedCameraId = signal<string | null>(null);
+
   isScanningFile = signal(false);
   lastScannedData = signal<QrParsedContact | null>(null);
 
@@ -246,6 +282,7 @@ export class QrScannerComponent implements OnDestroy {
   modalData: QrParsedContact = {};
 
   private html5QrCode: Html5Qrcode | null = null;
+  private nativeBarcodeCheckInterval: any = null;
 
   async openCameraModal(): Promise<void> {
     this.showCameraModal.set(true);
@@ -254,36 +291,98 @@ export class QrScannerComponent implements OnDestroy {
   }
 
   async closeCameraModal(): Promise<void> {
+    this.stopNativeBarcodeDetectorLoop();
     await this.stopCameraScanner();
     this.showCameraModal.set(false);
   }
 
-  async startCameraScanner(): Promise<void> {
+  async onCameraSelectChange(deviceId: string): Promise<void> {
+    this.selectedCameraId.set(deviceId);
+    await this.startCameraScanner(deviceId);
+  }
+
+  async startCameraScanner(targetDeviceId?: string): Promise<void> {
     this.isStartingCamera.set(true);
     this.cameraError.set(null);
 
     try {
+      this.stopNativeBarcodeDetectorLoop();
+
       if (this.html5QrCode) {
         await this.stopCameraScanner();
       }
 
+      // Enumerate camera devices
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        this.availableCameras.set(cameras || []);
+        if (cameras && cameras.length > 0 && !targetDeviceId && !this.selectedCameraId()) {
+          const backCam = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('environment') || c.label.toLowerCase().includes('rear'));
+          const initialId = backCam ? backCam.id : cameras[0].id;
+          this.selectedCameraId.set(initialId);
+          targetDeviceId = initialId;
+        }
+      } catch (camErr) {
+        console.warn("Could not query camera devices:", camErr);
+      }
+
+      const activeId = targetDeviceId || this.selectedCameraId();
       this.html5QrCode = new Html5Qrcode("qr-scanner-viewport");
 
       const config = {
-        fps: 10,
-        qrbox: { width: 220, height: 220 },
-        aspectRatio: 1.0
+        fps: 20,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.max(180, Math.floor(minDim * 0.9));
+          return { width: size, height: size };
+        },
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
       };
 
-      await this.html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText: string) => {
-          this.onQrCodeDecoded(decodedText);
-        },
-        () => {}
-      );
+      try {
+        if (activeId) {
+          await this.html5QrCode.start(
+            activeId,
+            config,
+            (decodedText: string) => this.onQrCodeDecoded(decodedText),
+            () => {}
+          );
+        } else {
+          await this.html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText: string) => this.onQrCodeDecoded(decodedText),
+            () => {}
+          );
+        }
+      } catch (primaryErr) {
+        console.warn("Camera start failed with primary constraint, attempting fallback:", primaryErr);
+        try {
+          await this.html5QrCode.start(
+            { facingMode: "user" },
+            config,
+            (decodedText: string) => this.onQrCodeDecoded(decodedText),
+            () => {}
+          );
+        } catch (userErr) {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            await this.html5QrCode.start(
+              cameras[0].id,
+              config,
+              (decodedText: string) => this.onQrCodeDecoded(decodedText),
+              () => {}
+            );
+          } else {
+            throw userErr;
+          }
+        }
+      }
+
       this.isStartingCamera.set(false);
+      this.startNativeBarcodeDetectorLoop();
     } catch (err: any) {
       console.error("QR Camera error:", err);
       this.isStartingCamera.set(false);
@@ -291,7 +390,89 @@ export class QrScannerComponent implements OnDestroy {
     }
   }
 
+  private startNativeBarcodeDetectorLoop(): void {
+    this.stopNativeBarcodeDetectorLoop();
+
+    const hasBarcodeDetector = 'BarcodeDetector' in window;
+    let detector: any = null;
+    if (hasBarcodeDetector) {
+      try {
+        detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+      } catch (e) {
+        console.warn("BarcodeDetector constructor error:", e);
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let isProcessingCanvas = false;
+
+    this.nativeBarcodeCheckInterval = setInterval(async () => {
+      if (!this.showCameraModal() || this.isStartingCamera() || isProcessingCanvas) return;
+
+      const videoEl = document.querySelector('#qr-scanner-viewport video') as HTMLVideoElement;
+      if (!videoEl || videoEl.paused || videoEl.ended || videoEl.readyState < 2) return;
+
+      // Strategy 1: Direct native BarcodeDetector scan on live HD video element
+      if (detector) {
+        try {
+          const barcodes = await detector.detect(videoEl);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            this.stopNativeBarcodeDetectorLoop();
+            this.onQrCodeDecoded(barcodes[0].rawValue);
+            return;
+          }
+        } catch {}
+      }
+
+      // Strategy 2: High-contrast binarized canvas frame scan to eliminate phone screen glare
+      if (ctx) {
+        isProcessingCanvas = true;
+        try {
+          const w = videoEl.videoWidth || 640;
+          const h = videoEl.videoHeight || 480;
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(videoEl, 0, 0, w, h);
+
+          // Apply contrast thresholding for phone screens with reflection
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const d = imgData.data;
+          for (let i = 0; i < d.length; i += 4) {
+            const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            const val = lum > 128 ? 255 : 0;
+            d[i] = val;
+            d[i + 1] = val;
+            d[i + 2] = val;
+          }
+          ctx.putImageData(imgData, 0, 0);
+
+          if (detector) {
+            const binarizedBarcodes = await detector.detect(canvas);
+            if (binarizedBarcodes && binarizedBarcodes.length > 0 && binarizedBarcodes[0].rawValue) {
+              this.stopNativeBarcodeDetectorLoop();
+              this.onQrCodeDecoded(binarizedBarcodes[0].rawValue);
+              return;
+            }
+          }
+        } catch (e) {
+          // Ignore frame processing errors
+        } finally {
+          isProcessingCanvas = false;
+        }
+      }
+    }, 280);
+  }
+
+  private stopNativeBarcodeDetectorLoop(): void {
+    if (this.nativeBarcodeCheckInterval) {
+      clearInterval(this.nativeBarcodeCheckInterval);
+      this.nativeBarcodeCheckInterval = null;
+    }
+  }
+
   private async stopCameraScanner(): Promise<void> {
+    this.stopNativeBarcodeDetectorLoop();
     if (this.html5QrCode) {
       try {
         if (this.html5QrCode.isScanning) {
@@ -481,6 +662,8 @@ END:VCARD`;
   }
 
   ngOnDestroy(): void {
+    this.stopNativeBarcodeDetectorLoop();
     this.stopCameraScanner();
   }
 }
+
