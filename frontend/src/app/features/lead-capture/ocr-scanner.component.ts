@@ -693,8 +693,26 @@ export class OcrScannerComponent implements OnDestroy {
       const avgInnerLum = innerLumCount > 0 ? innerLumSum / innerLumCount : 0;
       const isBrightEnough = avgInnerLum >= 130;
 
-      const isRealCard = hasRectangularBoundary && !isSkinDominated && isBrightEnough;
-      const debugInfo = `Borders:${strongBorders}/4 Skin:${(skinRatio * 100).toFixed(0)}% Lum:${avgInnerLum.toFixed(0)}`;
+      // 4. Calculate image sharpness via Laplacian Variance
+      let sumLap = 0;
+      let sumLapSq = 0;
+      let countLap = 0;
+
+      for (let y = rTop + 5; y < rBottom - 5; y += 3) {
+        for (let x = rLeft + 5; x < rRight - 5; x += 3) {
+          const lCenter = lum(x, y);
+          const lap = 4 * lCenter - lum(x - 1, y) - lum(x + 1, y) - lum(x, y - 1) - lum(x, y + 1);
+          sumLap += lap;
+          sumLapSq += lap * lap;
+          countLap++;
+        }
+      }
+      const meanLap = countLap > 0 ? sumLap / countLap : 0;
+      const lapVariance = countLap > 0 ? (sumLapSq / countLap) - (meanLap * meanLap) : 0;
+      const isSharpEnough = lapVariance >= 45;
+
+      const isRealCard = hasRectangularBoundary && !isSkinDominated && isBrightEnough && isSharpEnough;
+      const debugInfo = `Borders:${strongBorders}/4 Skin:${(skinRatio * 100).toFixed(0)}% Sharp:${lapVariance.toFixed(0)}`;
 
       if (isRealCard) {
         this.cardLockFrames++;
@@ -716,6 +734,8 @@ export class OcrScannerComponent implements OnDestroy {
           this.cameraStatus.set(`No card edges found (${debugInfo})`);
         } else if (!isBrightEnough) {
           this.cameraStatus.set(`Too dark — add lighting (${debugInfo})`);
+        } else if (!isSharpEnough) {
+          this.cameraStatus.set(`Image too blurry — hold steady (${debugInfo})`);
         } else {
           this.cameraStatus.set(`Align card inside frame (${debugInfo})`);
         }
@@ -834,7 +854,7 @@ export class OcrScannerComponent implements OnDestroy {
   private async processCardPipeline(file: File, rotationDegrees: number): Promise<void> {
     this.isProcessing.set(true);
     this.progressPercent.set(10);
-    this.statusMessage.set('Enhancing Card Image...');
+    this.statusMessage.set('Enhancing Card Image (Pass 1)...');
 
     try {
       const processed = await this.preprocessor.preprocessImage(file, {
@@ -844,32 +864,64 @@ export class OcrScannerComponent implements OnDestroy {
       });
       this.previewDataUrl.set(processed.dataUrl);
 
-      this.progressPercent.set(30);
-      this.statusMessage.set('Initializing Offline Tesseract Wasm...');
+      this.progressPercent.set(25);
+      this.statusMessage.set('Recognizing Card Text (Pass 1)...');
 
-      let bestRawText = await this.runTesseractOcr(processed.dataUrl);
-      let parsedData = this.parser.parseCardText(bestRawText);
+      let res1 = await this.runTesseractOcr(processed.dataUrl);
+      let parsedData1 = this.parser.parseCardText(res1.text, res1.lineMetadata);
 
-      const matchedFieldCount = Object.values(parsedData).filter(v => typeof v === 'string' && v.trim().length > 0).length;
+      const matchedFieldCount = Object.values(parsedData1).filter(v => typeof v === 'string' && v.trim().length > 0).length;
       
       if (matchedFieldCount <= 1 && processed.height > processed.width && rotationDegrees === 0) {
         this.statusMessage.set('Vertical card detected, auto-rotating 90°...');
         const rotatedUrl = await this.preprocessor.rotateDataUrl(processed.dataUrl, 90);
-        const rotRawText = await this.runTesseractOcr(rotatedUrl);
-        const rotParsed = this.parser.parseCardText(rotRawText);
+        const rotRes = await this.runTesseractOcr(rotatedUrl);
+        const rotParsed = this.parser.parseCardText(rotRes.text, rotRes.lineMetadata);
 
         const rotMatchCount = Object.values(rotParsed).filter(v => typeof v === 'string' && v.trim().length > 0).length;
         if (rotMatchCount > matchedFieldCount) {
-          bestRawText = rotRawText;
-          parsedData = rotParsed;
+          res1 = rotRes;
+          parsedData1 = rotParsed;
           this.previewDataUrl.set(rotatedUrl);
           this.currentRotation = 90;
         }
       }
 
+      // Pass 2: Multi-Pass Adaptive Contrast Binarization if fewer than 5 fields detected
+      let finalParsedData = parsedData1;
+      let currentFields = Object.values(parsedData1).filter(v => typeof v === 'string' && v.trim().length > 0).length;
+
+      if (currentFields < 5) {
+        this.statusMessage.set('Adaptive Binarization Pass (Pass 2)...');
+        this.progressPercent.set(55);
+        try {
+          const contrastDataUrl = await this.preprocessor.createContrastBinarizedDataUrl(this.previewDataUrl()!);
+          const res2 = await this.runTesseractOcr(contrastDataUrl);
+          const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
+          finalParsedData = this.parser.mergeCardData(finalParsedData, parsedData2);
+          currentFields = Object.values(finalParsedData).filter(v => typeof v === 'string' && v.trim().length > 0).length;
+        } catch {
+          // fallback
+        }
+      }
+
+      // Pass 3: Inverted Color Pass for light text on dark backgrounds if fields still < 5
+      if (currentFields < 5) {
+        this.statusMessage.set('Inverted Color Pass for Dark Backgrounds (Pass 3)...');
+        this.progressPercent.set(80);
+        try {
+          const invertedDataUrl = await this.preprocessor.createInvertedContrastDataUrl(this.previewDataUrl()!);
+          const res3 = await this.runTesseractOcr(invertedDataUrl);
+          const parsedData3 = this.parser.parseCardText(res3.text, res3.lineMetadata);
+          finalParsedData = this.parser.mergeCardData(finalParsedData, parsedData3);
+        } catch {
+          // fallback
+        }
+      }
+
       this.progressPercent.set(100);
-      this.extractedData.set(parsedData);
-      this.cardExtracted.emit(parsedData);
+      this.extractedData.set(finalParsedData);
+      this.cardExtracted.emit(finalParsedData);
     } catch (err) {
       console.error('OCR Processing Error:', err);
       alert('OCR failed to read card image. Please try adjusting crop region in Review & Edit.');
@@ -1052,16 +1104,46 @@ export class OcrScannerComponent implements OnDestroy {
       this.previewDataUrl.set(processed.dataUrl);
       this.currentRotation = Math.round(this.cropTiltAngle());
 
-      this.progressPercent.set(40);
-      this.statusMessage.set('Recognizing Text from Adjusted Card...');
+      this.progressPercent.set(30);
+      this.statusMessage.set('Recognizing Card Text (Pass 1)...');
 
-      const rawText = await this.runTesseractOcr(processed.dataUrl);
-      const parsedData = this.parser.parseCardText(rawText);
+      const res1 = await this.runTesseractOcr(processed.dataUrl);
+      const parsedData1 = this.parser.parseCardText(res1.text, res1.lineMetadata);
+
+      let finalParsedData = parsedData1;
+      let fieldCount = Object.values(parsedData1).filter(v => typeof v === 'string' && v.trim().length > 0).length;
+
+      if (fieldCount < 5) {
+        this.statusMessage.set('Adaptive Binarization Pass (Pass 2)...');
+        this.progressPercent.set(60);
+        try {
+          const contrastDataUrl = await this.preprocessor.createContrastBinarizedDataUrl(processed.dataUrl);
+          const res2 = await this.runTesseractOcr(contrastDataUrl);
+          const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
+          finalParsedData = this.parser.mergeCardData(finalParsedData, parsedData2);
+          fieldCount = Object.values(finalParsedData).filter(v => typeof v === 'string' && v.trim().length > 0).length;
+        } catch {
+          // fallback
+        }
+      }
+
+      if (fieldCount < 5) {
+        this.statusMessage.set('Inverted Color Pass for Dark Backgrounds (Pass 3)...');
+        this.progressPercent.set(85);
+        try {
+          const invertedDataUrl = await this.preprocessor.createInvertedContrastDataUrl(processed.dataUrl);
+          const res3 = await this.runTesseractOcr(invertedDataUrl);
+          const parsedData3 = this.parser.parseCardText(res3.text, res3.lineMetadata);
+          finalParsedData = this.parser.mergeCardData(finalParsedData, parsedData3);
+        } catch {
+          // fallback
+        }
+      }
 
       this.progressPercent.set(100);
-      this.extractedData.set(parsedData);
-      this.modalData = { ...parsedData };
-      this.cardExtracted.emit(parsedData);
+      this.extractedData.set(finalParsedData);
+      this.modalData = { ...finalParsedData };
+      this.cardExtracted.emit(finalParsedData);
       this.isCroppingMode.set(false);
     } catch (err) {
       console.error('Crop & Tilt Scan Error:', err);
@@ -1087,8 +1169,8 @@ export class OcrScannerComponent implements OnDestroy {
     this.statusMessage.set('Scanning Rotated Card...');
 
     try {
-      const rawText = await this.runTesseractOcr(this.previewDataUrl()!);
-      const parsedData = this.parser.parseCardText(rawText);
+      const res = await this.runTesseractOcr(this.previewDataUrl()!);
+      const parsedData = this.parser.parseCardText(res.text, res.lineMetadata);
       this.extractedData.set(parsedData);
       this.modalData = { ...parsedData };
       this.cardExtracted.emit(parsedData);
@@ -1099,7 +1181,7 @@ export class OcrScannerComponent implements OnDestroy {
     }
   }
 
-  private async runTesseractOcr(imageDataUrl: string): Promise<string> {
+  private async runTesseractOcr(imageDataUrl: string): Promise<{ text: string; lineMetadata: any[] }> {
     let worker: Worker | null = null;
     try {
       worker = await createWorker('eng', 1, {
@@ -1114,14 +1196,31 @@ export class OcrScannerComponent implements OnDestroy {
         }
       });
 
+      await worker.setParameters({
+        tessedit_pageseg_mode: '11' as any
+      });
+
       const ret = await worker.recognize(imageDataUrl);
-      return ret.data.text;
+      const lineMetadata = (ret.data?.lines || []).map((l: any) => ({
+        text: (l.text || '').trim(),
+        fontSize: l.bbox ? (l.bbox.y1 - l.bbox.y0) : 0
+      })).filter((l: any) => l.text.length > 0);
+
+      return { text: ret.data.text, lineMetadata };
     } catch (err) {
       console.warn('Local Wasm worker error, executing standard worker fallback...', err);
       const fallbackWorker = await createWorker('eng');
+      await fallbackWorker.setParameters({
+        tessedit_pageseg_mode: '11' as any
+      });
       const ret = await fallbackWorker.recognize(imageDataUrl);
       await fallbackWorker.terminate();
-      return ret.data.text;
+      const lineMetadata = (ret.data?.lines || []).map((l: any) => ({
+        text: (l.text || '').trim(),
+        fontSize: l.bbox ? (l.bbox.y1 - l.bbox.y0) : 0
+      })).filter((l: any) => l.text.length > 0);
+
+      return { text: ret.data.text, lineMetadata };
     } finally {
       if (worker) {
         await worker.terminate();
