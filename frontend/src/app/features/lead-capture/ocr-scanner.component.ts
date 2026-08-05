@@ -1182,8 +1182,15 @@ export class OcrScannerComponent implements OnDestroy {
   }
 
   private async runTesseractOcr(imageDataUrl: string): Promise<{ text: string; lineMetadata: any[] }> {
-    const { createWorker } = await import('tesseract.js');
-    let worker: Worker | null = null;
+    // Handle CommonJS/ESM interop: in production builds (esbuild), the CommonJS
+    // tesseract.js module is wrapped as { default: { createWorker, ... } },
+    // but in dev mode (webpack), it destructures directly. This resolves both.
+    const tesseractModule = await import('tesseract.js') as any;
+    const createWorker = tesseractModule.createWorker || tesseractModule.default?.createWorker;
+    if (!createWorker) {
+      throw new Error('Failed to load tesseract.js: createWorker not found in module exports');
+    }
+    let worker: any = null;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const langPath = 'https://tessdata.projectnaptha.com/4.00';
 
@@ -1192,7 +1199,7 @@ export class OcrScannerComponent implements OnDestroy {
         workerPath: `${origin}/ocr/worker.min.js`,
         corePath: `${origin}/ocr`,
         langPath: langPath,
-        logger: (m) => {
+        logger: (m: any) => {
           if (m.status === 'recognizing text' && m.progress) {
             const pct = Math.round(30 + m.progress * 65);
             this.progressPercent.set(pct);
@@ -1219,7 +1226,7 @@ export class OcrScannerComponent implements OnDestroy {
           workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@v5/dist/worker.min.js',
           corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5',
           langPath: langPath,
-          logger: (m) => {
+          logger: (m: any) => {
             if (m.status === 'recognizing text' && m.progress) {
               const pct = Math.round(30 + m.progress * 65);
               this.progressPercent.set(pct);
