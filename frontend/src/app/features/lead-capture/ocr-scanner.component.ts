@@ -1192,13 +1192,14 @@ export class OcrScannerComponent implements OnDestroy {
     }
     let worker: any = null;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const langPath = 'https://tessdata.projectnaptha.com/4.00';
+    const localLangPath = `${origin}/ocr`;
+    const cdnLangPath = 'https://cdn.jsdelivr.net/gh/tesseract-ocr/tessdata_fast@main';
 
     try {
       worker = await createWorker('eng', 1, {
         workerPath: `${origin}/ocr/worker.min.js`,
         corePath: `${origin}/ocr`,
-        langPath: langPath,
+        langPath: localLangPath,
         logger: (m: any) => {
           if (m.status === 'recognizing text' && m.progress) {
             const pct = Math.round(30 + m.progress * 65);
@@ -1220,12 +1221,13 @@ export class OcrScannerComponent implements OnDestroy {
 
       return { text: ret.data.text, lineMetadata };
     } catch (err) {
-      console.warn('Local Wasm worker error, executing CDN worker fallback...', err);
+      console.warn('Local OCR worker error, executing CDN worker fallback...', err);
       try {
         const fallbackWorker = await createWorker('eng', 1, {
           workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@v5/dist/worker.min.js',
           corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5',
-          langPath: langPath,
+          langPath: cdnLangPath,
+          gzip: false,
           logger: (m: any) => {
             if (m.status === 'recognizing text' && m.progress) {
               const pct = Math.round(30 + m.progress * 65);
@@ -1248,7 +1250,8 @@ export class OcrScannerComponent implements OnDestroy {
       } catch (cdnErr) {
         console.warn('CDN worker fallback error, executing default worker fallback...', cdnErr);
         const defaultWorker = await createWorker('eng', 1, {
-          langPath: langPath
+          langPath: cdnLangPath,
+          gzip: false
         });
         await defaultWorker.setParameters({
           tessedit_pageseg_mode: '11' as any
