@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import type { Worker } from 'tesseract.js';
 import { OcrPreprocessorService, CardCorners, Point2D } from '../../core/services/ocr-preprocessor.service';
-import { CardParserService, ExtractedCardData } from '../../core/services/card-parser.service';
+import { CardParserService, ExtractedCardData, PREDEFINED_DESIGNATIONS } from '../../core/services/card-parser.service';
 
 export { ExtractedCardData };
 
@@ -495,7 +495,18 @@ export { ExtractedCardData };
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Designation / Title</label>
-                <input type="text" [(ngModel)]="modalData.designation" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Manager / Director" />
+                <input 
+                  type="text" 
+                  [(ngModel)]="modalData.designation" 
+                  list="ocr-designations-list" 
+                  class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-medium" 
+                  placeholder="Select or type designation e.g. Business Development Head" 
+                />
+                <datalist id="ocr-designations-list">
+                  @for (des of predefinedDesignations; track des) {
+                    <option [value]="des"></option>
+                  }
+                </datalist>
               </div>
 
               <div>
@@ -541,6 +552,8 @@ export { ExtractedCardData };
 export class OcrScannerComponent implements OnDestroy {
   private preprocessor = inject(OcrPreprocessorService);
   private parser = inject(CardParserService);
+
+  readonly predefinedDesignations = PREDEFINED_DESIGNATIONS;
 
   @Output() cardExtracted = new EventEmitter<ExtractedCardData>();
 
@@ -893,7 +906,7 @@ export class OcrScannerComponent implements OnDestroy {
         src,
         this.docCorners(),
         this.activeDocFilter(),
-        1400
+        1800
       );
 
       this.previewDataUrl.set(warped.dataUrl);
@@ -916,6 +929,7 @@ export class OcrScannerComponent implements OnDestroy {
         // fallback
       }
 
+      parsedData1.photoDataUrl = warped.dataUrl;
       this.progressPercent.set(100);
       this.extractedData.set(parsedData1);
       this.modalData = { ...parsedData1 };

@@ -10,6 +10,7 @@ export interface ExtractedCardData {
   address?: string;
   rawText?: string;
   confidence?: number;
+  photoDataUrl?: string;
 }
 
 export interface OcrLineMetadata {
@@ -17,36 +18,73 @@ export interface OcrLineMetadata {
   fontSize: number; // Line bounding box height in pixels
 }
 
+export const PREDEFINED_DESIGNATIONS = [
+  'Business Development Head',
+  'Business Development Manager',
+  'Business Development Executive',
+  'Chief Executive Officer',
+  'Chief Technology Officer',
+  'Chief Operating Officer',
+  'Chief Financial Officer',
+  'Chief Development Officer',
+  'Chief Marketing Officer',
+  'Managing Director',
+  'Executive Director',
+  'Technical Director',
+  'Director',
+  'President',
+  'Vice President',
+  'General Manager',
+  'Senior Manager',
+  'Project Manager',
+  'Product Manager',
+  'Sales Manager',
+  'Purchase Manager',
+  'Marketing Manager',
+  'Operations Manager',
+  'Regional Manager',
+  'Account Manager',
+  'Relationship Manager',
+  'Manager',
+  'Head of Sales',
+  'Head of Marketing',
+  'Head of Operations',
+  'Head of Business Development',
+  'Head of Engineering',
+  'Head of Purchase',
+  'Lead Engineer',
+  'Senior Engineer',
+  'Software Engineer',
+  'Engineer',
+  'Sales Executive',
+  'Marketing Executive',
+  'Purchase Officer',
+  'Consultant',
+  'Advisor',
+  'Architect',
+  'Specialist',
+  'Founder',
+  'Co-Founder',
+  'Proprietor',
+  'Owner',
+  'Partner',
+  'Executive'
+];
+
 @Injectable({
   providedIn: 'root'
 })
 export class CardParserService {
 
-  private readonly DESIGNATIONS = [
-    'CHIEF DEVELOPMENT OFFICER', 'CDO',
-    'CHIEF EXECUTIVE OFFICER', 'CEO',
-    'CHIEF TECHNOLOGY OFFICER', 'CTO',
-    'CHIEF OPERATING OFFICER', 'COO',
-    'CHIEF FINANCIAL OFFICER', 'CFO',
-    'MANAGING DIRECTOR', 'MARKETING DIRECTOR', 'SALES DIRECTOR', 'FINANCE DIRECTOR', 'MD',
-    'EXECUTIVE DIRECTOR', 'TECHNICAL DIRECTOR', 'DIRECTOR',
-    'VICE PRESIDENT', 'VP', 'PRESIDENT',
-    'GENERAL MANAGER', 'GM', 'SENIOR MANAGER', 'PROJECT MANAGER',
-    'PRODUCT MANAGER', 'SALES MANAGER', 'PURCHASE MANAGER',
-    'BUSINESS DEVELOPMENT MANAGER', 'MARKETING MANAGER', 'OPERATIONS MANAGER',
-    'REGIONAL MANAGER', 'ACCOUNT MANAGER', 'MANAGER',
-    'FOUNDER', 'CO-FOUNDER', 'PROPRIETOR', 'OWNER', 'PARTNER',
-    'LEAD ENGINEER', 'SENIOR ENGINEER', 'SOFTWARE ENGINEER', 'ENGINEER',
-    'DEVELOPER', 'CONSULTANT', 'ADVISOR', 'ARCHITECT', 'SPECIALIST',
-    'ASSOCIATE', 'SALES EXECUTIVE', 'EXECUTIVE', 'REPRESENTATIVE',
-    'HEAD OF SALES', 'HEAD OF MARKETING', 'HEAD OF OPERATIONS', 'HEAD'
-  ];
+  readonly PREDEFINED_DESIGNATIONS = PREDEFINED_DESIGNATIONS;
+
+  private readonly DESIGNATIONS = PREDEFINED_DESIGNATIONS.map(d => d.toUpperCase());
 
   private readonly COMPANY_SUFFIXES = [
     'GROUP OF COMPANIES', 'GROUP', 'COMPANIES',
     'TECH PRIVATE LIMITED', 'TECH PVT LTD', 'PRIVATE LIMITED', 'PVT LTD',
     'LIMITED', 'LTD', 'INCORPORATED', 'INC', 'CORPORATION', 'CORP',
-    'LLP', 'PLC', 'GMBH', 'ENTERPRISES', 'SOLUTIONS',
+    'LLP', 'PLC', 'GMBH', 'ENTERPRISES', 'ENTERPRISE', 'SOLUTIONS',
     'TECHNOLOGIES', 'INFOTECH', 'INDUSTRIES', 'SERVICES', 'SOFTWARE',
     'SYSTEMS', 'LOGISTICS', 'GLOBAL', 'EXPORTS', 'IMPORTS', 'TRADERS',
     'INTERNATIONAL', 'AGENCY', 'STUDIO', 'WORKS', 'VENTURES', 'FINANCE',
@@ -99,6 +137,10 @@ export class CardParserService {
       s = s.replace(/RAI\s+Ree$/i, 'RAJ');
       s = s.replace(/RAI$/i, 'RAJ');
       s = s.replace(/[^a-zA-Z\s.'-]/g, ' ');
+      // Standardize single/double initial dots e.g. "T R Manikandan" -> "T.R. Manikandan", "R SUNDARRAJ" -> "R. SUNDARRAJ"
+      s = s.replace(/^([A-Z])\s+([A-Z])\s+([A-Z][a-z]+)/i, '$1.$2. $3');
+      s = s.replace(/^([A-Z])\s+([A-Z][a-z]+)/i, '$1. $2');
+      s = s.replace(/^([A-Z])\.\s*([A-Z])\s+([A-Z][a-z]+)/i, '$1.$2. $3');
     } else if (type === 'designation') {
       // Allow letters, digits, spaces, ampersands, slashes, hyphens (e.g. "Sales / Marketing Director")
       s = s.replace(/[^a-zA-Z0-9\s&/-]/g, ' ');
@@ -319,32 +361,64 @@ export class CardParserService {
   }
 
   private extractDesignation(lines: string[]): string | undefined {
-    const multiWordDesignations = [
-      'CHIEF EXECUTIVE OFFICER', 'CHIEF TECHNOLOGY OFFICER', 'CHIEF OPERATING OFFICER',
-      'CHIEF FINANCIAL OFFICER', 'CHIEF DEVELOPMENT OFFICER',
-      'MANAGING DIRECTOR', 'MARKETING DIRECTOR', 'SALES DIRECTOR', 'FINANCE DIRECTOR',
-      'TECHNICAL DIRECTOR', 'EXECUTIVE DIRECTOR', 'MANAGING PARTNER',
-      'GENERAL MANAGER', 'SENIOR MANAGER', 'PROJECT MANAGER', 'PRODUCT MANAGER',
-      'SALES MANAGER', 'PURCHASE MANAGER', 'BUSINESS DEVELOPMENT MANAGER',
-      'MARKETING MANAGER', 'OPERATIONS MANAGER', 'REGIONAL MANAGER', 'ACCOUNT MANAGER',
-      'RELATIONSHIP MANAGER', 'VICE PRESIDENT', 'HEAD OF SALES', 'HEAD OF MARKETING', 'HEAD OF OPERATIONS',
-      'SALES EXECUTIVE', 'LEAD ENGINEER', 'SENIOR ENGINEER', 'SOFTWARE ENGINEER'
-    ];
+    const predefinedUpper = PREDEFINED_DESIGNATIONS.map(d => ({
+      raw: d,
+      upper: d.toUpperCase()
+    }));
 
     const singleWordRoles = [
       'DIRECTOR', 'MANAGER', 'PRESIDENT', 'FOUNDER', 'CO-FOUNDER',
       'PROPRIETOR', 'OWNER', 'PARTNER', 'ENGINEER', 'CONSULTANT',
-      'ADVISOR', 'ARCHITECT', 'SPECIALIST', 'EXECUTIVE', 'REPRESENTATIVE'
+      'ADVISOR', 'ARCHITECT', 'SPECIALIST', 'EXECUTIVE', 'REPRESENTATIVE',
+      'HEAD', 'CHIEF', 'OFFICER', 'LEAD'
     ];
 
-    const shortAcronyms = ['CEO', 'CTO', 'COO', 'CFO', 'CDO', 'MD', 'VP', 'GM'];
+    const shortAcronyms = ['CEO', 'CTO', 'COO', 'CFO', 'CDO', 'CMO', 'CIO', 'MD', 'VP', 'GM'];
 
-    // Pass 1: Look for multi-word designation phrases or common OCR typo variations
+    // Dynamic pattern for <Department> <Role> (e.g. "Business Development Head", "Sales Manager")
+    const deptRoleRegex = /\b(?:BUSINESS\s+DEVELOPMENT|SALES|MARKETING|OPERATIONS|PURCHASE|PROCUREMENT|ENGINEERING|TECHNOLOGY|PROJECT|PRODUCT|FINANCE|ACCOUNTS|HR|IT|TECHNICAL|REGIONAL|QUALITY|QA|R&D)\s+(?:HEAD|MANAGER|DIRECTOR|LEAD|EXECUTIVE|OFFICER|VP|CHIEF|ADVISOR|CONSULTANT|SPECIALIST)\b/i;
+
+    // Dynamic pattern for "Head of <Department>" or "Head - <Department>"
+    const headOfDeptRegex = /\bHEAD\s+(?:OF\s+|-|:)?\s*(?:SALES|MARKETING|OPERATIONS|BUSINESS\s+DEVELOPMENT|ENGINEERING|PURCHASE|PROCUREMENT|FINANCE|IT|HR|STRATEGY|TECHNOLOGY|QUALITY|R&D)\b/i;
+
+    // Pass 1: Multi-word & Predefined designation pattern matching
     for (const line of lines) {
       const cleaned = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
       const upper = cleaned.toUpperCase();
+      if (!cleaned || cleaned.length > 60) continue;
 
-      // Check for fuzzy Managing / Relationship / Marketing Director patterns
+      // Skip lines that match company suffixes unless they clearly contain a designation like "Director"
+      if (this.COMPANY_SUFFIXES.some(s => upper.includes(s)) && !upper.includes('DIRECTOR') && !upper.includes('MANAGER')) {
+        continue;
+      }
+
+      // Check against predefined designations
+      for (const item of predefinedUpper) {
+        const regex = new RegExp(`\\b${item.upper.replace(/\s+/g, '\\s+')}\\b`, 'i');
+        if (regex.test(upper)) {
+          return item.raw;
+        }
+      }
+
+      // Check dynamic <Department> <Role> pattern (e.g. "Business Development Head")
+      const deptMatch = cleaned.match(deptRoleRegex);
+      if (deptMatch) {
+        return deptMatch[0];
+      }
+
+      // Check dynamic "Head of <Department>" pattern
+      const headMatch = cleaned.match(headOfDeptRegex);
+      if (headMatch) {
+        return headMatch[0];
+      }
+    }
+
+    // Pass 2: Fuzzy Managing / Relationship / Marketing Director & OCR typo patterns
+    for (const line of lines) {
+      const cleaned = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
+      const upper = cleaned.toUpperCase();
+      if (!cleaned || cleaned.length > 50) continue;
+
       if (/\bMANAG\w*\s+DIRECT\w*\b/i.test(upper) || /\bMARKET\w*\s+DIRECT\w*\b/i.test(upper)) {
         if (/\bMARKET/i.test(upper)) return 'Marketing Director';
         return 'Managing Director';
@@ -354,23 +428,18 @@ export class CardParserService {
         return 'Relationship Manager';
       }
 
-      for (const desig of multiWordDesignations) {
-        const regex = new RegExp(`\\b${desig.replace(/\s+/g, '\\s+')}\\b`, 'i');
-        if (regex.test(upper)) {
-          if (upper === desig || upper.startsWith(desig + ' ') || upper.endsWith(' ' + desig)) {
-            return cleaned;
-          }
-          const match = cleaned.match(regex);
-          return match ? match[0] : desig;
-        }
+      if (/\bBUSI\w*\s+DEVEL\w*\s+(?:HEAD|MANAG\w*|EXEC\w*)\b/i.test(upper)) {
+        if (upper.includes('HEAD')) return 'Business Development Head';
+        if (upper.includes('EXEC')) return 'Business Development Executive';
+        return 'Business Development Manager';
       }
     }
 
-    // Pass 2: Look for single-word role or acronym as standalone word
+    // Pass 3: Single-word roles & Acronyms
     for (const line of lines) {
       const cleaned = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
       const upper = cleaned.toUpperCase();
-      if (cleaned.length > 50) continue;
+      if (!cleaned || cleaned.length > 50) continue;
 
       for (const role of [...singleWordRoles, ...shortAcronyms]) {
         const regex = new RegExp(`\\b${role}\\b`, 'i');
@@ -378,7 +447,23 @@ export class CardParserService {
           if (this.COMPANY_SUFFIXES.some(s => upper.includes(s)) && !upper.includes('DIRECTOR') && !upper.includes('MANAGER')) {
             continue;
           }
-          return cleaned;
+          return role.charAt(0) + role.slice(1).toLowerCase();
+        }
+      }
+    }
+
+    // Pass 4: Fuzzy Levenshtein Distance repair against PREDEFINED_DESIGNATIONS
+    for (const line of lines) {
+      const cleaned = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
+      if (!cleaned || cleaned.length > 45) continue;
+      const upper = cleaned.toUpperCase();
+
+      for (const item of predefinedUpper) {
+        if (Math.abs(upper.length - item.upper.length) <= 3) {
+          const dist = this.levenshteinDistance(upper, item.upper);
+          if (dist >= 1 && dist <= 3) {
+            return item.raw;
+          }
         }
       }
     }
@@ -393,15 +478,7 @@ export class CardParserService {
     lineMetadata: OcrLineMetadata[] = [],
     alreadyExtracted: { name?: string; designation?: string } = {}
   ): string | undefined {
-    // 0. High-Priority Font Size Heuristic (Business card company logos are almost always the largest/boldest text)
-    if (lineMetadata && lineMetadata.length > 0) {
-      const fontCompany = this.extractCompanyByFontSize(lineMetadata, { email, website, ...alreadyExtracted });
-      if (fontCompany) {
-        return fontCompany;
-      }
-    }
-
-    // 1. Explicit Suffix Match or Fuzzy Typo Match (e.g. "limiied" -> "LIMITED", "privste" -> "PRIVATE")
+    // 1. Explicit Suffix Match or Fuzzy Typo Match (High Confidence)
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i];
       const upper = line.toUpperCase();
@@ -437,12 +514,41 @@ export class CardParserService {
         if (repairedUpper.includes(suffix)) {
           let cleaned = line.replace(/["'“”|:~]/g, '').trim();
 
-          // Strip leading logo noise words like "A Yom" before company name
-          cleaned = cleaned.replace(/^(?:[A-Z0-9]{1,3}\s+)+/i, (m) => {
-            // Keep if part of brand like "A B Group"
-            return m.length <= 4 ? '' : m;
-          }).trim();
-          
+          // Strip leading phone digits, numbers, or noise symbols before company name (e.g. "01 923516 63 SRIDHARSHINI ENTERPRISES")
+          cleaned = cleaned.replace(/^(?:\+?\d[\d\s.-]{2,15}|\d{2,10}\s+)+/g, '').trim();
+          cleaned = cleaned.replace(/^[\d\s._\-|/:\\]+/, '').trim();
+
+          // Strip leading designation text if prepended to company line
+          const desKeywords = [
+            'BUSINESS DEVELOPMENT HEAD', 'BUSINESS DEVELOPMENT MANAGER', 'BUSINESS DEVELOPMENT EXECUTIVE',
+            'CHIEF EXECUTIVE OFFICER', 'MANAGING DIRECTOR', 'EXECUTIVE DIRECTOR', 'TECHNICAL DIRECTOR',
+            'SALES MANAGER', 'PURCHASE MANAGER', 'MARKETING MANAGER', 'OPERATIONS MANAGER', 'PROJECT MANAGER',
+            'PRODUCT MANAGER', 'REGIONAL MANAGER', 'ACCOUNT MANAGER', 'RELATIONSHIP MANAGER', 'GENERAL MANAGER',
+            'SENIOR MANAGER', 'HEAD OF SALES', 'HEAD OF MARKETING', 'HEAD OF OPERATIONS', 'HEAD OF BUSINESS DEVELOPMENT',
+            'HEAD OF ENGINEERING', 'HEAD OF PURCHASE', 'SALES EXECUTIVE', 'MARKETING EXECUTIVE', 'PURCHASE OFFICER',
+            'LEAD ENGINEER', 'SENIOR ENGINEER', 'SOFTWARE ENGINEER', 'DIRECTOR', 'MANAGER', 'PRESIDENT', 'FOUNDER',
+            'PROPRIETOR', 'OWNER', 'PARTNER', 'ENGINEER', 'CONSULTANT', 'ADVISOR', 'ARCHITECT', 'SPECIALIST',
+            'EXECUTIVE', 'HEAD', 'CHIEF', 'OFFICER', 'LEAD', 'VP', 'GM', 'MD', 'CEO', 'CTO', 'COO', 'CFO', 'CDO'
+          ];
+
+          if (alreadyExtracted.designation) {
+            const desUpper = alreadyExtracted.designation.toUpperCase();
+            const idx = cleaned.toUpperCase().indexOf(desUpper);
+            if (idx === 0) {
+              cleaned = cleaned.substring(desUpper.length).trim();
+            }
+          }
+
+          for (const desKw of desKeywords) {
+            const idx = cleaned.toUpperCase().indexOf(desKw);
+            if (idx === 0) {
+              cleaned = cleaned.substring(desKw.length).trim();
+            }
+          }
+
+          // Strip single/double leading noise letters (e.g., "J ", "A ") right before brand name
+          cleaned = cleaned.replace(/^[A-Za-z]{1,2}\s+/, '').trim();
+
           // Clean address tail if present on same line
           for (const addrKw of ['COIMBATORE', 'MUMBAI', 'DELHI', 'BANGALORE', 'CHENNAI', 'HYDERABAD', 'PUNE', 'PIN', 'ZIP']) {
             const idx = cleaned.toUpperCase().indexOf(addrKw);
@@ -458,11 +564,17 @@ export class CardParserService {
           if (i > 0) {
             const prevLine = lines[i - 1].trim();
             const prevUpper = prevLine.toUpperCase();
+            const isPrevDesig = desKeywords.some(k => prevUpper.includes(k)) || 
+              (alreadyExtracted.designation && prevUpper.includes(alreadyExtracted.designation.toUpperCase())) ||
+              (alreadyExtracted.name && prevUpper.includes(alreadyExtracted.name.toUpperCase()));
+            const hasDigits = /\d/.test(prevLine);
+
             if (
               prevLine.length >= 2 && prevLine.length <= 25 &&
+              !isPrevDesig &&
+              !hasDigits &&
               !this.ADDRESS_KEYWORD_REGEX.test(prevUpper) &&
-              !prevUpper.includes('@') && !prevUpper.includes('WWW') &&
-              !prevUpper.includes('MANAGING') && !prevUpper.includes('DIRECTOR')
+              !prevUpper.includes('@') && !prevUpper.includes('WWW')
             ) {
               if (!cleaned.toUpperCase().startsWith(prevUpper)) {
                 cleaned = prevLine + ' ' + cleaned;
@@ -509,7 +621,15 @@ export class CardParserService {
       }
     }
 
-    // 4. Fallback: Domain stem from Email or Website
+    // 4. Font Size Heuristic Fallback
+    if (lineMetadata && lineMetadata.length > 0) {
+      const fontCompany = this.extractCompanyByFontSize(lineMetadata, { email, website, ...alreadyExtracted });
+      if (fontCompany) {
+        return fontCompany;
+      }
+    }
+
+    // 5. Fallback: Domain stem from Email or Website
     if (domainSource) {
       const domainMatch = domainSource.match(/(?:www\.|@)([a-zA-Z0-9-]+)\./);
       if (domainMatch && domainMatch[1]) {
@@ -532,6 +652,7 @@ export class CardParserService {
     context: { email?: string; website?: string; name?: string; designation?: string }
   ): string | undefined {
     const phoneDigitRegex = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b\d{8,12}\b|\[PH\]|☎|📱|📞|tel|mob|phone|fax/i;
+    const commonNoiseWords = ['HOW', 'THE', 'AND', 'FOR', 'WITH', 'FROM', 'YOUR', 'OUR', 'WE', 'YOU', 'THIS', 'THAT', 'NOTE', 'TAG', 'LOGO', 'SCAN', 'CARD'];
     const candidates: { line: string; score: number }[] = [];
 
     for (const meta of lineMetadata) {
@@ -543,8 +664,9 @@ export class CardParserService {
       const words = line.split(/\s+/).filter(w => w.length > 0);
       const singleCharWords = words.filter(w => w.length === 1).length;
 
-      // Filter out non-company lines and noisy OCR garbage (e.g. "rr i i i i i oh RR aon 9", "----")
+      // Filter out non-company lines and noisy OCR garbage (e.g. "rr i i i i i oh RR aon 9", "----", "How")
       if (
+        commonNoiseWords.includes(upper) ||
         (words.length >= 3 && singleCharWords / words.length > 0.35) ||
         (line.match(/(.)\1{3,}/g) !== null) ||
         line.includes('@') ||
@@ -597,7 +719,7 @@ export class CardParserService {
     lines: string[],
     alreadyExtracted: { email?: string; phone?: string; website?: string; designation?: string; company?: string }
   ): string | undefined {
-    const namePrefixes = ['MR.', 'MR', 'MS.', 'MS', 'MRS.', 'MRS', 'DR.', 'DR', 'ER.', 'ER', 'PROF.'];
+    const namePrefixes = ['MR.', 'MR', 'MS.', 'MS', 'MRS.', 'MRS', 'DR.', 'DR', 'ER.', 'ER', 'PROF.', 'SHRI', 'SMT.'];
     const candidates: { text: string; score: number }[] = [];
 
     const designationKeywords = [
@@ -620,7 +742,7 @@ export class CardParserService {
         (alreadyExtracted.email && line.toLowerCase().includes(alreadyExtracted.email.toLowerCase())) ||
         (alreadyExtracted.website && line.toLowerCase().includes(alreadyExtracted.website.toLowerCase())) ||
         (alreadyExtracted.phone && alreadyExtracted.phone.includes(line)) ||
-        (alreadyExtracted.designation && line.toUpperCase() === alreadyExtracted.designation.toUpperCase())
+        (alreadyExtracted.designation && upper === alreadyExtracted.designation.toUpperCase())
       ) {
         continue;
       }
@@ -651,7 +773,7 @@ export class CardParserService {
       const words = line.split(/\s+/).filter(w => w.length > 0);
       const firstWordUpper = words[0].toUpperCase();
 
-      const shortNoisyWordCount = words.filter(w => w.length <= 2 && !/^[AEIOU]$/i.test(w)).length;
+      const shortNoisyWordCount = words.filter(w => w.length <= 2 && !/^[AEIOU]$/i.test(w) && !/^[A-Z]\.?$/i.test(w)).length;
       if (words.length >= 3 && shortNoisyWordCount >= Math.ceil(words.length / 2)) {
         continue;
       }
@@ -659,20 +781,22 @@ export class CardParserService {
       const validNameWords = words.filter(w => w.length >= 1 && !this.STOP_WORDS.includes(w.toUpperCase()));
       if (validNameWords.length === 0) continue;
 
+      let score = 10;
       if (namePrefixes.includes(firstWordUpper) && words.length >= 2) {
-        return line;
+        score += 40;
       }
 
-      if (words.length >= 1 && words.length <= 4 && /^[a-zA-Z\s.'-]+$/.test(line) && line.length >= 3 && line.length <= 35) {
-        let score = 10;
-        if (i <= 2) score += 15; // Top 3 lines get high priority
-        if (line === upper || words.every(w => /^[A-Z]/.test(w))) score += 5;
-        if (words.some(w => this.STOP_WORDS.includes(w.toUpperCase()))) score -= 10;
-        if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 25; // High bonus for initials like "R." or "S."
+      if (words.length >= 1 && words.length <= 5 && /^[a-zA-Z\s.'-]+$/.test(line) && line.length >= 3 && line.length <= 40) {
+        if (i <= 2) score += 20; // Top 3 lines get high priority
+        if (line === upper || words.every(w => /^[A-Z]/.test(w))) score += 10;
+        if (words.some(w => this.STOP_WORDS.includes(w.toUpperCase()))) score -= 15;
+        if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 30; // High bonus for initials like "R.", "T.R."
 
-        // Bonus if adjacent line matches Designation (e.g. "R. SUNDARRAJ" right above "Managing Director")
-        if (i + 1 < lines.length && alreadyExtracted.designation && lines[i + 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase())) {
-          score += 50;
+        // High bonus if adjacent line (above or below) matches Designation
+        const nextLineIsDesig = i + 1 < lines.length && alreadyExtracted.designation && lines[i + 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase());
+        const prevLineIsDesig = i > 0 && alreadyExtracted.designation && lines[i - 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase());
+        if (nextLineIsDesig || prevLineIsDesig) {
+          score += 60;
         }
 
         if (score > 0) {
@@ -686,7 +810,7 @@ export class CardParserService {
       return candidates[0].text;
     }
 
-    // Fallback: derive name hint from email prefix if no line name was detected
+    // Last-resort fallback ONLY if no full name candidate line was detected on the card text at all
     if (alreadyExtracted.email) {
       const emailUser = alreadyExtracted.email.split('@')[0].replace(/\d+/g, '').replace(/[._-]+/g, ' ').trim();
       if (emailUser.length >= 3) {

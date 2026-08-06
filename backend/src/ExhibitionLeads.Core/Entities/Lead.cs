@@ -10,6 +10,10 @@ public class Lead
     [Key]
     public Guid Id { get; set; }
 
+    [Required]
+    [MaxLength(50)]
+    public string LeadNumber { get; set; } = string.Empty;
+
     public Guid ExhibitionId { get; set; }
 
     public Guid RepId { get; set; }

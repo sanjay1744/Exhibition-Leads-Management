@@ -76,6 +76,7 @@ var app = builder.Build();
 
 // Enable CORS immediately as the first middleware
 app.UseCors("AllowAngularPwa");
+app.UseStaticFiles();
 
 
 // Ensure DB exists without deleting existing data

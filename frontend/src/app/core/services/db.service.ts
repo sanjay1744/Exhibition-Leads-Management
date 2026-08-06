@@ -20,8 +20,8 @@ export class ApplicationDatabase extends Dexie {
   constructor() {
     super('ExhibitionLeadCaptureDB');
 
-    this.version(1).stores({
-      leads: 'id, exhibitionId, repId, phone, email, syncStatus, createdAt',
+    this.version(2).stores({
+      leads: 'id, &leadNumber, exhibitionId, repId, phone, email, syncStatus, createdAt',
       userSession: 'userId, expiresAt',
       brochures: 'id, title',
     });

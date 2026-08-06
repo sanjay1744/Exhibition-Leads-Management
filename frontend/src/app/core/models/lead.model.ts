@@ -6,6 +6,7 @@ export type SyncStatus = 'Pending' | 'Synced' | 'Failed';
 
 export interface LocalLead {
   id: string; // UUID v4
+  leadNumber: string; // Unique format e.g. S1L09698
   exhibitionId: string;
   repId: string;
   name: string;
