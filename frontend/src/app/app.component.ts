@@ -5,6 +5,7 @@ import { NetworkService } from './core/services/network.service';
 import { SyncService } from './core/services/sync.service';
 import { AuthService } from './core/services/auth.service';
 import { ToastService } from './core/services/toast.service';
+import { ApplicationDatabase } from './core/services/db.service';
 
 @Component({
   selector: 'app-root',
@@ -183,7 +184,26 @@ import { ToastService } from './core/services/toast.service';
             </div>
 
             <!-- Right: Notifications & User Profile Menu Dropdown -->
-            <div class="header-right relative">
+            <div class="header-right relative flex items-center">
+              <!-- Manual Sync to Cloud Action Button -->
+              <button 
+                (click)="triggerSync()"
+                [disabled]="syncService.isSyncing()"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-xs border mr-3"
+                [ngClass]="syncService.pendingCount() > 0 ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 animate-pulse' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
+                [title]="syncService.pendingCount() > 0 ? syncService.pendingCount() + ' unsynced lead(s) waiting for cloud sync' : 'All local leads are fully synced'"
+              >
+                <span class="material-icons text-sm" [ngClass]="{'animate-spin': syncService.isSyncing()}">
+                  {{ syncService.isSyncing() ? 'sync' : 'cloud_upload' }}
+                </span>
+                <span>{{ syncService.isSyncing() ? 'Syncing...' : 'Sync to Cloud' }}</span>
+                @if (syncService.pendingCount() > 0 && !syncService.isSyncing()) {
+                  <span class="bg-white text-amber-800 text-[10px] px-1.5 py-0.2 rounded-full font-black ml-0.5">
+                    {{ syncService.pendingCount() }}
+                  </span>
+                }
+              </button>
+
               <!-- Notifications Icon -->
               <button class="header-icon-btn mr-2" title="Notifications">
                 <span class="material-icons">notifications_none</span>
@@ -208,7 +228,7 @@ import { ToastService } from './core/services/toast.service';
               @if (isProfileMenuOpen()) {
                 <div 
                   (click)="$event.stopPropagation()"
-                  class="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                  class="absolute right-0 top-12 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                 >
                   <!-- Header Info -->
                   <div class="px-4 py-2 border-b border-slate-100">
@@ -222,6 +242,30 @@ import { ToastService } from './core/services/toast.service';
 
                   <!-- Menu Links -->
                   <div class="py-1">
+                    <button 
+                      (click)="triggerSync(); closeProfileMenu()" 
+                      class="w-full flex items-center justify-between px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition text-left"
+                    >
+                      <span class="flex items-center gap-3">
+                        <span class="material-icons text-amber-600 text-base">cloud_upload</span>
+                        Sync Leads to Cloud
+                      </span>
+                      @if (syncService.pendingCount() > 0) {
+                        <span class="bg-amber-100 text-amber-800 text-[10px] px-1.5 rounded-full font-bold">
+                          {{ syncService.pendingCount() }}
+                        </span>
+                      }
+                    </button>
+
+                    <button 
+                      (click)="exportBackup(); closeProfileMenu()" 
+                      class="w-full flex items-center gap-3 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition text-left"
+                      title="Export JSON backup file to USB drive for disaster recovery"
+                    >
+                      <span class="material-icons text-slate-500 text-base">file_download</span>
+                      Export USB Backup (.JSON)
+                    </button>
+
                     <a 
                       routerLink="/stalls" 
                       (click)="closeProfileMenu()" 
@@ -281,7 +325,8 @@ export class AppComponent {
   network = inject(NetworkService);
   auth = inject(AuthService);
   toastService = inject(ToastService);
-  private sync = inject(SyncService);
+  syncService = inject(SyncService);
+  private db = inject(ApplicationDatabase);
   private router = inject(Router);
 
   isSidebarCollapsed = signal(false);
@@ -339,7 +384,28 @@ export class AppComponent {
     this.closeProfileMenu();
   }
 
-  triggerSync(): void {
-    this.sync.syncPendingLeads();
+  async triggerSync(): Promise<void> {
+    if (this.syncService.isSyncing()) return;
+
+    if (this.syncService.pendingCount() === 0) {
+      this.toastService.showInfo('All local leads and business card photos are already synced with the cloud.', 'Cloud Sync');
+      return;
+    }
+
+    const res = await this.syncService.syncPendingLeads();
+    if (res.success) {
+      this.toastService.showSuccess(res.message, 'Cloud Sync Completed');
+    } else {
+      this.toastService.showError(res.message, 'Cloud Sync Failed');
+    }
+  }
+
+  async exportBackup(): Promise<void> {
+    try {
+      await this.db.exportEmergencyBackup();
+      this.toastService.showSuccess('Emergency JSON backup exported successfully! Save this file to your USB drive.', 'USB Backup');
+    } catch (e: any) {
+      this.toastService.showError('Failed to export backup: ' + (e?.message || e), 'USB Backup Failed');
+    }
   }
 }

@@ -25,9 +25,21 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configure Request Body Limits for Large Batch Sync Payloads (up to 100MB)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartBodyLengthLimit = 100_000_000;
+    options.MemoryBufferThreshold = int.MaxValue;
+});
+
 // Configure Port Binding for Cloud Hosting (Render / Fly.io / Azure)
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 100_000_000; // 100 MB
+});
 
 
 // Configure Industrial Standard JWT Bearer Authentication
@@ -77,6 +89,56 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.EnsureCreated();
+
+    // Auto-patch all missing columns for existing SQL Server databases
+    try
+    {
+        if (dbContext.Database.IsSqlServer())
+        {
+            dbContext.Database.ExecuteSqlRaw(@"
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'LeadNumber')
+                    ALTER TABLE Leads ADD LeadNumber NVARCHAR(50) NOT NULL DEFAULT '';
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'StallId')
+                    ALTER TABLE Leads ADD StallId UNIQUEIDENTIFIER NOT NULL DEFAULT '33333333-3333-3333-3333-333333333333';
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'CapturedByUserId')
+                    ALTER TABLE Leads ADD CapturedByUserId UNIQUEIDENTIFIER NOT NULL DEFAULT '11111111-1111-1111-1111-111111111111';
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Designation')
+                    ALTER TABLE Leads ADD Designation NVARCHAR(150) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Website')
+                    ALTER TABLE Leads ADD Website NVARCHAR(250) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Address')
+                    ALTER TABLE Leads ADD Address NVARCHAR(500) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'CaptureMethod')
+                    ALTER TABLE Leads ADD CaptureMethod NVARCHAR(50) NOT NULL DEFAULT 'manual';
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'PhotoUrl')
+                    ALTER TABLE Leads ADD PhotoUrl NVARCHAR(MAX) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'VoiceUrl')
+                    ALTER TABLE Leads ADD VoiceUrl NVARCHAR(MAX) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'VoiceNotesTranscript')
+                    ALTER TABLE Leads ADD VoiceNotesTranscript NVARCHAR(MAX) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'InterestLevel')
+                    ALTER TABLE Leads ADD InterestLevel NVARCHAR(20) NOT NULL DEFAULT 'Warm';
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'ProductCategory')
+                    ALTER TABLE Leads ADD ProductCategory NVARCHAR(MAX) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Priority')
+                    ALTER TABLE Leads ADD Priority NVARCHAR(20) NOT NULL DEFAULT 'Medium';
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Budget')
+                    ALTER TABLE Leads ADD Budget DECIMAL(18,2) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'PurchaseTimeline')
+                    ALTER TABLE Leads ADD PurchaseTimeline NVARCHAR(100) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'FollowUpDate')
+                    ALTER TABLE Leads ADD FollowUpDate DATETIMEOFFSET NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Remarks')
+                    ALTER TABLE Leads ADD Remarks NVARCHAR(MAX) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Status')
+                    ALTER TABLE Leads ADD Status NVARCHAR(30) NOT NULL DEFAULT 'New';
+            ");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Startup] DB column migration note: {ex.Message}");
+    }
 
     if (!dbContext.Users.Any())
     {

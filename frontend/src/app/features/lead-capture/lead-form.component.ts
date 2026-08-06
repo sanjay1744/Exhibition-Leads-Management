@@ -5,6 +5,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { ApplicationDatabase } from '../../core/services/db.service';
 import { LocalLead, CaptureMethod } from '../../core/models/lead.model';
 import { StallService } from '../../core/services/stall.service';
+import { SyncService } from '../../core/services/sync.service';
 import { OcrScannerComponent, ExtractedCardData } from './ocr-scanner.component';
 import { QrScannerComponent, QrParsedContact } from './qr-scanner.component';
 import { VoiceRecorderComponent } from './voice-recorder.component';
@@ -271,6 +272,7 @@ export class LeadFormComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   stallService = inject(StallService);
+  syncService = inject(SyncService);
 
   readonly predefinedDesignations = PREDEFINED_DESIGNATIONS;
 
@@ -472,9 +474,13 @@ export class LeadFormComponent implements OnInit {
       leadNumberToUse = await this.generateNextLeadNumber();
     }
 
-    // Save image directly to device folder Pictures/Exhibition_Card_Images/S1L09698.jpg
+    let savedPhotoPath: string | undefined = undefined;
+
+    // Save image directly to device folder Pictures/Exhibition_Card_Images/S1L09698.jpg & OPFS
     if (this.scannedPhotoDataUrl) {
       await this.saveImageToLocalDeviceFolder(this.scannedPhotoDataUrl, leadNumberToUse);
+      const opfsFileName = `${leadNumberToUse}.webp`;
+      savedPhotoPath = await this.db.saveImageToOPFS(opfsFileName, this.scannedPhotoDataUrl);
     }
 
     const leadToSave: LocalLead = {
@@ -491,6 +497,7 @@ export class LeadFormComponent implements OnInit {
       address: this.address,
       captureMethod: this.captureMethod,
       photoBlob: this.scannedPhotoDataUrl || undefined,
+      photoPath: savedPhotoPath,
       voiceBlob: this.voiceBlob || undefined,
       voiceNotesTranscript: this.voiceNotesTranscript || undefined,
       interestLevel: this.interestLevel,
@@ -504,6 +511,7 @@ export class LeadFormComponent implements OnInit {
     };
 
     await this.db.saveLead(leadToSave);
+    await this.syncService.refreshPendingCount();
     const actionText = this.isEditMode() ? 'updated' : 'saved';
     this.savedMessage.set(`Lead ${actionText} successfully! Redirecting to Leads list...`);
 

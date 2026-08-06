@@ -1,7 +1,13 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { ApplicationDatabase } from './db.service';
 import { NetworkService } from './network.service';
 import { getApiUrl } from '../config/api.config';
+
+export interface SyncResult {
+  success: boolean;
+  syncedCount: number;
+  message: string;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -10,30 +16,46 @@ export class SyncService {
   private db = inject(ApplicationDatabase);
   private network = inject(NetworkService);
 
+  readonly isSyncing = signal<boolean>(false);
+  readonly pendingCount = signal<number>(0);
+  readonly syncProgress = signal<{ current: number; total: number } | null>(null);
+  readonly syncError = signal<string | null>(null);
+
   constructor() {
-    // Automatically trigger sync when network status changes to online
-    window.addEventListener('online', () => {
-      this.syncPendingLeads();
-    });
+    // Initial fetch of pending lead count for UI badges
+    this.refreshPendingCount();
   }
 
   /**
-   * Batch uploads pending local leads to .NET Web API endpoint
+   * Recalculate count of unsynced offline leads
    */
-  async syncPendingLeads(apiBaseUrl?: string): Promise<void> {
+  async refreshPendingCount(): Promise<number> {
+    const count = await this.db.getPendingCount();
+    this.pendingCount.set(count);
+    return count;
+  }
+
+  /**
+   * User-triggered manual batch upload of pending local leads & images to Cloud API / Server
+   */
+  async syncPendingLeads(apiBaseUrl?: string): Promise<SyncResult> {
     const targetBaseUrl = apiBaseUrl || `${getApiUrl()}/v1`;
+    this.syncError.set(null);
+
     if (!this.network.isOnline()) {
-      console.log('[SyncService] Client is offline. Sync skipped.');
-      return;
+      const msg = 'Unable to sync: Internet connection is currently offline.';
+      this.syncError.set(msg);
+      return { success: false, syncedCount: 0, message: msg };
     }
 
     const pendingLeads = await this.db.getPendingLeads();
     if (pendingLeads.length === 0) {
-      console.log('[SyncService] No pending leads to sync.');
-      return;
+      await this.refreshPendingCount();
+      return { success: true, syncedCount: 0, message: 'No pending leads to sync.' };
     }
 
-    console.log(`[SyncService] Uploading ${pendingLeads.length} pending lead(s)...`);
+    this.isSyncing.set(true);
+    this.syncProgress.set({ current: 0, total: pendingLeads.length });
 
     try {
       const payload = {
@@ -70,15 +92,30 @@ export class SyncService {
 
       if (response.ok) {
         const result = await response.json();
-        if (result.syncedIds && result.syncedIds.length > 0) {
+        const syncedCount = result.syncedIds?.length || 0;
+        if (syncedCount > 0) {
           await this.db.markLeadsSynced(result.syncedIds);
-          console.log(`[SyncService] Successfully synced ${result.syncedIds.length} lead(s).`);
         }
+        await this.refreshPendingCount();
+        this.syncProgress.set({ current: syncedCount, total: pendingLeads.length });
+
+        return {
+          success: true,
+          syncedCount: syncedCount,
+          message: `Successfully synced ${syncedCount} of ${pendingLeads.length} lead(s) to the cloud.`
+        };
       } else {
-        console.error('[SyncService] Sync request failed:', response.statusText);
+        const errText = `Sync request failed with status: ${response.status} ${response.statusText}`;
+        this.syncError.set(errText);
+        return { success: false, syncedCount: 0, message: errText };
       }
-    } catch (error) {
-      console.error('[SyncService] Network error during batch sync:', error);
+    } catch (error: any) {
+      const errText = `Network error during cloud sync: ${error?.message || error}`;
+      this.syncError.set(errText);
+      return { success: false, syncedCount: 0, message: errText };
+    } finally {
+      this.isSyncing.set(false);
+      this.syncProgress.set(null);
     }
   }
 }
