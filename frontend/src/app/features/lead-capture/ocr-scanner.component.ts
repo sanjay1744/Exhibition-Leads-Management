@@ -906,7 +906,7 @@ export class OcrScannerComponent implements OnDestroy {
         src,
         this.docCorners(),
         this.activeDocFilter(),
-        1400
+        1800
       );
 
       this.previewDataUrl.set(warped.dataUrl);

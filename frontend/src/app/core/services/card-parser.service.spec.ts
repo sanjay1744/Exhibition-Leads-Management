@@ -104,4 +104,26 @@ describe('CardParserService', () => {
     expect(parsed.email).toBe('sundar1870@gmail.com');
     expect(parsed.website).toBe('www.narengroup.in');
   });
+
+  it('should parse salutations and format initials cleanly without relying on email username', () => {
+    const rawCardText = `
+      Dr. Rajesh V. Sharma
+      Chief Executive Officer
+      AriyAI Solutions
+      rajesh.s@ariyai.com
+      +91 9876543210
+    `;
+    const parsed1 = service.parseCardText(rawCardText);
+    expect(parsed1.name).toBe('Dr. Rajesh V. Sharma');
+    expect(parsed1.designation).toBe('Chief Executive Officer');
+
+    const rawCardText2 = `
+      T R Manikandan
+      Business Development Head
+      Sridharshini Enterprise
+      +91 99449 23516
+    `;
+    const parsed2 = service.parseCardText(rawCardText2);
+    expect(parsed2.name).toBe('T.R. Manikandan');
+  });
 });

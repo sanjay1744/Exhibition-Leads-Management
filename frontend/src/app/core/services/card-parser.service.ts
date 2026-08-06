@@ -136,6 +136,10 @@ export class CardParserService {
       s = s.replace(/RAI\s+Ree$/i, 'RAJ');
       s = s.replace(/RAI$/i, 'RAJ');
       s = s.replace(/[^a-zA-Z\s.'-]/g, ' ');
+      // Standardize single/double initial dots e.g. "T R Manikandan" -> "T.R. Manikandan", "R SUNDARRAJ" -> "R. SUNDARRAJ"
+      s = s.replace(/^([A-Z])\s+([A-Z])\s+([A-Z][a-z]+)/i, '$1.$2. $3');
+      s = s.replace(/^([A-Z])\s+([A-Z][a-z]+)/i, '$1. $2');
+      s = s.replace(/^([A-Z])\.\s*([A-Z])\s+([A-Z][a-z]+)/i, '$1.$2. $3');
     } else if (type === 'designation') {
       // Allow letters, digits, spaces, ampersands, slashes, hyphens (e.g. "Sales / Marketing Director")
       s = s.replace(/[^a-zA-Z0-9\s&/-]/g, ' ');
@@ -714,7 +718,7 @@ export class CardParserService {
     lines: string[],
     alreadyExtracted: { email?: string; phone?: string; website?: string; designation?: string; company?: string }
   ): string | undefined {
-    const namePrefixes = ['MR.', 'MR', 'MS.', 'MS', 'MRS.', 'MRS', 'DR.', 'DR', 'ER.', 'ER', 'PROF.'];
+    const namePrefixes = ['MR.', 'MR', 'MS.', 'MS', 'MRS.', 'MRS', 'DR.', 'DR', 'ER.', 'ER', 'PROF.', 'SHRI', 'SMT.'];
     const candidates: { text: string; score: number }[] = [];
 
     const designationKeywords = [
@@ -737,7 +741,7 @@ export class CardParserService {
         (alreadyExtracted.email && line.toLowerCase().includes(alreadyExtracted.email.toLowerCase())) ||
         (alreadyExtracted.website && line.toLowerCase().includes(alreadyExtracted.website.toLowerCase())) ||
         (alreadyExtracted.phone && alreadyExtracted.phone.includes(line)) ||
-        (alreadyExtracted.designation && line.toUpperCase() === alreadyExtracted.designation.toUpperCase())
+        (alreadyExtracted.designation && upper === alreadyExtracted.designation.toUpperCase())
       ) {
         continue;
       }
@@ -768,7 +772,7 @@ export class CardParserService {
       const words = line.split(/\s+/).filter(w => w.length > 0);
       const firstWordUpper = words[0].toUpperCase();
 
-      const shortNoisyWordCount = words.filter(w => w.length <= 2 && !/^[AEIOU]$/i.test(w)).length;
+      const shortNoisyWordCount = words.filter(w => w.length <= 2 && !/^[AEIOU]$/i.test(w) && !/^[A-Z]\.?$/i.test(w)).length;
       if (words.length >= 3 && shortNoisyWordCount >= Math.ceil(words.length / 2)) {
         continue;
       }
@@ -776,20 +780,22 @@ export class CardParserService {
       const validNameWords = words.filter(w => w.length >= 1 && !this.STOP_WORDS.includes(w.toUpperCase()));
       if (validNameWords.length === 0) continue;
 
+      let score = 10;
       if (namePrefixes.includes(firstWordUpper) && words.length >= 2) {
-        return line;
+        score += 40;
       }
 
-      if (words.length >= 1 && words.length <= 4 && /^[a-zA-Z\s.'-]+$/.test(line) && line.length >= 3 && line.length <= 35) {
-        let score = 10;
-        if (i <= 2) score += 15; // Top 3 lines get high priority
-        if (line === upper || words.every(w => /^[A-Z]/.test(w))) score += 5;
-        if (words.some(w => this.STOP_WORDS.includes(w.toUpperCase()))) score -= 10;
-        if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 25; // High bonus for initials like "R." or "S."
+      if (words.length >= 1 && words.length <= 5 && /^[a-zA-Z\s.'-]+$/.test(line) && line.length >= 3 && line.length <= 40) {
+        if (i <= 2) score += 20; // Top 3 lines get high priority
+        if (line === upper || words.every(w => /^[A-Z]/.test(w))) score += 10;
+        if (words.some(w => this.STOP_WORDS.includes(w.toUpperCase()))) score -= 15;
+        if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 30; // High bonus for initials like "R.", "T.R."
 
-        // Bonus if adjacent line matches Designation (e.g. "R. SUNDARRAJ" right above "Managing Director")
-        if (i + 1 < lines.length && alreadyExtracted.designation && lines[i + 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase())) {
-          score += 50;
+        // High bonus if adjacent line (above or below) matches Designation
+        const nextLineIsDesig = i + 1 < lines.length && alreadyExtracted.designation && lines[i + 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase());
+        const prevLineIsDesig = i > 0 && alreadyExtracted.designation && lines[i - 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase());
+        if (nextLineIsDesig || prevLineIsDesig) {
+          score += 60;
         }
 
         if (score > 0) {
@@ -803,7 +809,7 @@ export class CardParserService {
       return candidates[0].text;
     }
 
-    // Fallback: derive name hint from email prefix if no line name was detected
+    // Last-resort fallback ONLY if no full name candidate line was detected on the card text at all
     if (alreadyExtracted.email) {
       const emailUser = alreadyExtracted.email.split('@')[0].replace(/\d+/g, '').replace(/[._-]+/g, ' ').trim();
       if (emailUser.length >= 3) {
