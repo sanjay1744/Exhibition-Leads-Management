@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Lead>(entity =>
         {
+            entity.HasIndex(e => e.LeadNumber).IsUnique();
             entity.HasIndex(e => e.Phone);
             entity.HasIndex(e => e.Email);
             entity.HasIndex(e => e.ExhibitionId);

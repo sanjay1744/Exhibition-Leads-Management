@@ -68,3 +68,10 @@ Thumbs.db
 logs/
 temp/
 tmp/
+
+# ------------------------------------------
+# Uploads & Media Files
+# ------------------------------------------
+**/wwwroot/uploads/
+**/uploads/card_images/
+
