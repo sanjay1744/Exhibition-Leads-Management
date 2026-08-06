@@ -5,6 +5,8 @@ import { RouterLink, Router } from '@angular/router';
 import { ApplicationDatabase } from '../../core/services/db.service';
 import { LocalLead } from '../../core/models/lead.model';
 import { StallService } from '../../core/services/stall.service';
+import { SyncService } from '../../core/services/sync.service';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-lead-list',
@@ -41,19 +43,67 @@ import { StallService } from '../../core/services/stall.service';
       </div>
 
       <!-- Page Title & Top Action Buttons -->
-      <div class="page-title-bar flex items-center justify-between mb-6">
+      <div class="page-title-bar flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">LEADS</h1>
           <p class="text-xs text-slate-500">Live Grid of Captured Visitor Enquiries {{ selectedStallId() === 'ALL' ? 'for All Stalls' : ('for ' + (stallService.activeStall()?.name || 'Active Stall')) }}</p>
         </div>
 
         <div class="page-actions flex items-center gap-2">
+          <!-- Manual Sync Button -->
+          <button 
+            type="button"
+            (click)="triggerSync()"
+            [disabled]="syncService.isSyncing()"
+            class="btn text-xs px-3.5 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition border"
+            [ngClass]="syncService.pendingCount() > 0 ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 animate-pulse' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-300'"
+            [title]="syncService.pendingCount() > 0 ? 'Upload ' + syncService.pendingCount() + ' offline lead(s) to cloud server' : 'All leads are synced'"
+          >
+            <span class="material-icons text-sm" [ngClass]="{'animate-spin': syncService.isSyncing()}">
+              {{ syncService.isSyncing() ? 'sync' : 'cloud_upload' }}
+            </span>
+            <span>{{ syncService.isSyncing() ? 'Syncing...' : 'Sync to Cloud' }}</span>
+            @if (syncService.pendingCount() > 0 && !syncService.isSyncing()) {
+              <span class="bg-white text-amber-800 text-[10px] px-1.5 py-0.2 rounded-full font-black ml-0.5">
+                {{ syncService.pendingCount() }}
+              </span>
+            }
+          </button>
+
+          <!-- Backup to USB Action Button -->
+          <button 
+            type="button"
+            (click)="exportBackup()"
+            class="btn bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs px-3 py-2 rounded-lg font-bold flex items-center gap-1 shadow-sm"
+            title="Export offline database backup file for USB drive"
+          >
+            <span class="material-icons text-sm">file_download</span>
+            USB Backup
+          </button>
+
           <a routerLink="/capture" class="btn btn-primary text-xs px-4 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-md">
             <span class="material-icons text-sm">add</span>
             Add New Lead
           </a>
         </div>
       </div>
+
+      <!-- Pending Sync Banner Notification -->
+      @if (syncService.pendingCount() > 0) {
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-6 flex flex-wrap items-center justify-between gap-3 text-amber-900 text-xs shadow-xs">
+          <div class="flex items-center gap-2 font-semibold">
+            <span class="material-icons text-amber-600 text-base">cloud_off</span>
+            <span>You have <strong>{{ syncService.pendingCount() }} lead(s)</strong> saved locally waiting for cloud sync. Click "Sync to Cloud" when connected to internet.</span>
+          </div>
+          <button 
+            (click)="triggerSync()"
+            [disabled]="syncService.isSyncing()"
+            class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-lg font-bold shadow-xs transition text-xs flex items-center gap-1"
+          >
+            <span class="material-icons text-xs">cloud_upload</span> Sync Now
+          </button>
+        </div>
+      }
 
       <!-- Main Data Table Container -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
@@ -384,10 +434,38 @@ export class LeadListComponent implements OnInit {
   private db = inject(ApplicationDatabase);
   private router = inject(Router);
   stallService = inject(StallService);
+  syncService = inject(SyncService);
+  toastService = inject(ToastService);
 
   allLeads = signal<LocalLead[]>([]);
   selectedLeadForView = signal<LocalLead | null>(null);
   selectedStallId = signal<string>('ALL');
+
+  async triggerSync(): Promise<void> {
+    if (this.syncService.isSyncing()) return;
+
+    if (this.syncService.pendingCount() === 0) {
+      this.toastService.showInfo('All local leads and business card photos are already synced with the cloud.', 'Cloud Sync');
+      return;
+    }
+
+    const res = await this.syncService.syncPendingLeads();
+    if (res.success) {
+      this.toastService.showSuccess(res.message, 'Cloud Sync Completed');
+      await this.loadLeads();
+    } else {
+      this.toastService.showError(res.message, 'Cloud Sync Failed');
+    }
+  }
+
+  async exportBackup(): Promise<void> {
+    try {
+      await this.db.exportEmergencyBackup();
+      this.toastService.showSuccess('Emergency JSON backup exported successfully! Save this file to your USB drive.', 'USB Backup');
+    } catch (e: any) {
+      this.toastService.showError('Failed to export backup: ' + (e?.message || e), 'USB Backup Failed');
+    }
+  }
 
   pageSize = signal(20);
   pageSizeSelect = 20;

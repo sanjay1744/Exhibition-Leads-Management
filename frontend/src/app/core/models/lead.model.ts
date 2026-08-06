@@ -33,9 +33,14 @@ export interface LocalLead {
   remarks?: string;
   status: LeadStatus;
 
-  // Synchronization Metadata
+  // Synchronization Metadata & Audit Trail
+  photoPath?: string; // Reference to OPFS / local device file path
   syncStatus: SyncStatus;
   syncError?: string;
+  syncedAt?: string;
+  deviceId?: string;
+  appVersion?: string;
+  version?: number;
   createdAt: string; // ISO 8601
   updatedAt: string;
 }
