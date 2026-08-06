@@ -258,6 +258,7 @@ export class LeadFormComponent implements OnInit {
   readonly predefinedDesignations = PREDEFINED_DESIGNATIONS;
 
   editingLeadId: string | null = null;
+  existingLeadNumber: string | null = null;
   existingCreatedAt: string | null = null;
   isEditMode = signal(false);
 
@@ -298,6 +299,7 @@ export class LeadFormComponent implements OnInit {
     const lead = await this.db.getLeadById(id);
     if (lead) {
       this.name = lead.name;
+      this.existingLeadNumber = lead.leadNumber || null;
       this.company = lead.company || '';
       this.phone = lead.phone;
       this.email = lead.email || '';
@@ -314,6 +316,32 @@ export class LeadFormComponent implements OnInit {
       alert('Selected lead record not found.');
       this.router.navigate(['/leads']);
     }
+  }
+
+  async generateNextLeadNumber(): Promise<string> {
+    const activeStall = this.stallService.activeStall();
+    let stallNum = 1;
+    if (activeStall?.code) {
+      const match = activeStall.code.match(/\d+$/) || activeStall.code.match(/\d+/);
+      if (match) {
+        stallNum = parseInt(match[0], 10);
+      }
+    }
+    const prefix = `S${stallNum}L`;
+
+    const allLeads = await this.db.getAllLeads();
+    let maxSeq = 0;
+    for (const lead of allLeads) {
+      if (lead.leadNumber) {
+        const match = lead.leadNumber.match(/S\d+L(\d+)/i);
+        if (match && match[1]) {
+          const seq = parseInt(match[1], 10);
+          if (seq > maxSeq) maxSeq = seq;
+        }
+      }
+    }
+    const nextSeq = maxSeq + 1;
+    return `${prefix}${nextSeq.toString().padStart(5, '0')}`;
   }
 
   onCardExtracted(data: ExtractedCardData): void {
@@ -397,8 +425,14 @@ export class LeadFormComponent implements OnInit {
 
     const activeStallId = this.stallService.activeStall()?.id || '33333333-3333-3333-3333-333333333333';
 
+    let leadNumberToUse = this.existingLeadNumber;
+    if (!leadNumberToUse) {
+      leadNumberToUse = await this.generateNextLeadNumber();
+    }
+
     const leadToSave: LocalLead = {
       id: this.editingLeadId || crypto.randomUUID(),
+      leadNumber: leadNumberToUse,
       exhibitionId: activeStallId,
       repId: 'REP_001',
       name: this.name,

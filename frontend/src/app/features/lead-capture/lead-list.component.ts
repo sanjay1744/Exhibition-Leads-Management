@@ -73,26 +73,32 @@ import { StallService } from '../../core/services/stall.service';
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-[#1a3a5c] text-white text-[11px] font-bold uppercase tracking-wider">
-                <th class="py-2.5 px-4 border-r border-white/20">VISITOR NAME</th>
-                <th class="py-2.5 px-4 border-r border-white/20">STALL NAME</th>
-                <th class="py-2.5 px-4 border-r border-white/20">COMPANY</th>
-                <th class="py-2.5 px-4 border-r border-white/20">MOBILE</th>
-                <th class="py-2.5 px-4 border-r border-white/20">DESIGNATION</th>
-                <th class="py-2.5 px-4 border-r border-white/20 text-center">INTEREST LEVEL</th>
-                <th class="py-2.5 px-4 border-r border-white/20 text-center">SYNC STATUS</th>
-                <th class="py-2.5 px-3 border-r border-white/20 text-center w-14">View</th>
-                <th class="py-2.5 px-3 border-r border-white/20 text-center w-14">Edit</th>
-                <th class="py-2.5 px-3 text-center w-14">Delete</th>
+                <th class="py-1.5 px-4 border-r border-white/20">LEAD NO.</th>
+                <th class="py-1.5 px-4 border-r border-white/20">VISITOR NAME</th>
+                <th class="py-1.5 px-4 border-r border-white/20">STALL NAME</th>
+                <th class="py-1.5 px-4 border-r border-white/20">COMPANY</th>
+                <th class="py-1.5 px-4 border-r border-white/20">MOBILE</th>
+                <th class="py-1.5 px-4 border-r border-white/20">DESIGNATION</th>
+                <th class="py-1.5 px-4 border-r border-white/20 text-center">INTEREST LEVEL</th>
+                <th class="py-1.5 px-4 border-r border-white/20 text-center">SYNC STATUS</th>
+                <th class="py-1.5 px-3 border-r border-white/20 text-center w-14">View</th>
+                <th class="py-1.5 px-3 border-r border-white/20 text-center w-14">Edit</th>
+                <th class="py-1.5 px-3 text-center w-14">Delete</th>
               </tr>
             </thead>
-            <tbody class="text-xs text-slate-700 font-medium">
+            <tbody class="text-xs text-slate-700 font-normal">
               @for (lead of paginatedLeads(); track lead.id; let idx = $index) {
                 <tr 
                   class="border-b border-slate-100 transition"
                   [ngClass]="idx % 2 === 0 ? 'bg-[#f4f8fc]' : 'bg-white'"
                 >
+                  <!-- Lead Number -->
+                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
+                    {{ lead.leadNumber }}
+                  </td>
+
                   <!-- Visitor Name -->
-                  <td class="py-2.5 px-4 font-bold text-slate-900 border-r border-slate-200/60">
+                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
                     <div class="flex items-center justify-between gap-1">
                       <span>{{ lead.name }}</span>
                       @if (lead.voiceBlob || lead.voiceNotesTranscript) {
@@ -102,29 +108,29 @@ import { StallService } from '../../core/services/stall.service';
                   </td>
 
                   <!-- Stall Name -->
-                  <td class="py-2.5 px-4 text-slate-700 font-semibold border-r border-slate-200/60">
+                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
                     {{ getStallName(lead.exhibitionId) }}
                   </td>
 
                   <!-- Company -->
-                  <td class="py-2.5 px-4 text-slate-700 border-r border-slate-200/60">
+                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
                     {{ lead.company }}
                   </td>
 
                   <!-- Mobile -->
-                  <td class="py-2.5 px-4 font-semibold text-slate-800 border-r border-slate-200/60">
+                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
                     {{ lead.phone }}
                   </td>
 
                   <!-- Designation -->
-                  <td class="py-2.5 px-4 text-slate-600 border-r border-slate-200/60">
+                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
                     {{ lead.designation || '-' }}
                   </td>
 
                   <!-- Interest Level -->
-                  <td class="py-2.5 px-4 text-center border-r border-slate-200/60">
+                  <td class="py-1.5 px-4 text-xs font-normal text-center border-r border-slate-200/60">
                     <span 
-                      class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-block"
+                      class="px-2.5 py-0.5 rounded-full text-xs font-normal inline-block"
                       [ngClass]="{
                         'bg-red-100 text-red-700 border border-red-200': lead.interestLevel === 'Hot',
                         'bg-amber-100 text-amber-700 border border-amber-200': lead.interestLevel === 'Warm',
@@ -136,9 +142,9 @@ import { StallService } from '../../core/services/stall.service';
                   </td>
 
                   <!-- Sync Status Pill -->
-                  <td class="py-2.5 px-4 text-center border-r border-slate-200/60">
+                  <td class="py-1.5 px-4 text-xs font-normal text-center border-r border-slate-200/60">
                     <span 
-                      class="px-2.5 py-0.5 rounded text-[10px] font-bold inline-block"
+                      class="px-2.5 py-0.5 rounded text-xs font-normal inline-block"
                       [ngClass]="lead.syncStatus === 'Synced' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-orange-50 text-orange-600 border border-orange-200'"
                     >
                       {{ lead.syncStatus === 'Synced' ? 'Synced' : 'Pending' }}
@@ -146,21 +152,21 @@ import { StallService } from '../../core/services/stall.service';
                   </td>
 
                   <!-- Action Column 1: View Modal Trigger -->
-                  <td class="py-2.5 px-3 text-center border-r border-slate-200/60">
+                  <td class="py-1.5 px-3 text-center border-r border-slate-200/60">
                     <button (click)="openViewModal(lead)" class="text-slate-500 hover:text-blue-600 p-0.5 transition" title="View Details">
                       <span class="material-icons text-base">visibility</span>
                     </button>
                   </td>
 
                   <!-- Action Column 2: Edit -->
-                  <td class="py-2.5 px-3 text-center border-r border-slate-200/60">
+                  <td class="py-1.5 px-3 text-center border-r border-slate-200/60">
                     <button (click)="editLead(lead)" class="text-blue-600 hover:text-blue-800 p-0.5 transition" title="Edit Record">
                       <span class="material-icons text-base">edit</span>
                     </button>
                   </td>
 
                   <!-- Action Column 3: Delete -->
-                  <td class="py-2.5 px-3 text-center">
+                  <td class="py-1.5 px-3 text-center">
                     <button (click)="deleteLead(lead)" class="text-rose-600 hover:text-rose-800 p-0.5 transition" title="Delete Record">
                       <span class="material-icons text-base">delete</span>
                     </button>
@@ -227,7 +233,7 @@ import { StallService } from '../../core/services/stall.service';
                 <span class="material-icons text-blue-200">contact_page</span>
                 <div>
                   <h3 class="text-sm font-bold uppercase tracking-wider">VISITOR LEAD DETAILS</h3>
-                  <p class="text-[11px] text-blue-200 font-mono">ENQ-{{ selectedLeadForView()?.id?.substring(0, 8)?.toUpperCase() }}</p>
+                  <p class="text-[11px] text-blue-200 font-mono">LEAD NO: {{ selectedLeadForView()?.leadNumber || ('ENQ-' + selectedLeadForView()?.id?.substring(0, 8)?.toUpperCase()) }}</p>
                 </div>
               </div>
               <button (click)="closeViewModal()" class="text-white/80 hover:text-white transition">
@@ -370,6 +376,14 @@ export class LeadListComponent implements OnInit {
 
   async loadLeads(): Promise<void> {
     const list = await this.db.getAllLeads();
+    let updated = false;
+    for (let i = 0; i < list.length; i++) {
+      if (!list[i].leadNumber) {
+        list[i].leadNumber = `S1L${(list.length - i).toString().padStart(5, '0')}`;
+        await this.db.saveLead(list[i]);
+        updated = true;
+      }
+    }
     this.allLeads.set(list);
   }
 

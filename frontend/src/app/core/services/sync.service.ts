@@ -37,6 +37,7 @@ export class SyncService {
       const payload = {
         leads: pendingLeads.map((lead) => ({
           id: lead.id,
+          leadNumber: lead.leadNumber,
           exhibitionId: lead.exhibitionId,
           repId: lead.repId,
           name: lead.name,

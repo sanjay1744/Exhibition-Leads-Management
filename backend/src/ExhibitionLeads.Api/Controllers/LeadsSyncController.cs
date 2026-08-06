@@ -11,6 +11,7 @@ namespace ExhibitionLeads.Api.Controllers;
 
 public record SyncLeadDto(
     Guid Id,
+    string? LeadNumber,
     Guid ExhibitionId,
     Guid RepId,
     string Name,
@@ -65,11 +66,17 @@ public class LeadsSyncController : ControllerBase
         foreach (var item in request.Leads)
         {
             var existingLead = await _dbContext.Leads
-                .FirstOrDefaultAsync(l => l.Id == item.Id || (l.Phone == item.Phone && l.Email == item.Email));
+                .FirstOrDefaultAsync(l => l.Id == item.Id 
+                    || (!string.IsNullOrEmpty(item.LeadNumber) && l.LeadNumber == item.LeadNumber) 
+                    || (l.Phone == item.Phone && l.Email == item.Email));
 
             if (existingLead != null)
             {
                 // Deduplicate & Update existing record
+                if (!string.IsNullOrWhiteSpace(item.LeadNumber))
+                {
+                    existingLead.LeadNumber = item.LeadNumber;
+                }
                 existingLead.Name = item.Name;
                 existingLead.Company = item.Company;
                 existingLead.Designation = item.Designation ?? existingLead.Designation;
@@ -80,10 +87,18 @@ public class LeadsSyncController : ControllerBase
             }
             else
             {
+                var leadNumberToAssign = item.LeadNumber;
+                if (string.IsNullOrWhiteSpace(leadNumberToAssign))
+                {
+                    var count = await _dbContext.Leads.CountAsync() + 1;
+                    leadNumberToAssign = $"S1L{count:D5}";
+                }
+
                 // Insert new lead record
                 var newLead = new Lead
                 {
                     Id = item.Id == Guid.Empty ? Guid.NewGuid() : item.Id,
+                    LeadNumber = leadNumberToAssign,
                     ExhibitionId = item.ExhibitionId,
                     RepId = item.RepId,
                     Name = item.Name,
