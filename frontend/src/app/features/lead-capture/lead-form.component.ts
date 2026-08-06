@@ -8,6 +8,7 @@ import { StallService } from '../../core/services/stall.service';
 import { OcrScannerComponent, ExtractedCardData } from './ocr-scanner.component';
 import { QrScannerComponent, QrParsedContact } from './qr-scanner.component';
 import { VoiceRecorderComponent } from './voice-recorder.component';
+import { PREDEFINED_DESIGNATIONS } from '../../core/services/card-parser.service';
 
 @Component({
   selector: 'app-lead-form',
@@ -124,9 +125,15 @@ import { VoiceRecorderComponent } from './voice-recorder.component';
                 <input 
                   [(ngModel)]="designation" 
                   name="designation" 
+                  list="lead-designations-list" 
                   class="form-control pl-10 text-xs font-semibold" 
-                  placeholder="Purchase Manager / Director" 
+                  placeholder="Business Development Head / Director" 
                 />
+                <datalist id="lead-designations-list">
+                  @for (des of predefinedDesignations; track des) {
+                    <option [value]="des"></option>
+                  }
+                </datalist>
               </div>
             </div>
 
@@ -247,6 +254,8 @@ export class LeadFormComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   stallService = inject(StallService);
+
+  readonly predefinedDesignations = PREDEFINED_DESIGNATIONS;
 
   editingLeadId: string | null = null;
   existingCreatedAt: string | null = null;

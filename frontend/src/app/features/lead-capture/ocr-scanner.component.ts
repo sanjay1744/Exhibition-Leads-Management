@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import type { Worker } from 'tesseract.js';
 import { OcrPreprocessorService, CardCorners, Point2D } from '../../core/services/ocr-preprocessor.service';
-import { CardParserService, ExtractedCardData } from '../../core/services/card-parser.service';
+import { CardParserService, ExtractedCardData, PREDEFINED_DESIGNATIONS } from '../../core/services/card-parser.service';
 
 export { ExtractedCardData };
 
@@ -495,7 +495,30 @@ export { ExtractedCardData };
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Designation / Title</label>
-                <input type="text" [(ngModel)]="modalData.designation" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Manager / Director" />
+                <input 
+                  type="text" 
+                  [(ngModel)]="modalData.designation" 
+                  list="ocr-designations-list" 
+                  class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-medium" 
+                  placeholder="Select or type designation e.g. Business Development Head" 
+                />
+                <datalist id="ocr-designations-list">
+                  @for (des of predefinedDesignations; track des) {
+                    <option [value]="des"></option>
+                  }
+                </datalist>
+                <div class="flex flex-wrap gap-1 mt-1.5">
+                  <span class="text-[10px] text-slate-400 font-semibold self-center mr-0.5">Suggestions:</span>
+                  @for (suggest of ['Business Development Head', 'Managing Director', 'Sales Manager', 'Chief Executive Officer', 'Purchase Manager']; track suggest) {
+                    <button 
+                      type="button" 
+                      (click)="modalData.designation = suggest" 
+                      class="text-[10px] bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 font-medium transition"
+                    >
+                      {{ suggest }}
+                    </button>
+                  }
+                </div>
               </div>
 
               <div>
@@ -541,6 +564,8 @@ export { ExtractedCardData };
 export class OcrScannerComponent implements OnDestroy {
   private preprocessor = inject(OcrPreprocessorService);
   private parser = inject(CardParserService);
+
+  readonly predefinedDesignations = PREDEFINED_DESIGNATIONS;
 
   @Output() cardExtracted = new EventEmitter<ExtractedCardData>();
 
