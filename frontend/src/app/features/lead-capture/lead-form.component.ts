@@ -9,6 +9,7 @@ import { OcrScannerComponent, ExtractedCardData } from './ocr-scanner.component'
 import { QrScannerComponent, QrParsedContact } from './qr-scanner.component';
 import { VoiceRecorderComponent } from './voice-recorder.component';
 import { PREDEFINED_DESIGNATIONS } from '../../core/services/card-parser.service';
+import { getApiUrl } from '../../core/config/api.config';
 
 @Component({
   selector: 'app-lead-form',
@@ -58,6 +59,22 @@ import { PREDEFINED_DESIGNATIONS } from '../../core/services/card-parser.service
         </div>
 
         <form (ngSubmit)="saveLead()">
+          @if (scannedPhotoDataUrl) {
+            <div class="flex items-center justify-between bg-blue-50/80 border border-blue-200 p-2.5 rounded-lg text-xs mb-4">
+              <div class="flex items-center gap-3">
+                <img [src]="scannedPhotoDataUrl" alt="Card Preview" class="h-12 w-20 rounded border border-blue-300 object-cover shadow-2xs" />
+                <div>
+                  <span class="font-bold text-blue-900 block flex items-center gap-1">
+                    <span class="material-icons text-sm text-emerald-600">check_circle</span>
+                    Scanned Business Card Attached
+                  </span>
+                  <span class="text-[11px] text-slate-500">Will be saved to local storage & device folder as <strong>{{ existingLeadNumber || 'S1L...' }}.jpg</strong> upon saving</span>
+                </div>
+              </div>
+              <button type="button" (click)="scannedPhotoDataUrl = null" class="text-xs text-rose-600 font-bold hover:underline">Remove Photo</button>
+            </div>
+          }
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <!-- Full Name * (Mandatory) -->
             <div>
@@ -273,6 +290,7 @@ export class LeadFormComponent implements OnInit {
   remarks = '';
   voiceBlob: Blob | string | null = null;
   voiceNotesTranscript: string = '';
+  scannedPhotoDataUrl: string | null = null;
 
   captureMethod: CaptureMethod = 'manual';
   isAutoFilled = signal(false);
@@ -310,6 +328,7 @@ export class LeadFormComponent implements OnInit {
       this.remarks = lead.remarks || '';
       this.voiceBlob = lead.voiceBlob || null;
       this.voiceNotesTranscript = lead.voiceNotesTranscript || '';
+      this.scannedPhotoDataUrl = typeof lead.photoBlob === 'string' ? lead.photoBlob : null;
       this.captureMethod = lead.captureMethod || 'manual';
       this.existingCreatedAt = lead.createdAt;
     } else {
@@ -352,6 +371,7 @@ export class LeadFormComponent implements OnInit {
     if (data.designation) this.designation = data.designation;
     if (data.website) this.website = data.website;
     if (data.address) this.address = data.address;
+    if (data.photoDataUrl) this.scannedPhotoDataUrl = data.photoDataUrl;
     this.captureMethod = 'card_ocr';
     this.isAutoFilled.set(true);
   }
@@ -412,9 +432,31 @@ export class LeadFormComponent implements OnInit {
     this.remarks = '';
     this.voiceBlob = null;
     this.voiceNotesTranscript = '';
+    this.scannedPhotoDataUrl = null;
     this.interestLevel = 'Warm';
     this.captureMethod = 'manual';
     this.isAutoFilled.set(false);
+  }
+
+  private async saveImageToLocalDeviceFolder(dataUrl: string, leadNumber: string): Promise<void> {
+    try {
+      // Direct silent write to device folder via backend local endpoint
+      const apiUrl = `${getApiUrl()}/v1/leads/save-image-local`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadNumber: leadNumber,
+          photoDataUrl: dataUrl
+        })
+      });
+      if (response.ok) {
+        const res = await response.json();
+        console.log(`[LeadForm] Image written directly to device folder: ${res.savedDevicePath}`);
+      }
+    } catch (e) {
+      console.warn('[LeadForm] Backend local folder save offline/unavailable:', e);
+    }
   }
 
   async saveLead(): Promise<void> {
@@ -430,6 +472,11 @@ export class LeadFormComponent implements OnInit {
       leadNumberToUse = await this.generateNextLeadNumber();
     }
 
+    // Save image directly to device folder Pictures/Exhibition_Card_Images/S1L09698.jpg
+    if (this.scannedPhotoDataUrl) {
+      await this.saveImageToLocalDeviceFolder(this.scannedPhotoDataUrl, leadNumberToUse);
+    }
+
     const leadToSave: LocalLead = {
       id: this.editingLeadId || crypto.randomUUID(),
       leadNumber: leadNumberToUse,
@@ -443,6 +490,7 @@ export class LeadFormComponent implements OnInit {
       website: this.website,
       address: this.address,
       captureMethod: this.captureMethod,
+      photoBlob: this.scannedPhotoDataUrl || undefined,
       voiceBlob: this.voiceBlob || undefined,
       voiceNotesTranscript: this.voiceNotesTranscript || undefined,
       interestLevel: this.interestLevel,

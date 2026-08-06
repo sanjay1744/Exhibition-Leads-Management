@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ApplicationDatabase } from './db.service';
 import { NetworkService } from './network.service';
+import { getApiUrl } from '../config/api.config';
 
 @Injectable({
   providedIn: 'root',
@@ -19,7 +20,8 @@ export class SyncService {
   /**
    * Batch uploads pending local leads to .NET Web API endpoint
    */
-  async syncPendingLeads(apiBaseUrl: string = '/api/v1'): Promise<void> {
+  async syncPendingLeads(apiBaseUrl?: string): Promise<void> {
+    const targetBaseUrl = apiBaseUrl || `${getApiUrl()}/v1`;
     if (!this.network.isOnline()) {
       console.log('[SyncService] Client is offline. Sync skipped.');
       return;
@@ -48,6 +50,7 @@ export class SyncService {
           website: lead.website,
           address: lead.address,
           captureMethod: lead.captureMethod,
+          photoDataUrl: typeof lead.photoBlob === 'string' ? lead.photoBlob : undefined,
           interestLevel: lead.interestLevel,
           productCategory: lead.productCategory,
           priority: lead.priority,
@@ -59,7 +62,7 @@ export class SyncService {
         })),
       };
 
-      const response = await fetch(`${apiBaseUrl}/leads/sync`, {
+      const response = await fetch(`${targetBaseUrl}/leads/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -10,6 +10,7 @@ export interface ExtractedCardData {
   address?: string;
   rawText?: string;
   confidence?: number;
+  photoDataUrl?: string;
 }
 
 export interface OcrLineMetadata {

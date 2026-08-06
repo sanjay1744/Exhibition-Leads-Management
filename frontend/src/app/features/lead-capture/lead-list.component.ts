@@ -314,6 +314,29 @@ import { StallService } from '../../core/services/stall.service';
                 </div>
               </div>
 
+              <!-- Business Card Image Section -->
+              @if (selectedLeadForView()?.photoBlob) {
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                  <div class="flex items-center justify-between text-xs font-bold text-[#1a3a5c] uppercase tracking-wide">
+                    <span class="flex items-center gap-1.5">
+                      <span class="material-icons text-sm text-blue-600">credit_card</span>
+                      Scanned Business Card Image
+                    </span>
+                    <button 
+                      type="button" 
+                      (click)="downloadLeadCardImage(selectedLeadForView())" 
+                      class="text-[11px] text-blue-700 hover:text-blue-900 font-bold flex items-center gap-1 bg-blue-100/80 px-2.5 py-1 rounded border border-blue-200 transition shadow-2xs"
+                    >
+                      <span class="material-icons text-xs">download</span>
+                      Download {{ selectedLeadForView()?.leadNumber }}.jpg
+                    </button>
+                  </div>
+                  <div class="flex justify-center bg-slate-900/90 p-2 rounded-lg border border-slate-700">
+                    <img [src]="getCardImageUrl(selectedLeadForView())" alt="Business Card" class="max-h-40 max-w-full object-contain rounded" />
+                  </div>
+                </div>
+              }
+
               <!-- Voice Note Audio & Transcript Section -->
               @if (selectedLeadForView()?.voiceBlob || selectedLeadForView()?.voiceNotesTranscript) {
                 <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
@@ -475,6 +498,30 @@ export class LeadListComponent implements OnInit {
       return lead.voiceBlob;
     }
     return null;
+  }
+
+  getCardImageUrl(lead: LocalLead | null): string | null {
+    if (!lead || !lead.photoBlob) return null;
+    if (typeof lead.photoBlob === 'string') return lead.photoBlob;
+    if (lead.photoBlob instanceof Blob) return URL.createObjectURL(lead.photoBlob);
+    return null;
+  }
+
+  downloadLeadCardImage(lead: LocalLead | null): void {
+    if (!lead) return;
+    const url = this.getCardImageUrl(lead);
+    if (!url) return;
+    const fileName = `${lead.leadNumber || 'S1L00001'}.jpg`;
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      console.warn('[LeadList] Image download failed:', e);
+    }
   }
 
   async deleteLead(lead: LocalLead): Promise<void> {

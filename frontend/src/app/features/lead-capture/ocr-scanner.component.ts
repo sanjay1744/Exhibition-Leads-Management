@@ -929,6 +929,7 @@ export class OcrScannerComponent implements OnDestroy {
         // fallback
       }
 
+      parsedData1.photoDataUrl = warped.dataUrl;
       this.progressPercent.set(100);
       this.extractedData.set(parsedData1);
       this.modalData = { ...parsedData1 };
