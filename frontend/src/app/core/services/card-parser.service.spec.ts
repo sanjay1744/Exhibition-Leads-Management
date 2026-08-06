@@ -45,7 +45,7 @@ describe('CardParserService', () => {
 
     expect(parsed.name).toBe('PUSHPARAJ SUBRAMANIAM');
     expect(parsed.designation).toBe('Chief Development Officer');
-    expect(parsed.company).toBe('Tech Private Limited');
+    expect(parsed.company).toBe('AriyAI Tech Private Limited');
     expect(parsed.email).toBe('pushparaj.s@ariyitech.com');
     expect(parsed.phone).toBe('+91 93444 21012');
     expect(parsed.website).toBe('https://ariyitech.com/');

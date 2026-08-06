@@ -509,12 +509,41 @@ export class CardParserService {
         if (repairedUpper.includes(suffix)) {
           let cleaned = line.replace(/["'“”|:~]/g, '').trim();
 
-          // Strip leading logo noise words like "A Yom" before company name
-          cleaned = cleaned.replace(/^(?:[A-Z0-9]{1,3}\s+)+/i, (m) => {
-            // Keep if part of brand like "A B Group"
-            return m.length <= 4 ? '' : m;
-          }).trim();
-          
+          // Strip leading phone digits, numbers, or noise symbols before company name (e.g. "01 923516 63 SRIDHARSHINI ENTERPRISES")
+          cleaned = cleaned.replace(/^(?:\+?\d[\d\s.-]{2,15}|\d{2,10}\s+)+/g, '').trim();
+          cleaned = cleaned.replace(/^[\d\s._\-|/:\\]+/, '').trim();
+
+          // Strip leading designation text if prepended to company line
+          const desKeywords = [
+            'BUSINESS DEVELOPMENT HEAD', 'BUSINESS DEVELOPMENT MANAGER', 'BUSINESS DEVELOPMENT EXECUTIVE',
+            'CHIEF EXECUTIVE OFFICER', 'MANAGING DIRECTOR', 'EXECUTIVE DIRECTOR', 'TECHNICAL DIRECTOR',
+            'SALES MANAGER', 'PURCHASE MANAGER', 'MARKETING MANAGER', 'OPERATIONS MANAGER', 'PROJECT MANAGER',
+            'PRODUCT MANAGER', 'REGIONAL MANAGER', 'ACCOUNT MANAGER', 'RELATIONSHIP MANAGER', 'GENERAL MANAGER',
+            'SENIOR MANAGER', 'HEAD OF SALES', 'HEAD OF MARKETING', 'HEAD OF OPERATIONS', 'HEAD OF BUSINESS DEVELOPMENT',
+            'HEAD OF ENGINEERING', 'HEAD OF PURCHASE', 'SALES EXECUTIVE', 'MARKETING EXECUTIVE', 'PURCHASE OFFICER',
+            'LEAD ENGINEER', 'SENIOR ENGINEER', 'SOFTWARE ENGINEER', 'DIRECTOR', 'MANAGER', 'PRESIDENT', 'FOUNDER',
+            'PROPRIETOR', 'OWNER', 'PARTNER', 'ENGINEER', 'CONSULTANT', 'ADVISOR', 'ARCHITECT', 'SPECIALIST',
+            'EXECUTIVE', 'HEAD', 'CHIEF', 'OFFICER', 'LEAD', 'VP', 'GM', 'MD', 'CEO', 'CTO', 'COO', 'CFO', 'CDO'
+          ];
+
+          if (alreadyExtracted.designation) {
+            const desUpper = alreadyExtracted.designation.toUpperCase();
+            const idx = cleaned.toUpperCase().indexOf(desUpper);
+            if (idx === 0) {
+              cleaned = cleaned.substring(desUpper.length).trim();
+            }
+          }
+
+          for (const desKw of desKeywords) {
+            const idx = cleaned.toUpperCase().indexOf(desKw);
+            if (idx === 0) {
+              cleaned = cleaned.substring(desKw.length).trim();
+            }
+          }
+
+          // Strip single/double leading noise letters (e.g., "J ", "A ") right before brand name
+          cleaned = cleaned.replace(/^[A-Za-z]{1,2}\s+/, '').trim();
+
           // Clean address tail if present on same line
           for (const addrKw of ['COIMBATORE', 'MUMBAI', 'DELHI', 'BANGALORE', 'CHENNAI', 'HYDERABAD', 'PUNE', 'PIN', 'ZIP']) {
             const idx = cleaned.toUpperCase().indexOf(addrKw);
@@ -530,11 +559,17 @@ export class CardParserService {
           if (i > 0) {
             const prevLine = lines[i - 1].trim();
             const prevUpper = prevLine.toUpperCase();
+            const isPrevDesig = desKeywords.some(k => prevUpper.includes(k)) || 
+              (alreadyExtracted.designation && prevUpper.includes(alreadyExtracted.designation.toUpperCase())) ||
+              (alreadyExtracted.name && prevUpper.includes(alreadyExtracted.name.toUpperCase()));
+            const hasDigits = /\d/.test(prevLine);
+
             if (
               prevLine.length >= 2 && prevLine.length <= 25 &&
+              !isPrevDesig &&
+              !hasDigits &&
               !this.ADDRESS_KEYWORD_REGEX.test(prevUpper) &&
-              !prevUpper.includes('@') && !prevUpper.includes('WWW') &&
-              !prevUpper.includes('MANAGING') && !prevUpper.includes('DIRECTOR')
+              !prevUpper.includes('@') && !prevUpper.includes('WWW')
             ) {
               if (!cleaned.toUpperCase().startsWith(prevUpper)) {
                 cleaned = prevLine + ' ' + cleaned;

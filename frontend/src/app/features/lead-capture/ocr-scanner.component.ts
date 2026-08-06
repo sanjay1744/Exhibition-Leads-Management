@@ -507,18 +507,6 @@ export { ExtractedCardData };
                     <option [value]="des"></option>
                   }
                 </datalist>
-                <div class="flex flex-wrap gap-1 mt-1.5">
-                  <span class="text-[10px] text-slate-400 font-semibold self-center mr-0.5">Suggestions:</span>
-                  @for (suggest of ['Business Development Head', 'Managing Director', 'Sales Manager', 'Chief Executive Officer', 'Purchase Manager']; track suggest) {
-                    <button 
-                      type="button" 
-                      (click)="modalData.designation = suggest" 
-                      class="text-[10px] bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 font-medium transition"
-                    >
-                      {{ suggest }}
-                    </button>
-                  }
-                </div>
               </div>
 
               <div>
