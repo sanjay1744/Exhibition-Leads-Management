@@ -1,5 +1,37 @@
 import { Injectable } from '@angular/core';
 
+export interface FieldCandidateDiagnostic {
+  field: 'name' | 'designation' | 'company' | 'phone' | 'email' | 'website' | 'address';
+  selectedValue?: string;
+  evaluatedLines: { line: string; status: 'selected' | 'rejected' | 'candidate'; score?: number; reason: string }[];
+}
+
+export interface MergeFieldScore {
+  field: string;
+  pass1Val?: string;
+  pass1Score: number;
+  pass2Val?: string;
+  pass2Score: number;
+  winner: 'pass1' | 'pass2' | 'equal' | 'none';
+  finalVal?: string;
+}
+
+export interface OcrDebugTelemetry {
+  timestamp: string;
+  pass1WarpedUrl?: string;
+  pass2BinarizedUrl?: string;
+  pass1RawText?: string;
+  pass2RawText?: string;
+  pass1LineMetadata?: OcrLineMetadata[];
+  pass2LineMetadata?: OcrLineMetadata[];
+  pass1Extracted?: ExtractedCardData;
+  pass2Extracted?: ExtractedCardData;
+  fieldDiagnostics?: FieldCandidateDiagnostic[];
+  mergeScores?: MergeFieldScore[];
+  finalMerged?: ExtractedCardData;
+  apiResponse?: any;
+}
+
 export interface ExtractedCardData {
   name?: string;
   designation?: string;
@@ -220,6 +252,61 @@ export class CardParserService {
       address,
       rawText: cleanedText
     };
+  }
+
+  scoreField(str?: string, type?: string): number {
+    if (!str || !str.trim()) return -100;
+    const val = str.trim();
+    let score = 10;
+
+    const words = val.split(/\s+/).filter(w => w.length > 0);
+    const singleChars = words.filter(w => w.length === 1 && !/^[AI]$/i.test(w)).length;
+    if (words.length >= 2 && singleChars / words.length > 0.25) score -= 50;
+
+    if (type === 'name') {
+      if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 35;
+      if (words.every(w => /^[A-Z][a-z.]*$/i.test(w))) score += 20;
+      if (/\b(?:director|manager|officer|directo|fn|bs|hts|aka|saaf|saanfor|my)\b/i.test(val)) score -= 50;
+    } else if (type === 'company') {
+      if (this.COMPANY_SUFFIXES.some(s => val.toUpperCase().includes(s))) score += 40;
+      if (/\b(?:fn|bs|hts|my|tr)\b/i.test(val)) score -= 30;
+    } else if (type === 'phone') {
+      if (/^\+91\s[6-9]\d{4}\s\d{5}/.test(val)) score += 30;
+      if (/^\+91\s422\s\d{6,7}/.test(val)) score += 30;
+    }
+
+    return score;
+  }
+
+  getDiagnosticBreakdown(rawText: string, lineMetadata: OcrLineMetadata[] = []): FieldCandidateDiagnostic[] {
+    const cleaned = this.sanitizeOcrText(rawText);
+    const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const parsed = this.parseCardText(rawText, lineMetadata);
+
+    const diagnostics: FieldCandidateDiagnostic[] = [];
+    const fields: ('name' | 'designation' | 'company' | 'phone' | 'email' | 'website' | 'address')[] = 
+      ['email', 'phone', 'website', 'designation', 'name', 'company', 'address'];
+
+    for (const field of fields) {
+      const selectedValue = (parsed as any)[field];
+      const evaluatedLines = lines.map(line => {
+        const isMatch = selectedValue && line.toLowerCase().includes(selectedValue.toLowerCase());
+        return {
+          line,
+          status: isMatch ? ('selected' as const) : ('candidate' as const),
+          score: this.scoreField(line, field),
+          reason: isMatch ? `Matched extracted ${field}` : `Evaluated as line candidate for ${field}`
+        };
+      });
+
+      diagnostics.push({
+        field,
+        selectedValue,
+        evaluatedLines
+      });
+    }
+
+    return diagnostics;
   }
 
   /**
