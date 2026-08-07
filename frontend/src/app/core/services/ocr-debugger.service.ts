@@ -90,9 +90,13 @@ export class OcrDebuggerService {
       const finalVal = (finalMerged as any)[f];
 
       let winner: 'pass1' | 'pass2' | 'equal' | 'none' = 'none';
-      if (s1 > s2) winner = 'pass1';
-      else if (s2 > s1) winner = 'pass2';
-      else if (s1 === s2 && s1 > -50) winner = 'equal';
+      if (v1 && s1 >= 0) {
+        winner = 'pass1';
+      } else if (v2 && (!v1 || s2 > s1)) {
+        winner = 'pass2';
+      } else if (v1) {
+        winner = 'pass1';
+      }
 
       mergeScores.push({
         field: f,

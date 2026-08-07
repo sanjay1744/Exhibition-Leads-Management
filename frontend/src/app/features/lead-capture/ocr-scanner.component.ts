@@ -948,16 +948,19 @@ export class OcrScannerComponent implements OnDestroy {
       let res1 = await this.runTesseractOcr(warped.dataUrl);
       let parsedData1 = this.parser.parseCardText(res1.text, res1.lineMetadata);
 
-      // Pass 2: Adaptive Contrast Binarization Pass (extracts faint/grey ink)
-      this.statusMessage.set('Adaptive Binarization Pass (Pass 2)...');
-      this.progressPercent.set(70);
-      try {
-        const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
-        const res2 = await this.runTesseractOcr(binarizedUrl);
-        const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
-        parsedData1 = this.parser.mergeCardData(parsedData1, parsedData2);
-      } catch {
-        // fallback
+      // Pass 2: Secondary Fallback Pass (only triggered as second opinion if Pass 1 is missing fields)
+      const hasMissingFields = !parsedData1.name || !parsedData1.email || !parsedData1.phone || !parsedData1.company;
+      if (hasMissingFields) {
+        this.statusMessage.set('Secondary Fallback Pass (Pass 2)...');
+        this.progressPercent.set(70);
+        try {
+          const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
+          const res2 = await this.runTesseractOcr(binarizedUrl);
+          const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
+          parsedData1 = this.parser.mergeCardData(parsedData1, parsedData2);
+        } catch {
+          // fallback
+        }
       }
 
       parsedData1.photoDataUrl = warped.dataUrl;

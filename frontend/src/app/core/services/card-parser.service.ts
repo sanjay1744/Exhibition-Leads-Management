@@ -345,11 +345,20 @@ export class CardParserService {
 
     const pickBest = (field1?: string, field2?: string, type?: string): string | undefined => {
       if (!field1 && !field2) return undefined;
-      if (!field1) return field2;
-      if (!field2) return field1;
-      const s1 = scoreField(field1, type);
-      const s2 = scoreField(field2, type);
-      return s1 >= s2 ? field1 : field2;
+      const f1 = field1?.trim();
+      const f2 = field2?.trim();
+      if (!f1) return f2;
+      if (!f2) return f1;
+
+      const s1 = scoreField(f1, type);
+      // Pass 1 Primary Rule: If Pass 1 has a valid score (>= 0), keep Pass 1 without letting Pass 2 override it
+      if (s1 >= 0) {
+        return f1;
+      }
+
+      // Pass 2 Secondary Fallback Rule: Only if Pass 1 score was invalid/noisy (< 0), check if Pass 2 is better
+      const s2 = scoreField(f2, type);
+      return s2 > s1 ? f2 : f1;
     };
 
     return {
