@@ -133,14 +133,16 @@ export class CardParserService {
     let s = val.trim();
 
     if (type === 'name') {
-      // Auto-repair common OCR suffix errors on names e.g. "SUNDARRAI Ree" -> "SUNDARRAJ"
+      // Auto-repair common OCR suffix errors on names e.g. "SUNDARRAI Ree" -> "SUNDARRAJ", "SUNDARRA" -> "SUNDARRAJ"
       s = s.replace(/RAI\s+Ree$/i, 'RAJ');
       s = s.replace(/RAI$/i, 'RAJ');
+      s = s.replace(/\b(SUNDAR|PUSHPA|SELVA|DHARMA|NAGA|YUVA|KAMA|NATA|JAYA|MUTHU|BALA|RAM)RAI?\b/i, (m, g1) => g1.toUpperCase() + 'RAJ');
       s = s.replace(/[^a-zA-Z\s.'-]/g, ' ');
       // Standardize single/double initial dots e.g. "T R Manikandan" -> "T.R. Manikandan", "R SUNDARRAJ" -> "R. SUNDARRAJ"
-      s = s.replace(/^([A-Z])\s+([A-Z])\s+([A-Z][a-z]+)/i, '$1.$2. $3');
-      s = s.replace(/^([A-Z])\s+([A-Z][a-z]+)/i, '$1. $2');
-      s = s.replace(/^([A-Z])\.\s*([A-Z])\s+([A-Z][a-z]+)/i, '$1.$2. $3');
+      s = s.replace(/^([A-Z])\s+([A-Z])\s+([A-Z][a-z]+)/, '$1.$2. $3');
+      s = s.replace(/^([A-Z])\s+([A-Z][a-z]+)/, '$1. $2');
+      s = s.replace(/^([A-Z])\s+([A-Z]+)$/, '$1. $2');
+      s = s.replace(/^([A-Z])\.\s*([A-Z])\s+([A-Z][a-z]+)/, '$1.$2. $3');
     } else if (type === 'designation') {
       // Allow letters, digits, spaces, ampersands, slashes, hyphens (e.g. "Sales / Marketing Director")
       s = s.replace(/[^a-zA-Z0-9\s&/-]/g, ' ');
@@ -185,6 +187,26 @@ export class CardParserService {
     // Pass line metadata & extracted name to company extractor
     let company = this.extractCompany(lines, email, website, lineMetadata, { designation, name });
     company = this.cleanField(company, 'company');
+
+    // Strip company brand words or website domain stem if prepended/appended to person's name e.g. "R. SUNDARRAJ naren" -> "R. SUNDARRAJ"
+    if (name && (company || website || email)) {
+      const brandKeywords: string[] = [];
+      if (company) {
+        const compWords = company.split(/\s+/).filter(w => w.length >= 3 && !this.COMPANY_SUFFIXES.includes(w.toUpperCase()));
+        brandKeywords.push(...compWords);
+      }
+      if (website) {
+        const webMatch = website.match(/(?:www\.|@)([a-zA-Z0-9-]+)\./);
+        if (webMatch && webMatch[1]) brandKeywords.push(webMatch[1]);
+      }
+      for (const brand of brandKeywords) {
+        if (brand.length >= 3) {
+          const reg = new RegExp(`\\s+\\b${brand}\\b|\\b${brand}\\b\\s+`, 'gi');
+          name = name.replace(reg, ' ').trim();
+        }
+      }
+      name = this.cleanField(name, 'name');
+    }
 
     const address = this.extractAddress(lines, { email, phone, website, designation, company, name });
 
@@ -514,6 +536,25 @@ export class CardParserService {
         if (repairedUpper.includes(suffix)) {
           let cleaned = line.replace(/["'“”|:~]/g, '').trim();
 
+          // Isolate company brand + suffix, trimming off any leading noise words (e.g. "US A CY Nord") and trailing words (e.g. "prey")
+          const suffixIdx = cleaned.toUpperCase().indexOf(suffix);
+          if (suffixIdx >= 0) {
+            const endIdx = suffixIdx + suffix.length;
+            cleaned = cleaned.substring(0, endIdx).trim();
+
+            const prefixPart = cleaned.substring(0, suffixIdx).trim();
+            if (prefixPart) {
+              const prefixWords = prefixPart.split(/\s+/);
+              const noiseWords = ['US', 'A', 'CY', 'NORD', 'ICON', 'SCAN', 'LOGO', 'TAG', 'TEL', 'MOB', 'PH', 'FAX', 'PREY', 'HTTP', 'WWW', 'LO', 'LW', 'ADD', 'OFFICE', 'SITE', 'LOCATION'];
+              let validStart = prefixWords.length - 1;
+              while (validStart > 0 && !noiseWords.includes(prefixWords[validStart - 1].toUpperCase()) && prefixWords[validStart - 1].length > 1) {
+                validStart--;
+              }
+              const cleanPrefixWords = prefixWords.slice(validStart).filter(w => !noiseWords.includes(w.toUpperCase()));
+              cleaned = (cleanPrefixWords.join(' ') + ' ' + suffix).trim();
+            }
+          }
+
           // Strip leading phone digits, numbers, or noise symbols before company name (e.g. "01 923516 63 SRIDHARSHINI ENTERPRISES")
           cleaned = cleaned.replace(/^(?:\+?\d[\d\s.-]{2,15}|\d{2,10}\s+)+/g, '').trim();
           cleaned = cleaned.replace(/^[\d\s._\-|/:\\]+/, '').trim();
@@ -728,16 +769,35 @@ export class CardParserService {
       'CEO', 'CTO', 'COO', 'CFO', 'CDO', 'MD', 'VP', 'GM'
     ];
 
+    const logoNoiseRegex = /\b(?:EEE|CL|YAT|LE|CARAT|SCAN|LOCATION|EMPOWERING|QUALITY|TRUST|LOGO|ICON|TAG|TV|JU|LW|LO|AKA|FN|BS|HTS|SAAF)\b/i;
+
+    let emailUserStem = '';
+    if (alreadyExtracted.email) {
+      const userPart = alreadyExtracted.email.split('@')[0].replace(/\d+/g, '').replace(/[._-]+/g, ' ').trim();
+      if (userPart.length >= 3) {
+        emailUserStem = userPart.toLowerCase();
+      }
+    }
+
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].trim();
 
-      // Clean leading and trailing non-name symbols like "|", ":", "-", "~"
+      // Clean leading/trailing non-name symbols
       line = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
-      const upper = line.toUpperCase();
 
+      // Strip leading logo noise artifacts prepended to name e.g. "a. Yat le EEE CL R. SUNDARRAJ" -> "R. SUNDARRAJ"
+      line = line.replace(/^(?:[a-z]\.?(?:\s+[a-z]{1,4}|\s+Yat|\s+le|\s+EEE|\s+CL|\s+Lo|\s+LW|\s+Tv|\s+Ju|\s+Scan|\s+Carat)+\s+)+/i, '').trim();
+      line = line.replace(/^(?:[a-z]\s+Yat\s+le\s+EEE\s+CL|[a-z]\.?\s+Yat|[a-z]\.?\s+le|EEE\s+CL|Lo\s+LW)\s*/i, '').trim();
+
+      const upper = line.toUpperCase();
       if (line.length < 3) continue;
 
-      // 1. Skip if line is equal to email, website, phone, or designation
+      // 1. Skip if line contains explicit logo noise words (e.g. "a. Yat le EEE CL")
+      if (logoNoiseRegex.test(upper)) {
+        continue;
+      }
+
+      // 2. Skip if line is equal to email, website, phone, or designation
       if (
         (alreadyExtracted.email && line.toLowerCase().includes(alreadyExtracted.email.toLowerCase())) ||
         (alreadyExtracted.website && line.toLowerCase().includes(alreadyExtracted.website.toLowerCase())) ||
@@ -747,33 +807,34 @@ export class CardParserService {
         continue;
       }
 
-      // 2. Skip if line contains numbers, email, web URL
+      // 3. Skip if line contains numbers, email, web URL
       if (/\d/.test(line) || line.includes('@') || line.includes('www.') || line.includes('.com') || line.includes('http')) {
         continue;
       }
 
-      // 3. Skip if line contains address keywords
+      // 4. Skip if line contains address keywords
       if (this.ADDRESS_KEYWORD_REGEX.test(upper)) {
         continue;
       }
 
-      // 4. Skip if line contains designation keywords as standalone words
+      // 5. Skip if line contains designation keywords as standalone words
       const containsDesignation = designationKeywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(upper));
       if (containsDesignation) {
         continue;
       }
 
-      // 5. Skip if line is a company suffix or brand
+      // 6. Skip if line is a company suffix or brand
       const isCompanySuffix = this.COMPANY_SUFFIXES.some(k => upper.includes(k));
       if (isCompanySuffix) {
         continue;
       }
 
-      // 6. Validate words & filter out random garbled OCR noise
+      // 7. Validate words & filter out random garbled OCR noise
       const words = line.split(/\s+/).filter(w => w.length > 0);
       const firstWordUpper = words[0].toUpperCase();
 
-      const shortNoisyWordCount = words.filter(w => w.length <= 2 && !/^[AEIOU]$/i.test(w) && !/^[A-Z]\.?$/i.test(w)).length;
+      // Reject lines with lowercase single letters (e.g. "a Yat") or excessive short noise
+      const shortNoisyWordCount = words.filter(w => w.length <= 2 && !/^[AEIOU]$/i.test(w) && !/^[A-Z]\.?$/.test(w)).length;
       if (words.length >= 3 && shortNoisyWordCount >= Math.ceil(words.length / 2)) {
         continue;
       }
@@ -787,16 +848,27 @@ export class CardParserService {
       }
 
       if (words.length >= 1 && words.length <= 5 && /^[a-zA-Z\s.'-]+$/.test(line) && line.length >= 3 && line.length <= 40) {
-        if (i <= 2) score += 20; // Top 3 lines get high priority
-        if (line === upper || words.every(w => /^[A-Z]/.test(w))) score += 10;
-        if (words.some(w => this.STOP_WORDS.includes(w.toUpperCase()))) score -= 15;
-        if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 30; // High bonus for initials like "R.", "T.R."
+        if (i <= 2) score += 15; // Top 3 lines get priority
+        if (line === upper || words.every(w => /^[A-Z]/.test(w))) score += 15;
+        if (words.some(w => this.STOP_WORDS.includes(w.toUpperCase()))) score -= 20;
 
-        // High bonus if adjacent line (above or below) matches Designation
-        const nextLineIsDesig = i + 1 < lines.length && alreadyExtracted.designation && lines[i + 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase());
-        const prevLineIsDesig = i > 0 && alreadyExtracted.designation && lines[i - 1].toUpperCase().includes(alreadyExtracted.designation.toUpperCase());
-        if (nextLineIsDesig || prevLineIsDesig) {
-          score += 60;
+        // ONLY uppercase single-letter initials like "R." or "T.R." get +35 bonus (not lowercase "a.")
+        if (words.some(w => /^[A-Z]\.?$/.test(w))) score += 35;
+
+        // Huge bonus (+100) if line contains email username stem e.g. email "sundar1870@gmail.com" matches "R. SUNDARRAJ"
+        if (emailUserStem && upper.toLowerCase().includes(emailUserStem)) {
+          score += 100;
+        }
+
+        // High bonus (+70) if adjacent line (up to 2 lines above or below) matches Designation
+        if (alreadyExtracted.designation) {
+          const desUpper = alreadyExtracted.designation.toUpperCase();
+          for (let j = Math.max(0, i - 2); j <= Math.min(lines.length - 1, i + 2); j++) {
+            if (j !== i && lines[j].toUpperCase().includes(desUpper)) {
+              score += 70;
+              break;
+            }
+          }
         }
 
         if (score > 0) {
@@ -807,19 +879,29 @@ export class CardParserService {
 
     if (candidates.length > 0) {
       candidates.sort((a, b) => b.score - a.score);
-      return candidates[0].text;
-    }
-
-    // Last-resort fallback ONLY if no full name candidate line was detected on the card text at all
-    if (alreadyExtracted.email) {
-      const emailUser = alreadyExtracted.email.split('@')[0].replace(/\d+/g, '').replace(/[._-]+/g, ' ').trim();
-      if (emailUser.length >= 3) {
-        const capitalized = emailUser.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-        return capitalized;
+      if (candidates[0].score >= 30) {
+        return candidates[0].text;
       }
     }
 
-    return undefined;
+    // Email username cross-match fallback if candidate score was low or no candidates passed
+    if (emailUserStem) {
+      for (const line of lines) {
+        const clean = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
+        const upper = clean.toUpperCase();
+        if (clean.length >= 3 && clean.length <= 40 && upper.toLowerCase().includes(emailUserStem)) {
+          if (!logoNoiseRegex.test(upper) && !/\d/.test(clean) && !clean.includes('@')) {
+            return clean;
+          }
+        }
+      }
+
+      // Last-resort capitalized email username e.g. "sundar1870@gmail.com" -> "Sundar"
+      const capitalized = emailUserStem.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      return capitalized;
+    }
+
+    return candidates.length > 0 ? candidates[0].text : undefined;
   }
 
   private extractAddress(

@@ -252,24 +252,24 @@ export { ExtractedCardData };
 
     <!-- Stage 2: Document Edge & 4-Corner Crop Modal (Exact Match to User Image 2 UI) -->
     @if (showDocCropModal()) {
-      <div class="fixed inset-0 bg-slate-950 z-50 flex flex-col justify-between p-4 overflow-hidden select-none">
+      <div class="fixed inset-0 bg-slate-950 z-50 flex flex-col justify-between p-3 md:p-5 overflow-hidden select-none">
         
         <!-- Header / Status -->
-        <div class="flex items-center justify-between z-30 mb-2">
-          <button (click)="retakeDocImage()" class="text-white/80 hover:text-white p-2 rounded-full bg-slate-900/60 backdrop-blur-md border border-white/10 flex items-center gap-1 text-xs">
+        <div class="flex items-center justify-between z-30 mb-1.5 sm:mb-2 max-w-full">
+          <button (click)="retakeDocImage()" class="text-white/80 hover:text-white px-2.5 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10 flex items-center gap-1 text-xs">
             <span class="material-icons text-sm">arrow_back</span>
             <span>Retake</span>
           </button>
-          <span class="text-xs font-bold text-slate-200 tracking-wide uppercase bg-slate-900/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+          <span class="text-[11px] sm:text-xs font-bold text-slate-200 tracking-wider uppercase bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 truncate max-w-[170px] sm:max-w-none text-center">
             Document Corner Scanner
           </span>
-          <button (click)="resetQuadCorners()" class="text-blue-400 hover:text-blue-300 text-xs font-bold px-3 py-1 rounded-full bg-slate-900/60 backdrop-blur-md border border-white/10">
+          <button (click)="resetQuadCorners()" class="text-blue-400 hover:text-blue-300 text-xs font-bold px-2.5 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10">
             Reset Corners
           </button>
         </div>
 
         <!-- Main Viewport containing Image + Interactive SVG / Quad Handles -->
-        <div class="relative flex-1 bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-800 shadow-2xl my-2 p-2">
+        <div class="relative flex-1 bg-slate-950 rounded-xl sm:rounded-2xl overflow-hidden flex items-center justify-center border border-slate-800/80 shadow-2xl my-1 sm:my-2 p-1 sm:p-2 min-h-0">
           <div 
             #imageWrapper
             class="relative inline-block max-h-full max-w-full overflow-hidden select-none shadow-2xl rounded"
@@ -279,7 +279,7 @@ export { ExtractedCardData };
                 #docCropImg
                 [src]="capturedDocSrc()" 
                 alt="Captured Document" 
-                class="max-h-[72vh] max-w-full object-contain pointer-events-none rounded select-none block"
+                class="max-h-[62vh] sm:max-h-[70vh] max-w-full object-contain pointer-events-none rounded select-none block"
               />
             }
 
@@ -305,55 +305,55 @@ export { ExtractedCardData };
               <line [attr.x1]="docCorners().bottomLeft.x" [attr.y1]="docCorners().bottomLeft.y" [attr.x2]="docCorners().topLeft.x" [attr.y2]="docCorners().topLeft.y" stroke="#0088ff" stroke-width="0.9" />
             </svg>
 
-            <!-- 4 Interactive Corner Handles (Matching Image 2 blue circles with inner dots) -->
+            <!-- 4 Interactive Corner Handles (Blue circles with inner white dots) -->
             <!-- Top Left Corner -->
             <div 
-              class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500/90 shadow-[0_0_15px_rgba(59,130,246,0.9)] cursor-pointer z-20 flex items-center justify-center hover:scale-125 transition-transform"
+              class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500/90 shadow-[0_0_15px_rgba(59,130,246,0.9)] cursor-pointer z-20 flex items-center justify-center active:scale-125 transition-transform touch-none"
               [style.left.%]="docCorners().topLeft.x"
               [style.top.%]="docCorners().topLeft.y"
               (mousedown)="startCornerDrag($event, 'topLeft', imageWrapper)"
               (touchstart)="startCornerDrag($event, 'topLeft', imageWrapper)"
             >
-              <div class="w-3 h-3 bg-white rounded-full shadow-inner"></div>
+              <div class="w-3 h-3 bg-white rounded-full shadow-inner pointer-events-none"></div>
             </div>
 
             <!-- Top Right Corner -->
             <div 
-              class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500/90 shadow-[0_0_15px_rgba(59,130,246,0.9)] cursor-pointer z-20 flex items-center justify-center hover:scale-125 transition-transform"
+              class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500/90 shadow-[0_0_15px_rgba(59,130,246,0.9)] cursor-pointer z-20 flex items-center justify-center active:scale-125 transition-transform touch-none"
               [style.left.%]="docCorners().topRight.x"
               [style.top.%]="docCorners().topRight.y"
               (mousedown)="startCornerDrag($event, 'topRight', imageWrapper)"
               (touchstart)="startCornerDrag($event, 'topRight', imageWrapper)"
             >
-              <div class="w-3 h-3 bg-white rounded-full shadow-inner"></div>
+              <div class="w-3 h-3 bg-white rounded-full shadow-inner pointer-events-none"></div>
             </div>
 
             <!-- Bottom Right Corner -->
             <div 
-              class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500/90 shadow-[0_0_15px_rgba(59,130,246,0.9)] cursor-pointer z-20 flex items-center justify-center hover:scale-125 transition-transform"
+              class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500/90 shadow-[0_0_15px_rgba(59,130,246,0.9)] cursor-pointer z-20 flex items-center justify-center active:scale-125 transition-transform touch-none"
               [style.left.%]="docCorners().bottomRight.x"
               [style.top.%]="docCorners().bottomRight.y"
               (mousedown)="startCornerDrag($event, 'bottomRight', imageWrapper)"
               (touchstart)="startCornerDrag($event, 'bottomRight', imageWrapper)"
             >
-              <div class="w-3 h-3 bg-white rounded-full shadow-inner"></div>
+              <div class="w-3 h-3 bg-white rounded-full shadow-inner pointer-events-none"></div>
             </div>
 
             <!-- Bottom Left Corner -->
             <div 
-              class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500/90 shadow-[0_0_15px_rgba(59,130,246,0.9)] cursor-pointer z-20 flex items-center justify-center hover:scale-125 transition-transform"
+              class="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500/90 shadow-[0_0_15px_rgba(59,130,246,0.9)] cursor-pointer z-20 flex items-center justify-center active:scale-125 transition-transform touch-none"
               [style.left.%]="docCorners().bottomLeft.x"
               [style.top.%]="docCorners().bottomLeft.y"
               (mousedown)="startCornerDrag($event, 'bottomLeft', imageWrapper)"
               (touchstart)="startCornerDrag($event, 'bottomLeft', imageWrapper)"
             >
-              <div class="w-3 h-3 bg-white rounded-full shadow-inner"></div>
+              <div class="w-3 h-3 bg-white rounded-full shadow-inner pointer-events-none"></div>
             </div>
 
-            <!-- 4 Interactive Edge Pill Handles (Matching Image 2 white pills along edges) -->
+            <!-- 4 Interactive Edge Pill Handles -->
             <!-- Top Edge Pill -->
             <div 
-              class="absolute w-8 h-3 -ml-4 -mt-1.5 bg-white border border-blue-400 rounded-full cursor-pointer z-20 shadow-md hover:scale-125 transition-transform flex items-center justify-center"
+              class="absolute w-8 h-3.5 -ml-4 -mt-1.5 bg-white border border-blue-400 rounded-full cursor-pointer z-20 shadow-md active:scale-125 transition-transform touch-none"
               [style.left.%]="(docCorners().topLeft.x + docCorners().topRight.x) / 2"
               [style.top.%]="(docCorners().topLeft.y + docCorners().topRight.y) / 2"
               (mousedown)="startCornerDrag($event, 'topEdge', imageWrapper)"
@@ -362,7 +362,7 @@ export { ExtractedCardData };
 
             <!-- Right Edge Pill -->
             <div 
-              class="absolute w-3 h-8 -ml-1.5 -mt-4 bg-white border border-blue-400 rounded-full cursor-pointer z-20 shadow-md hover:scale-125 transition-transform flex items-center justify-center"
+              class="absolute w-3.5 h-8 -ml-1.5 -mt-4 bg-white border border-blue-400 rounded-full cursor-pointer z-20 shadow-md active:scale-125 transition-transform touch-none"
               [style.left.%]="(docCorners().topRight.x + docCorners().bottomRight.x) / 2"
               [style.top.%]="(docCorners().topRight.y + docCorners().bottomRight.y) / 2"
               (mousedown)="startCornerDrag($event, 'rightEdge', imageWrapper)"
@@ -371,7 +371,7 @@ export { ExtractedCardData };
 
             <!-- Bottom Edge Pill -->
             <div 
-              class="absolute w-8 h-3 -ml-4 -mt-1.5 bg-white border border-blue-400 rounded-full cursor-pointer z-20 shadow-md hover:scale-125 transition-transform flex items-center justify-center"
+              class="absolute w-8 h-3.5 -ml-4 -mt-1.5 bg-white border border-blue-400 rounded-full cursor-pointer z-20 shadow-md active:scale-125 transition-transform touch-none"
               [style.left.%]="(docCorners().bottomLeft.x + docCorners().bottomRight.x) / 2"
               [style.top.%]="(docCorners().bottomLeft.y + docCorners().bottomRight.y) / 2"
               (mousedown)="startCornerDrag($event, 'bottomEdge', imageWrapper)"
@@ -380,7 +380,7 @@ export { ExtractedCardData };
 
             <!-- Left Edge Pill -->
             <div 
-              class="absolute w-3 h-8 -ml-1.5 -mt-4 bg-white border border-blue-400 rounded-full cursor-pointer z-20 shadow-md hover:scale-125 transition-transform flex items-center justify-center"
+              class="absolute w-3.5 h-8 -ml-1.5 -mt-4 bg-white border border-blue-400 rounded-full cursor-pointer z-20 shadow-md active:scale-125 transition-transform touch-none"
               [style.left.%]="(docCorners().topLeft.x + docCorners().bottomLeft.x) / 2"
               [style.top.%]="(docCorners().topLeft.y + docCorners().bottomLeft.y) / 2"
               (mousedown)="startCornerDrag($event, 'leftEdge', imageWrapper)"
@@ -390,19 +390,22 @@ export { ExtractedCardData };
             <!-- Loupe Magnifier Glass when dragging corners -->
             @if (isDraggingCorner() && dragLoupeData()) {
               <div 
-                class="absolute z-40 w-24 h-24 rounded-full border-4 border-blue-400 bg-slate-900 shadow-2xl overflow-hidden pointer-events-none -translate-x-1/2 -translate-y-28"
-                [style.left.px]="dragLoupeData()?.posX"
-                [style.top.px]="dragLoupeData()?.posY"
+                class="absolute z-40 w-[84px] h-[84px] rounded-full border-3 border-blue-400 bg-slate-950 shadow-[0_0_30px_rgba(0,0,0,0.95)] overflow-hidden pointer-events-none -translate-x-1/2 -translate-y-1/2"
+                [style.left.px]="dragLoupeData()?.loupeLeft"
+                [style.top.px]="dragLoupeData()?.loupeTop"
               >
                 <div 
                   class="w-full h-full relative"
                   [style.background-image]="'url(' + capturedDocSrc() + ')'"
                   [style.background-position]="dragLoupeData()?.bgPos"
                   [style.background-size]="dragLoupeData()?.bgSize"
+                  style="background-repeat: no-repeat;"
                 >
                   <!-- Center Target Reticle -->
                   <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div class="w-2.5 h-2.5 rounded-full border-2 border-red-500 bg-red-400/40"></div>
+                    <div class="w-3.5 h-3.5 rounded-full border-2 border-red-500 bg-red-500/25 shadow-sm flex items-center justify-center">
+                      <div class="w-1.5 h-1.5 bg-red-500 rounded-full shadow-inner"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -587,7 +590,7 @@ export class OcrScannerComponent implements OnDestroy {
   });
 
   isDraggingCorner = signal(false);
-  dragLoupeData = signal<{ posX: number; posY: number; bgPos: string; bgSize: string } | null>(null);
+  dragLoupeData = signal<{ loupeLeft: number; loupeTop: number; bgPos: string; bgSize: string } | null>(null);
 
   private mediaStream: MediaStream | null = null;
   private alignCheckInterval: any = null;
@@ -868,12 +871,40 @@ export class OcrScannerComponent implements OnDestroy {
 
       this.docCorners.set(cur);
 
-      // Update Magnifier Glass Loupe Data
+      // Update Magnifier Glass Loupe Data with 100% pixel-exact calibration math
+      const LOUPE_SIZE = 84; // 84px compact diameter
+      const LOUPE_RADIUS = LOUPE_SIZE / 2;
+      const ZOOM = 2.2; // 2.2x zoom scale
+
+      const touchX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+      const touchY = Math.max(0, Math.min(rect.height, clientY - rect.top));
+
+      // Calculate Loupe top/left position on imageWrapper
+      let loupeLeft = touchX;
+      let loupeTop = touchY - LOUPE_RADIUS - 45; // Default: 45px above finger/mouse
+
+      // Clamp loupeLeft so it NEVER gets cut off on left or right edges
+      loupeLeft = Math.max(LOUPE_RADIUS + 6, Math.min(rect.width - LOUPE_RADIUS - 6, loupeLeft));
+
+      // If touch is near top edge, position loupe BELOW touch point instead of above
+      if (touchY < LOUPE_SIZE + 20) {
+        loupeTop = touchY + LOUPE_RADIUS + 35;
+      } else {
+        loupeTop = Math.max(LOUPE_RADIUS + 6, loupeTop);
+      }
+
+      // Exact pixel background positioning: center of loupe points to exact (touchX, touchY)
+      const bgX = LOUPE_RADIUS - touchX * ZOOM;
+      const bgY = LOUPE_RADIUS - touchY * ZOOM;
+
+      const bgWidth = rect.width * ZOOM;
+      const bgHeight = rect.height * ZOOM;
+
       this.dragLoupeData.set({
-        posX: clientX - rect.left,
-        posY: clientY - rect.top,
-        bgPos: `${pctX}% ${pctY}%`,
-        bgSize: `${rect.width * 2.5}px ${rect.height * 2.5}px`
+        loupeLeft,
+        loupeTop,
+        bgPos: `${Math.round(bgX * 10) / 10}px ${Math.round(bgY * 10) / 10}px`,
+        bgSize: `${Math.round(bgWidth)}px ${Math.round(bgHeight)}px`
       });
     };
 
@@ -972,7 +1003,7 @@ export class OcrScannerComponent implements OnDestroy {
       });
 
       await worker.setParameters({
-        tessedit_pageseg_mode: '3' as any
+        tessedit_pageseg_mode: '6' as any
       });
 
       const ret = await worker.recognize(imageDataUrl);

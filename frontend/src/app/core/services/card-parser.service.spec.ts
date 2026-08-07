@@ -126,4 +126,48 @@ describe('CardParserService', () => {
     const parsed2 = service.parseCardText(rawCardText2);
     expect(parsed2.name).toBe('T.R. Manikandan');
   });
+
+  it('should reject logo noise lines like "a. Yat le EEE CL" and correctly extract "R. SUNDARRAJ"', () => {
+    const rawCardText = `
+      a. Yat le EEE CL
+      naren EMPOWERING QUALITY AND TRUST
+      R. SUNDARRAJ
+      Managing Director
+      98422 16086
+      +91 422 2967078 / 2967127
+      +91 9965516076 / 98429 91141
+      sundar1870@gmail.com
+      NAREN GROUP OF COMPANIES
+      9/10, Periar Nagar, Nehru Nagar East, Civil Aerodrome Post, Coimbatore - 641 014.
+      www.narengroup.in
+    `;
+
+    const parsed = service.parseCardText(rawCardText);
+
+    expect(parsed.name).toBe('R. SUNDARRAJ');
+    expect(parsed.designation).toBe('Managing Director');
+    expect(parsed.company).toBe('NAREN GROUP OF COMPANIES');
+    expect(parsed.email).toBe('sundar1870@gmail.com');
+  });
+
+  it('should clean "R. SUNDARRA naren" to "R. SUNDARRAJ" and "US A CY Nord NAREN GROUP OF COMPANIES prey" to "NAREN GROUP OF COMPANIES"', () => {
+    const rawCardText = `
+      R. SUNDARRA naren
+      Managing Director
+      98422 16086
+      +91 422 2967078 / 2967127
+      +91 9965516076 / 98429 91141
+      sundar1870@gmail.com
+      US A CY Nord NAREN GROUP OF COMPANIES prey
+      9/10, Periar Nagar, Coimbatore - 641 014.
+      www.narengroup.in
+    `;
+
+    const parsed = service.parseCardText(rawCardText);
+
+    expect(parsed.name).toBe('R. SUNDARRAJ');
+    expect(parsed.designation).toBe('Managing Director');
+    expect(parsed.company).toBe('NAREN GROUP OF COMPANIES');
+    expect(parsed.email).toBe('sundar1870@gmail.com');
+  });
 });
