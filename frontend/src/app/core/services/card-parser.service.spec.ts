@@ -170,4 +170,29 @@ describe('CardParserService', () => {
     expect(parsed.company).toBe('NAREN GROUP OF COMPANIES');
     expect(parsed.email).toBe('sundar1870@gmail.com');
   });
+
+  it('should auto-repair J symbol misreads (PUSHPARA] / R. SUNDARRA)) and join multi-line names', () => {
+    const rawCardText1 = `
+      AriyAI
+      Tech Private Limited
+      PUSHPARA]
+      SUBRAMANIAM
+      Chief Development Officer
+      +91 93444 21012
+      pushparaj.s@ariyitech.com
+      https://ariyitech.com/
+    `;
+    const parsed1 = service.parseCardText(rawCardText1);
+    expect(parsed1.name).toBe('PUSHPARAJ SUBRAMANIAM');
+    expect(parsed1.designation).toBe('Chief Development Officer');
+
+    const rawCardText2 = `
+      R. SUNDARRA)
+      Managing Director
+      sundar1870@gmail.com
+      NAREN GROUP OF COMPANIES
+    `;
+    const parsed2 = service.parseCardText(rawCardText2);
+    expect(parsed2.name).toBe('R. SUNDARRAJ');
+  });
 });

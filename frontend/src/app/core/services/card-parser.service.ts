@@ -165,7 +165,10 @@ export class CardParserService {
     let s = val.trim();
 
     if (type === 'name') {
-      // Auto-repair common OCR suffix errors on names e.g. "SUNDARRAI Ree" -> "SUNDARRAJ", "SUNDARRA" -> "SUNDARRAJ"
+      // Auto-repair common OCR symbol misreads of 'J' at the end of names e.g. "PUSHPARA]" -> "PUSHPARAJ", "SUNDARRA)" -> "SUNDARRAJ"
+      s = s.replace(/([A-Z]{2,})(?:RA|PA|MA|BA|GA|KA)[\]\)\}\>\|/\\]+/gi, '$1RAJ');
+      s = s.replace(/([A-Z]{3,})[\]\)\}\>]+/gi, '$1J');
+      s = s.replace(/RA[\]\)\}\>]/gi, 'RAJ');
       s = s.replace(/RAI\s+Ree$/i, 'RAJ');
       s = s.replace(/RAI$/i, 'RAJ');
       s = s.replace(/\b(SUNDAR|PUSHPA|SELVA|DHARMA|NAGA|YUVA|KAMA|NATA|JAYA|MUTHU|BALA|RAM)RAI?\b/i, (m, g1) => g1.toUpperCase() + 'RAJ');
@@ -879,7 +882,34 @@ export class CardParserService {
       let line = lines[i].trim();
 
       // Clean leading/trailing non-name symbols
-      line = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
+      line = line.replace(/^[|:~_\-\s()\[\]{}]+|[|:~_\-\s()\[\]{}]+$/g, '').trim();
+
+      // Auto-repair common OCR symbol misreads of 'J' at the end of names e.g. "PUSHPARA]" -> "PUSHPARAJ", "SUNDARRA)" -> "SUNDARRAJ"
+      line = line.replace(/([A-Z]{2,})(?:RA|PA|MA|BA|GA|KA)[\]\)\}\>\|/\\]+/gi, '$1RAJ');
+      line = line.replace(/([A-Z]{3,})[\]\)\}\>]+/gi, '$1J');
+      line = line.replace(/RA[\]\)\}\>]/gi, 'RAJ');
+
+      // Multi-Line Name Combination check: if line[i] and line[i+1] are consecutive uppercase name words
+      if (i + 1 < lines.length) {
+        let nextLine = lines[i + 1].trim().replace(/([A-Z]{2,})(?:RA|PA|MA|BA|GA|KA)[\]\)\}\>\|/\\]+/gi, '$1RAJ').replace(/([A-Z]{3,})[\]\)\}\>]+/gi, '$1J');
+        const isNextNameWord = /^[a-zA-Z\s.'-]+$/.test(nextLine) && nextLine.length >= 2 && nextLine.length <= 30 && !designationKeywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(nextLine.toUpperCase())) && !this.COMPANY_SUFFIXES.some(k => nextLine.toUpperCase().includes(k)) && !/\d/.test(nextLine);
+        const isCurrNameWord = /^[a-zA-Z\s.'-]+$/.test(line) && line.length >= 2 && line.length <= 30;
+
+        if (isCurrNameWord && isNextNameWord) {
+          const combinedName = line + ' ' + nextLine;
+          let combinedScore = 30;
+          if (emailUserStem && combinedName.toLowerCase().includes(emailUserStem)) {
+            combinedScore += 100;
+          }
+          if (alreadyExtracted.designation) {
+            const desUpper = alreadyExtracted.designation.toUpperCase();
+            if (i + 2 < lines.length && lines[i + 2].toUpperCase().includes(desUpper)) {
+              combinedScore += 80;
+            }
+          }
+          candidates.push({ text: combinedName, score: combinedScore });
+        }
+      }
 
       // Strip leading logo noise artifacts prepended to name e.g. "a. Yat le EEE CL R. SUNDARRAJ" -> "R. SUNDARRAJ"
       line = line.replace(/^(?:[a-z]\.?(?:\s+[a-z]{1,4}|\s+Yat|\s+le|\s+EEE|\s+CL|\s+Lo|\s+LW|\s+Tv|\s+Ju|\s+Scan|\s+Carat)+\s+)+/i, '').trim();
