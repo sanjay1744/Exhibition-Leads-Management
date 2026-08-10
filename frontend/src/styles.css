@@ -287,9 +287,16 @@ body {
 /* ===== Content Body Layout ===== */
 .content-body {
   flex: 1;
-  padding: 24px;
+  padding: 24px 24px calc(80px + env(safe-area-inset-bottom, 0px)) 24px;
   overflow-y: auto;
   background-color: var(--bg-page);
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .content-body {
+    padding: 12px 12px calc(100px + env(safe-area-inset-bottom, 0px)) 12px;
+  }
 }
 
 /* ===== Page Header Title Bar ===== */
