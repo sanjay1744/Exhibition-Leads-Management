@@ -203,10 +203,16 @@ export class CardParserService {
 
     const cleanedText = this.sanitizeOcrText(rawText);
 
-    const lines = cleanedText
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l.length > 0 && !/^[-_.~=*\s|:]+$/.test(l));
+    const lines: string[] = [];
+    for (const rawLine of cleanedText.split('\n')) {
+      // Split line segments separated by 3 or more spaces or tabs e.g. "T.R. Manikandan          +91 99449 23516"
+      const segments = rawLine.split(/\s{3,}|\t+/).map(s => s.trim()).filter(s => s.length > 0);
+      for (const seg of segments) {
+        if (!/^[-_.~=*\s|:]+$/.test(seg)) {
+          lines.push(seg);
+        }
+      }
+    }
 
     const email = this.extractEmail(cleanedText);
     const website = this.extractWebsite(cleanedText);
@@ -267,6 +273,7 @@ export class CardParserService {
     if (words.length >= 2 && singleChars / words.length > 0.25) score -= 50;
 
     if (type === 'name') {
+      if (/\d/.test(val) || /\+91/.test(val)) score -= 100;
       if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 35;
       if (words.every(w => /^[A-Z][a-z.]*$/i.test(w))) score += 20;
       if (/\b(?:director|manager|officer|directo|fn|bs|hts|aka|saaf|saanfor|my)\b/i.test(val)) score -= 50;
@@ -283,7 +290,13 @@ export class CardParserService {
 
   getDiagnosticBreakdown(rawText: string, lineMetadata: OcrLineMetadata[] = []): FieldCandidateDiagnostic[] {
     const cleaned = this.sanitizeOcrText(rawText);
-    const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const lines: string[] = [];
+    for (const rawLine of cleaned.split('\n')) {
+      const segments = rawLine.split(/\s{3,}|\t+/).map(s => s.trim()).filter(s => s.length > 0);
+      for (const seg of segments) {
+        lines.push(seg);
+      }
+    }
     const parsed = this.parseCardText(rawText, lineMetadata);
 
     const diagnostics: FieldCandidateDiagnostic[] = [];
@@ -888,6 +901,11 @@ export class CardParserService {
       line = line.replace(/([A-Z]{2,})(?:RA|PA|MA|BA|GA|KA)[\]\)\}\>\|/\\]+/gi, '$1RAJ');
       line = line.replace(/([A-Z]{3,})[\]\)\}\>]+/gi, '$1J');
       line = line.replace(/RA[\]\)\}\>]/gi, 'RAJ');
+
+      // Strip trailing phone numbers/prefixes appended to person names on the same line e.g. "T.R. Manikandan +91 99449 23516" -> "T.R. Manikandan"
+      line = line.replace(/\s*(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}.*$/i, '').trim();
+      line = line.replace(/\s*(?:\+?\d{1,3}[\s.-]?)?(?:\d{3,5}[\s.-]?){2,4}.*$/i, '').trim();
+      line = line.replace(/\s*(?:ph|phone|mob|mobile|cell|tel|call)[\s.:-]*\d.*$/i, '').trim();
 
       // Multi-Line Name Combination check: if line[i] and line[i+1] are consecutive uppercase name words
       if (i + 1 < lines.length) {
