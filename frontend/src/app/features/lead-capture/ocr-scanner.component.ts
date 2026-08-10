@@ -469,28 +469,31 @@ export { ExtractedCardData };
 
     <!-- Review & Edit Modal for Extracted OCR Fields -->
     @if (showModal()) {
-      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn max-h-[95vh] flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between border-b pb-3 mb-4">
-              <div class="flex items-center gap-2">
-                <span class="material-icons text-blue-600">auto_fix_high</span>
-                <h3 class="text-base font-bold text-slate-900">Review Extracted Business Card</h3>
-              </div>
-              <button (click)="closeEditModal()" class="text-slate-400 hover:text-slate-600">
-                <span class="material-icons">close</span>
-              </button>
+      <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 animate-fadeIn max-h-[85vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
+          
+          <!-- Fixed Modal Header -->
+          <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/80">
+            <div class="flex items-center gap-2">
+              <span class="material-icons text-blue-600">auto_fix_high</span>
+              <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Review Extracted Business Card</h3>
             </div>
+            <button (click)="closeEditModal()" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors" title="Close">
+              <span class="material-icons text-base">close</span>
+            </button>
+          </div>
 
+          <!-- Scrollable Modal Content Body -->
+          <div class="p-5 space-y-4 flex-1 overflow-y-auto min-h-0">
             @if (previewDataUrl()) {
-              <div class="mb-4 flex flex-col items-center justify-center">
-                <div class="bg-slate-900/90 rounded-xl p-2.5 border border-slate-700/80 shadow-md inline-flex flex-col items-center justify-center relative max-w-full">
-                  <img [src]="previewDataUrl()" alt="Cropped Card Preview" class="max-h-48 max-w-full object-contain rounded-lg border border-slate-800" />
+              <div class="flex flex-col items-center justify-center">
+                <div class="bg-slate-900/90 rounded-xl p-2 border border-slate-700/80 shadow-md inline-flex flex-col items-center justify-center relative max-w-full">
+                  <img [src]="previewDataUrl()" alt="Cropped Card Preview" class="max-h-36 max-w-full object-contain rounded border border-slate-800" />
                 </div>
               </div>
             }
 
-            <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
+            <div class="space-y-3">
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
                 <input type="text" [(ngModel)]="modalData.name" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Maria Olivia" />
@@ -562,8 +565,9 @@ export { ExtractedCardData };
             </div>
           </div>
 
-          <div class="mt-4 flex items-center justify-end gap-2 border-t pt-3">
-            <button type="button" (click)="closeEditModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+          <!-- Fixed Modal Footer -->
+          <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+            <button type="button" (click)="closeEditModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">Cancel</button>
             <button type="button" (click)="saveAndApplyModal()" class="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md flex items-center gap-1">
               <span class="material-icons text-xs">check</span> Confirm & Apply
             </button>
