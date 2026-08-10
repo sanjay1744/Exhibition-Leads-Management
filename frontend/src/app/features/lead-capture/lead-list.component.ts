@@ -224,11 +224,11 @@ import { StallService } from '../../core/services/stall.service';
 
       <!-- Premium View Visitor Lead Details Modal -->
       @if (selectedLeadForView()) {
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
+          <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[85vh] sm:max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             
-            <!-- Modal Header -->
-            <div class="bg-[#1a3a5c] text-white px-6 py-4 flex items-center justify-between">
+            <!-- Fixed Modal Header -->
+            <div class="bg-[#1a3a5c] text-white px-5 py-3.5 flex items-center justify-between shrink-0 border-b border-slate-700/50">
               <div class="flex items-center gap-2.5">
                 <span class="material-icons text-blue-200">contact_page</span>
                 <div>
@@ -236,13 +236,13 @@ import { StallService } from '../../core/services/stall.service';
                   <p class="text-[11px] text-blue-200 font-mono">LEAD NO: {{ selectedLeadForView()?.leadNumber || ('ENQ-' + selectedLeadForView()?.id?.substring(0, 8)?.toUpperCase()) }}</p>
                 </div>
               </div>
-              <button (click)="closeViewModal()" class="text-white/80 hover:text-white transition">
-                <span class="material-icons">close</span>
+              <button (click)="closeViewModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors" title="Close">
+                <span class="material-icons text-base">close</span>
               </button>
             </div>
 
-            <!-- Modal Content Body -->
-            <div class="p-6 space-y-5">
+            <!-- Scrollable Modal Content Body -->
+            <div class="p-5 space-y-4 flex-1 overflow-y-auto min-h-0">
               <!-- Primary Visitor Info -->
               <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
                 <div class="text-base font-extrabold text-slate-900 mb-1">
@@ -362,8 +362,8 @@ import { StallService } from '../../core/services/stall.service';
               }
             </div>
 
-            <!-- Modal Footer Action Bar -->
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <!-- Fixed Modal Footer Action Bar -->
+            <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
               <button (click)="closeViewModal()" class="btn btn-outline-pill text-xs">
                 Close
               </button>
@@ -371,6 +371,66 @@ import { StallService } from '../../core/services/stall.service';
               <button (click)="editFromViewModal()" class="btn btn-primary text-xs px-5 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-md">
                 <span class="material-icons text-sm">edit</span>
                 Edit Lead Record
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Custom Delete Visitor Lead Confirmation Modal -->
+      @if (selectedLeadForDelete()) {
+        <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div class="bg-white rounded-2xl shadow-2xl border border-red-100 max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-150 relative">
+            
+            <!-- Warning Header Icon -->
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 ring-8 ring-red-50">
+                <span class="material-icons text-2xl">warning_amber</span>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-900">Delete Visitor Enquiry?</h3>
+                <p class="text-xs text-slate-500 font-medium">Permanent action cannot be undone</p>
+              </div>
+            </div>
+
+            <!-- Lead Summary Box -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+              <div class="text-xs font-mono text-blue-600 font-bold">
+                {{ selectedLeadForDelete()?.leadNumber || ('ENQ-' + selectedLeadForDelete()?.id?.substring(0, 8)?.toUpperCase()) }}
+              </div>
+              <div class="text-sm font-extrabold text-slate-900">
+                {{ selectedLeadForDelete()?.name }}
+              </div>
+              @if (selectedLeadForDelete()?.company) {
+                <div class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                  <span class="material-icons text-xs text-slate-400">business</span>
+                  {{ selectedLeadForDelete()?.company }}
+                </div>
+              }
+            </div>
+
+            <!-- Caution Message -->
+            <p class="text-xs text-red-700 bg-red-50/80 border border-red-100 rounded-xl p-3 font-medium flex items-center gap-2">
+              <span class="material-icons text-sm text-red-500 shrink-0">info</span>
+              <span>This lead record and all attached media will be permanently deleted.</span>
+            </p>
+
+            <!-- Modal Action Buttons -->
+            <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button 
+                type="button" 
+                (click)="cancelDelete()" 
+                class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                (click)="confirmDeleteLead()" 
+                class="px-5 py-2.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-md flex items-center gap-1.5 transition-colors"
+              >
+                <span class="material-icons text-sm">delete_forever</span>
+                Delete Permanently
               </button>
             </div>
 
@@ -524,9 +584,21 @@ export class LeadListComponent implements OnInit {
     }
   }
 
-  async deleteLead(lead: LocalLead): Promise<void> {
-    if (confirm(`Are you sure you want to delete lead enquiry for ${lead.name}?`)) {
+  selectedLeadForDelete = signal<LocalLead | null>(null);
+
+  deleteLead(lead: LocalLead): void {
+    this.selectedLeadForDelete.set(lead);
+  }
+
+  cancelDelete(): void {
+    this.selectedLeadForDelete.set(null);
+  }
+
+  async confirmDeleteLead(): Promise<void> {
+    const lead = this.selectedLeadForDelete();
+    if (lead) {
       await this.db.deleteLead(lead.id);
+      this.selectedLeadForDelete.set(null);
       await this.loadLeads();
     }
   }

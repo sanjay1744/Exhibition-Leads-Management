@@ -105,18 +105,36 @@ import { getApiUrl } from '../../core/config/api.config';
               </div>
             </div>
 
-            <!-- Mobile Phone * (Mandatory) -->
+            <!-- Mobile Phone * (Mandatory - Dynamic 1 to 3 fields) -->
             <div>
-              <label class="form-label font-bold text-xs text-slate-700 mb-1">Mobile Phone *</label>
-              <div class="relative flex items-center">
-                <span class="material-icons absolute left-3 text-slate-400 text-lg">call</span>
-                <input 
-                  [(ngModel)]="phone" 
-                  name="phone" 
-                  required 
-                  class="form-control pl-10 text-xs font-semibold" 
-                  placeholder="+91 9876543210" 
-                />
+              <div class="flex items-center justify-between mb-1">
+                <label class="form-label font-bold text-xs text-slate-700">Mobile Phone *</label>
+                @if (phoneNumbers.length < 3) {
+                  <button type="button" (click)="addPhoneInput()" class="text-[11px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-0.5 px-2 py-0.5 rounded hover:bg-blue-50 transition-colors">
+                    <span class="material-icons text-xs">add</span> Add Phone
+                  </button>
+                }
+              </div>
+              <div class="space-y-2">
+                @for (ph of phoneNumbers; track $index) {
+                  <div class="relative flex items-center gap-2">
+                    <div class="relative flex-1 flex items-center">
+                      <span class="material-icons absolute left-3 text-slate-400 text-lg">call</span>
+                      <input 
+                        [(ngModel)]="phoneNumbers[$index]" 
+                        [name]="'phone_' + $index" 
+                        [required]="$index === 0" 
+                        class="form-control pl-10 text-xs font-semibold" 
+                        [placeholder]="$index === 0 ? '+91 98765 43210 (Primary)' : '+91 0422 2967078 (Alt Phone ' + ($index + 1) + ')'" 
+                      />
+                    </div>
+                    @if ($index > 0) {
+                      <button type="button" (click)="removePhoneInput($index)" title="Remove phone" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center">
+                        <span class="material-icons text-base">delete_outline</span>
+                      </button>
+                    }
+                  </div>
+                }
               </div>
             </div>
 
@@ -281,7 +299,62 @@ export class LeadFormComponent implements OnInit {
 
   name = '';
   company = '';
-  phone = '';
+  phoneNumbers: string[] = [''];
+
+  get phone(): string {
+    return this.phoneNumbers.map(p => p.trim()).filter(p => p.length > 0).join(', ');
+  }
+
+  set phone(val: string) {
+    if (!val || !val.trim()) {
+      this.phoneNumbers = [''];
+      return;
+    }
+    const phonePattern = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b|(?:\+?91[\s.-]?)?(?:0?\d{3,4}[\s.-]?)?[2-5]\d{6,7}/g;
+    const matches = val.match(phonePattern);
+    if (matches && matches.length > 0) {
+      const uniquePhones: string[] = [];
+      const digitsSet = new Set<string>();
+      for (const ph of matches) {
+        const trimmed = ph.trim();
+        const digits = trimmed.replace(/\D/g, '');
+        const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+        if (!digitsSet.has(last10)) {
+          digitsSet.add(last10);
+          uniquePhones.push(trimmed);
+        }
+      }
+      this.phoneNumbers = uniquePhones.slice(0, 3);
+    } else {
+      const parts = val.split(/[,/]+|\s{2,}/).map(p => p.trim()).filter(p => p.length > 0);
+      const uniqueParts: string[] = [];
+      const digitsSet = new Set<string>();
+      for (const p of parts) {
+        const digits = p.replace(/\D/g, '');
+        const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+        if (last10.length >= 7 && !digitsSet.has(last10)) {
+          digitsSet.add(last10);
+          uniqueParts.push(p);
+        } else if (last10.length < 7 && !uniqueParts.includes(p)) {
+          uniqueParts.push(p);
+        }
+      }
+      this.phoneNumbers = uniqueParts.length > 0 ? uniqueParts.slice(0, 3) : [''];
+    }
+  }
+
+  addPhoneInput(): void {
+    if (this.phoneNumbers.length < 3) {
+      this.phoneNumbers.push('');
+    }
+  }
+
+  removePhoneInput(index: number): void {
+    if (index > 0 && index < this.phoneNumbers.length) {
+      this.phoneNumbers.splice(index, 1);
+    }
+  }
+
   email = '';
   designation = '';
   website = '';
