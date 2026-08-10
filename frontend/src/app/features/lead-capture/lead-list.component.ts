@@ -40,6 +40,152 @@ import { StallService } from '../../core/services/stall.service';
         </div>
       </div>
 
+      <!-- Advanced Multi-Column Filter System Card -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm space-y-3.5">
+        <!-- Filter Header Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="material-icons text-blue-600 text-lg">filter_alt</span>
+            <span class="text-xs font-extrabold text-slate-800 uppercase tracking-wide">FILTER & SEARCH LEADS</span>
+            <span class="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-bold">
+              {{ filteredLeads().length }} Result{{ filteredLeads().length === 1 ? '' : 's' }}
+            </span>
+          </div>
+
+          @if (hasActiveFilters()) {
+            <button 
+              type="button" 
+              (click)="resetAllFilters()" 
+              class="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-200 transition-colors"
+            >
+              <span class="material-icons text-xs">restart_alt</span>
+              Clear All Filters
+            </button>
+          }
+        </div>
+
+        <!-- Filter Controls Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          
+          <!-- 1. Text Search Input -->
+          <div class="lg:col-span-2">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">SEARCH (NAME / COMPANY / PHONE / NO.)</label>
+            <div class="relative flex items-center">
+              <span class="material-icons absolute left-2.5 text-slate-400 text-sm">search</span>
+              <input 
+                type="text" 
+                [ngModel]="searchTerm()" 
+                (ngModelChange)="searchTerm.set($event); currentPage.set(1)" 
+                placeholder="Search by visitor name, company, phone..." 
+                class="w-full text-xs pl-8 pr-7 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50"
+              />
+              @if (searchTerm()) {
+                <button 
+                  type="button" 
+                  (click)="searchTerm.set(''); currentPage.set(1)" 
+                  class="absolute right-2 text-slate-400 hover:text-slate-600"
+                >
+                  <span class="material-icons text-xs">close</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- 2. Date Created From -->
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">DATE FROM</label>
+            <input 
+              type="date" 
+              [ngModel]="filterDateFrom()" 
+              (ngModelChange)="filterDateFrom.set($event); currentPage.set(1)" 
+              class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50 text-slate-800"
+            />
+          </div>
+
+          <!-- 3. Date Created To -->
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">DATE TO</label>
+            <input 
+              type="date" 
+              [ngModel]="filterDateTo()" 
+              (ngModelChange)="filterDateTo.set($event); currentPage.set(1)" 
+              class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50 text-slate-800"
+            />
+          </div>
+
+          <!-- 4. Interest Level Filter -->
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">INTEREST LEVEL</label>
+            <select 
+              [ngModel]="filterInterest()" 
+              (ngModelChange)="filterInterest.set($event); currentPage.set(1)" 
+              class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50 text-slate-800"
+            >
+              <option value="ALL">All Levels</option>
+              <option value="Hot">🔥 Hot</option>
+              <option value="Warm">⚡ Warm</option>
+              <option value="Cold">❄️ Cold</option>
+            </select>
+          </div>
+
+          <!-- 5. Sync Status Filter -->
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">SYNC STATUS</label>
+            <select 
+              [ngModel]="filterSyncStatus()" 
+              (ngModelChange)="filterSyncStatus.set($event); currentPage.set(1)" 
+              class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50 text-slate-800"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="Pending">⏳ Pending Sync</option>
+              <option value="Synced">✅ Synced</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- Filter Quick Preset Chips -->
+        <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 text-xs">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">QUICK PRESETS:</span>
+          
+          <button 
+            type="button" 
+            (click)="setTodayFilter()" 
+            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors"
+            [ngClass]="isTodayActive() ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
+          >
+            📅 Today
+          </button>
+
+          <button 
+            type="button" 
+            (click)="setHotLeadsFilter()" 
+            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors"
+            [ngClass]="filterInterest() === 'Hot' ? 'bg-red-600 text-white border-red-600 shadow-xs' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
+          >
+            🔥 Hot Leads
+          </button>
+
+          <button 
+            type="button" 
+            (click)="setPendingSyncFilter()" 
+            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors"
+            [ngClass]="filterSyncStatus() === 'Pending' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
+          >
+            ⏳ Pending Sync
+          </button>
+
+          <button 
+            type="button" 
+            (click)="setMediaOnlyFilter()" 
+            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors"
+            [ngClass]="filterHasMedia() === 'ANY_MEDIA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
+          >
+            📸 With Scanned Card / Voice
+          </button>
+        </div>
+      </div>
+
       <!-- Page Title & Top Action Buttons -->
       <div class="page-title-bar flex items-center justify-between mb-6">
         <div>
@@ -74,6 +220,7 @@ import { StallService } from '../../core/services/stall.service';
             <thead>
               <tr class="bg-[#1a3a5c] text-white text-[11px] font-bold uppercase tracking-wider">
                 <th class="py-1.5 px-4 border-r border-white/20">LEAD NO.</th>
+                <th class="py-1.5 px-4 border-r border-white/20 whitespace-nowrap min-w-[120px]">DATE OF CREATION</th>
                 <th class="py-1.5 px-4 border-r border-white/20">VISITOR NAME</th>
                 <th class="py-1.5 px-4 border-r border-white/20">STALL NAME</th>
                 <th class="py-1.5 px-4 border-r border-white/20">COMPANY</th>
@@ -95,6 +242,11 @@ import { StallService } from '../../core/services/stall.service';
                   <!-- Lead Number -->
                   <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
                     {{ lead.leadNumber }}
+                  </td>
+
+                  <!-- Date of Creation -->
+                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60 whitespace-nowrap font-mono text-[11px]">
+                    {{ formatCreatedDate(lead.createdAt) }}
                   </td>
 
                   <!-- Visitor Name -->
@@ -176,7 +328,7 @@ import { StallService } from '../../core/services/stall.service';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="10" class="py-12 text-center text-slate-400">
+                  <td colspan="12" class="py-12 text-center text-slate-400">
                     No visitor lead records found.
                   </td>
                 </tr>
@@ -451,9 +603,69 @@ export class LeadListComponent implements OnInit {
   selectedLeadForView = signal<LocalLead | null>(null);
   selectedStallId = signal<string>('ALL');
 
+  searchTerm = signal<string>('');
+  filterDateFrom = signal<string>('');
+  filterDateTo = signal<string>('');
+  filterInterest = signal<string>('ALL');
+  filterSyncStatus = signal<string>('ALL');
+  filterHasMedia = signal<string>('ALL');
+
   pageSize = signal(20);
   pageSizeSelect = 20;
   currentPage = signal(1);
+
+  hasActiveFilters = computed(() => {
+    return !!(
+      this.searchTerm().trim() ||
+      this.filterDateFrom() ||
+      this.filterDateTo() ||
+      this.filterInterest() !== 'ALL' ||
+      this.filterSyncStatus() !== 'ALL' ||
+      this.filterHasMedia() !== 'ALL'
+    );
+  });
+
+  resetAllFilters(): void {
+    this.searchTerm.set('');
+    this.filterDateFrom.set('');
+    this.filterDateTo.set('');
+    this.filterInterest.set('ALL');
+    this.filterSyncStatus.set('ALL');
+    this.filterHasMedia.set('ALL');
+    this.currentPage.set(1);
+  }
+
+  setTodayFilter(): void {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (this.isTodayActive()) {
+      this.filterDateFrom.set('');
+      this.filterDateTo.set('');
+    } else {
+      this.filterDateFrom.set(todayStr);
+      this.filterDateTo.set(todayStr);
+    }
+    this.currentPage.set(1);
+  }
+
+  isTodayActive(): boolean {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return this.filterDateFrom() === todayStr && this.filterDateTo() === todayStr;
+  }
+
+  setHotLeadsFilter(): void {
+    this.filterInterest.set(this.filterInterest() === 'Hot' ? 'ALL' : 'Hot');
+    this.currentPage.set(1);
+  }
+
+  setPendingSyncFilter(): void {
+    this.filterSyncStatus.set(this.filterSyncStatus() === 'Pending' ? 'ALL' : 'Pending');
+    this.currentPage.set(1);
+  }
+
+  setMediaOnlyFilter(): void {
+    this.filterHasMedia.set(this.filterHasMedia() === 'ANY_MEDIA' ? 'ALL' : 'ANY_MEDIA');
+    this.currentPage.set(1);
+  }
 
   async ngOnInit(): Promise<void> {
     await this.loadLeads();
@@ -477,6 +689,20 @@ export class LeadListComponent implements OnInit {
     return phoneStr.split(/[,/]+/).map(p => p.trim()).filter(p => p.length > 0);
   }
 
+  formatCreatedDate(dateStr: string | undefined | null): string {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '-';
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return '-';
+    }
+  }
+
   onStallFilterChange(stallId: string): void {
     this.selectedStallId.set(stallId);
     if (stallId !== 'ALL') {
@@ -495,11 +721,72 @@ export class LeadListComponent implements OnInit {
   }
 
   filteredLeads = computed(() => {
+    let list = this.allLeads();
+
+    // 1. Stall Filter
     const stallId = this.selectedStallId();
-    if (stallId === 'ALL' || !stallId) {
-      return this.allLeads();
+    if (stallId && stallId !== 'ALL') {
+      list = list.filter((l) => l.exhibitionId === stallId || (!l.exhibitionId && stallId === '33333333-3333-3333-3333-333333333333'));
     }
-    return this.allLeads().filter((l) => l.exhibitionId === stallId || (!l.exhibitionId && stallId === '33333333-3333-3333-3333-333333333333'));
+
+    // 2. Text Search (Name, Lead No, Company, Phone, Designation, Address, Email, Remarks)
+    const q = this.searchTerm().trim().toLowerCase();
+    if (q) {
+      list = list.filter((l) => 
+        (l.name && l.name.toLowerCase().includes(q)) ||
+        (l.leadNumber && l.leadNumber.toLowerCase().includes(q)) ||
+        (l.company && l.company.toLowerCase().includes(q)) ||
+        (l.phone && l.phone.toLowerCase().includes(q)) ||
+        (l.designation && l.designation.toLowerCase().includes(q)) ||
+        (l.email && l.email.toLowerCase().includes(q)) ||
+        (l.address && l.address.toLowerCase().includes(q)) ||
+        (l.remarks && l.remarks.toLowerCase().includes(q))
+      );
+    }
+
+    // 3. Date From Filter
+    const fromStr = this.filterDateFrom();
+    if (fromStr) {
+      const fromTime = new Date(fromStr + 'T00:00:00').getTime();
+      list = list.filter((l) => {
+        if (!l.createdAt) return false;
+        return new Date(l.createdAt).getTime() >= fromTime;
+      });
+    }
+
+    // 4. Date To Filter
+    const toStr = this.filterDateTo();
+    if (toStr) {
+      const toTime = new Date(toStr + 'T23:59:59').getTime();
+      list = list.filter((l) => {
+        if (!l.createdAt) return false;
+        return new Date(l.createdAt).getTime() <= toTime;
+      });
+    }
+
+    // 5. Interest Level Filter
+    const interest = this.filterInterest();
+    if (interest && interest !== 'ALL') {
+      list = list.filter((l) => l.interestLevel === interest);
+    }
+
+    // 6. Sync Status Filter
+    const sync = this.filterSyncStatus();
+    if (sync && sync !== 'ALL') {
+      list = list.filter((l) => l.syncStatus === sync);
+    }
+
+    // 7. Media Filter
+    const media = this.filterHasMedia();
+    if (media === 'CARD_ONLY') {
+      list = list.filter((l) => !!l.photoBlob);
+    } else if (media === 'VOICE_ONLY') {
+      list = list.filter((l) => !!l.voiceBlob || !!l.voiceNotesTranscript);
+    } else if (media === 'ANY_MEDIA') {
+      list = list.filter((l) => !!l.photoBlob || !!l.voiceBlob || !!l.voiceNotesTranscript);
+    }
+
+    return list;
   });
 
   paginatedLeads = computed(() => {
