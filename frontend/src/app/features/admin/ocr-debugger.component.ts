@@ -33,27 +33,6 @@ import { OcrDebugTelemetry } from '../../core/services/card-parser.service';
         </div>
       </div>
 
-      <!-- Preset Sample Cards Bar -->
-      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between flex-wrap gap-3">
-        <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-          <span class="material-icons text-amber-500 text-sm">lightbulb</span>
-          <span>Quick Debugger Test Presets (Opens Corner Cropper):</span>
-        </div>
-        <div class="flex items-center gap-2 flex-wrap text-xs">
-          <button (click)="runPresetSample('sundarraj')" class="btn btn-secondary py-1 px-3 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-semibold text-slate-700">
-            R. Sundarraj (Naren Group)
-          </button>
-          <button (click)="runPresetSample('manikandan')" class="btn btn-secondary py-1 px-3 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-semibold text-slate-700">
-            T.R. Manikandan (Sridharshini)
-          </button>
-          <button (click)="runPresetSample('pushparaj')" class="btn btn-secondary py-1 px-3 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-semibold text-slate-700">
-            Pushparaj (AriyAI Tech)
-          </button>
-          <button (click)="runPresetSample('olivia')" class="btn btn-secondary py-1 px-3 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-semibold text-slate-700">
-            Maria Olivia (Aurora)
-          </button>
-        </div>
-      </div>
 
       <!-- Processing Status Overlay -->
       @if (isProcessing()) {
@@ -574,35 +553,6 @@ export class OcrDebuggerComponent {
     reader.readAsDataURL(file);
   }
 
-  async runPresetSample(sampleName: string): Promise<void> {
-    let rawText = '';
-    if (sampleName === 'sundarraj') {
-      rawText = `R. SUNDARRAJ\nManaging Director\n98422 16086\nsundar1870@gmail.com\nNAREN GROUP OF COMPANIES\nwww.narengroup.in\nCoimbatore - 641 014.`;
-    } else if (sampleName === 'manikandan') {
-      rawText = `T.R. Manikandan\nBusiness Development Head\nSRIDHARSHINI ENTERPRISE\n+91 99449 23516\nsdemarketing@dkbelt.com\nwww.dkbelt.com\nCoimbatore - 641018`;
-    } else if (sampleName === 'pushparaj') {
-      rawText = `AriyAI\nTech Private Limited\nPUSHPARAJ SUBRAMANIAM\nChief Development Officer\nCoimbatore - 641014\n+91 93444 21012\npushparaj.s@ariyitech.com\nhttps://ariyitech.com/`;
-    } else {
-      rawText = `MARIA OLIVIA\nManager\n+011 123 456 789\nmaria.olivia@aurora.com\nwww.aurora.com`;
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 1200;
-    canvas.height = 700;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 1200, 700);
-      ctx.fillStyle = '#1e293b';
-      ctx.font = 'bold 36px sans-serif';
-      const lines = rawText.split('\n');
-      lines.forEach((l, idx) => {
-        ctx.fillText(l, 60, 100 + idx * 70);
-      });
-      const dataUrl = canvas.toDataURL('image/png');
-      await this.openDocCropModal(dataUrl);
-    }
-  }
 
   async openDocCropModal(sourceDataUrl: string): Promise<void> {
     this.capturedDocSrc.set(sourceDataUrl);
