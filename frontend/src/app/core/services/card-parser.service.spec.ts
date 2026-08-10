@@ -195,4 +195,155 @@ describe('CardParserService', () => {
     const parsed2 = service.parseCardText(rawCardText2);
     expect(parsed2.name).toBe('R. SUNDARRAJ');
   });
+
+  it('should completely strip icon symbols, [?] tags, single-letter OCR icon misreads, and field label prefixes from all fields', () => {
+    const rawCardText = `
+      (👤) e R. SUNDARRAJ
+      (💼) e Managing Director
+      (🏢) e NAREN GROUP OF COMPANIES
+      📍 [?] o 9/10, Periar Nagar, Coimbatore - 641 014.
+      📞 [PH] c +91 98422 16086
+      ✉ [EMAIL] e sundar1870@gmail.com
+      🌐 [WEB] w www.narengroup.in
+    `;
+
+    const parsed = service.parseCardText(rawCardText);
+
+    expect(parsed.name).toBe('R. SUNDARRAJ');
+    expect(parsed.designation).toBe('Managing Director');
+    expect(parsed.company).toBe('NAREN GROUP OF COMPANIES');
+    expect(parsed.address).toBe('9/10, Periar Nagar, Coimbatore - 641 014.');
+    expect(parsed.phone).toBe('+91 98422 16086');
+    expect(parsed.email).toBe('sundar1870@gmail.com');
+    expect(parsed.website).toBe('www.narengroup.in');
+  });
+
+  it('should strip field label prefixes like Address:, Mob:, Email:, Web:, Name: without leaving prefixes in values', () => {
+    const rawCardText = `
+      Name: T.R. Manikandan
+      Designation: Business Development Head
+      Company: SRIDHARSHINI ENTERPRISE
+      Mob: +91 99449 23516
+      Email: sdemarketing@dkbelt.com
+      Web: www.dkbelt.com
+      Address: # 123/10E, Dr. Nanjappa Road, Coimbatore - 641018
+    `;
+
+    const parsed = service.parseCardText(rawCardText);
+
+    expect(parsed.name).toBe('T.R. Manikandan');
+    expect(parsed.designation).toBe('Business Development Head');
+    expect(parsed.company).toBe('SRIDHARSHINI ENTERPRISE');
+    expect(parsed.phone).toBe('+91 99449 23516');
+    expect(parsed.email).toBe('sdemarketing@dkbelt.com');
+    expect(parsed.website).toBe('www.dkbelt.com');
+    expect(parsed.address).toBe('# 123/10E, Dr. Nanjappa Road, Coimbatore - 641018');
+  });
+
+  it('should strip inline SVG tags, path elements, and SVG icon attributes from raw text and extracted fields', () => {
+    const rawCardText = `
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10"/></svg> R. SUNDARRAJ
+      <path fill="#000"/> Managing Director
+      <g class="icon-building"> NAREN GROUP OF COMPANIES </g>
+      <circle/> 9/10, Periar Nagar, Coimbatore - 641 014.
+      bi-telephone +91 98422 16086
+      fa-envelope sundar1870@gmail.com
+      icon-web www.narengroup.in
+    `;
+
+    const parsed = service.parseCardText(rawCardText);
+
+    expect(parsed.name).toBe('R. SUNDARRAJ');
+    expect(parsed.designation).toBe('Managing Director');
+    expect(parsed.company).toBe('NAREN GROUP OF COMPANIES');
+    expect(parsed.address).toBe('9/10, Periar Nagar, Coimbatore - 641 014.');
+    expect(parsed.phone).toBe('+91 98422 16086');
+    expect(parsed.email).toBe('sundar1870@gmail.com');
+    expect(parsed.website).toBe('www.narengroup.in');
+  });
+
+  it('should repair G4 :, =K 52 :, [0 :4919965516076, - 451, leading quotes, and country code 491 misreads', () => {
+    const rawCardText1 = `
+      R. SUNDARRAJ
+      Managing Director
+      98422 16086
+      * +91 422 2967078 / 2967127
+      [0 :4919965516076 / 98429 91141
+      G4 :sundar1870@gmail.com
+      NAREN GROUP OF COMPANIES
+      9/10, Periar Nagar, Nehru Nagar East, Civil Aerodrome Post, Coimbatore - 641 014.
+      www.narengroup.in
+    `;
+
+    const parsed1 = service.parseCardText(rawCardText1);
+
+    expect(parsed1.name).toBe('R. SUNDARRAJ');
+    expect(parsed1.designation).toBe('Managing Director');
+    expect(parsed1.company).toBe('NAREN GROUP OF COMPANIES');
+    expect(parsed1.phone).toContain('99655 16076');
+    expect(parsed1.email).toBe('sundar1870@gmail.com');
+    expect(parsed1.website).toBe('www.narengroup.in');
+
+    const rawCardText2 = `
+      " R.SUNDARRAJ
+      " Managing Director
+      98422 16086
+      - 451 422 2967078 / 2067127
+      [ 0 :4919965516076 / 9842991141
+      =K 52 :sundar1870@gmail. com Co
+      'NAREN GROUP OF COMPANIES
+      0 9/10, Periar Nagar, Coimbatore - 641 014.
+      0 www. narengroup. in
+    `;
+
+    const parsed2 = service.parseCardText(rawCardText2);
+
+    expect(parsed2.name).toBe('R. SUNDARRAJ');
+    expect(parsed2.designation).toBe('Managing Director');
+    expect(parsed2.company).toBe('NAREN GROUP OF COMPANIES');
+    expect(parsed2.phone).toContain('99655 16076');
+    expect(parsed2.email).toBe('sundar1870@gmail.com');
+    expect(parsed2.website).toBe('www.narengroup.in');
+    expect(parsed2.address).toContain('Coimbatore');
+  });
+
+  it('should split same-line multi-column fields like "T.R. Manikandan +91 99449 23516" into separate line segments', () => {
+    const rawCardText = `
+      T.R. Manikandan +91 99449 23516
+      Business Development Head
+      SRIDHARSHINI ENTERPRISE sdemarketing@dkbelt.com
+      www.dkbelt.com
+    `;
+
+    const parsed = service.parseCardText(rawCardText);
+
+    expect(parsed.name).toBe('T.R. Manikandan');
+    expect(parsed.phone).toBe('+91 99449 23516');
+    expect(parsed.designation).toBe('Business Development Head');
+    expect(parsed.company).toBe('SRIDHARSHINI ENTERPRISE');
+    expect(parsed.email).toBe('sdemarketing@dkbelt.com');
+  });
+
+  it('should correctly select T.R. Manikandan as name when phone is on same line and raw text contains I P : phone labels', () => {
+    const rawCardText = `
+      T.R. Manikandan +91 99449 23516
+      Business Development Head
+      t (3 SRIDHARSHINI ENTERPRISE
+      BE P : +91 4224392980 / +91 98430 23516
+      I P :
+      WE : sdemarketing@dkbelt.com
+      BW: www.dkbelt.com
+      I # 123/10E, Kasthuri Building, Dr. Nanjappa Road
+      Coimbatore - 641018 Tamil Nadu. INDIA
+    `;
+
+    const parsed = service.parseCardText(rawCardText);
+
+    expect(parsed.name).toBe('T.R. Manikandan');
+    expect(parsed.designation).toBe('Business Development Head');
+    expect(parsed.company).toBe('SRIDHARSHINI ENTERPRISE');
+    expect(parsed.email).toBe('sdemarketing@dkbelt.com');
+    expect(parsed.website).toBe('www.dkbelt.com');
+    expect(parsed.phone).toContain('99449 23516');
+  });
 });
