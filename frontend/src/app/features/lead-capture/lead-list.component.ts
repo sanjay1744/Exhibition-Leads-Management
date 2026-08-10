@@ -556,59 +556,68 @@ import { StallService } from '../../core/services/stall.service';
 
           </div>
 
-          <!-- Filter Quick Preset Chips -->
-          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
-            <span class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">QUICK PRESETS:</span>
+          <!-- Dashboard Interest Level Metrics Row -->
+          <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <span class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">LEAD INTEREST DASHBOARD:</span>
             
-            <button 
-              type="button" 
-              (click)="setTodayFilter()" 
-              class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              [ngClass]="isTodayActive() ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-600 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'"
-            >
-              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-              Today
-            </button>
+            <div class="grid grid-cols-3 gap-2.5 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
+              <!-- Hot Leads Metric Button -->
+              <button 
+                type="button" 
+                (click)="filterInterest.set(filterInterest() === 'Hot' ? 'ALL' : 'Hot'); currentPage.set(1)" 
+                class="px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-2.5 shadow-2xs active:scale-95 cursor-pointer"
+                [ngClass]="filterInterest() === 'Hot' ? 'bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-500/20' : 'bg-red-50/60 hover:bg-red-100/80 text-red-800 border-red-200/80'"
+              >
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm">🔥</span>
+                  <span>Hot Leads</span>
+                </div>
+                <span 
+                  class="px-2 py-0.5 rounded-full text-[11px] font-extrabold shrink-0"
+                  [ngClass]="filterInterest() === 'Hot' ? 'bg-white/20 text-white' : 'bg-red-200/70 text-red-900'"
+                >
+                  {{ hotLeadsCount() }}
+                </span>
+              </button>
 
-            <button 
-              type="button" 
-              (click)="setHotLeadsFilter()" 
-              class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              [ngClass]="filterInterest() === 'Hot' ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-red-600 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'"
-            >
-              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              </svg>
-              Hot Leads
-            </button>
+              <!-- Warm Leads Metric Button -->
+              <button 
+                type="button" 
+                (click)="filterInterest.set(filterInterest() === 'Warm' ? 'ALL' : 'Warm'); currentPage.set(1)" 
+                class="px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-2.5 shadow-2xs active:scale-95 cursor-pointer"
+                [ngClass]="filterInterest() === 'Warm' ? 'bg-amber-500 text-white border-amber-500 shadow-md ring-2 ring-amber-500/20' : 'bg-amber-50/60 hover:bg-amber-100/80 text-amber-800 border-amber-200/80'"
+              >
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm">⚡</span>
+                  <span>Warm Leads</span>
+                </div>
+                <span 
+                  class="px-2 py-0.5 rounded-full text-[11px] font-extrabold shrink-0"
+                  [ngClass]="filterInterest() === 'Warm' ? 'bg-white/20 text-white' : 'bg-amber-200/70 text-amber-900'"
+                >
+                  {{ warmLeadsCount() }}
+                </span>
+              </button>
 
-            <button 
-              type="button" 
-              (click)="setPendingSyncFilter()" 
-              class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              [ngClass]="filterSyncStatus() === 'Pending' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'"
-            >
-              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Pending Sync
-            </button>
-
-            <button 
-              type="button" 
-              (click)="setMediaOnlyFilter()" 
-              class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              [ngClass]="filterHasMedia() === 'ANY_MEDIA' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'"
-            >
-              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              </svg>
-              With Scanned Card / Voice
-            </button>
+              <!-- Cold Leads Metric Button -->
+              <button 
+                type="button" 
+                (click)="filterInterest.set(filterInterest() === 'Cold' ? 'ALL' : 'Cold'); currentPage.set(1)" 
+                class="px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-2.5 shadow-2xs active:scale-95 cursor-pointer"
+                [ngClass]="filterInterest() === 'Cold' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-500/20' : 'bg-blue-50/60 hover:bg-blue-100/80 text-blue-800 border-blue-200/80'"
+              >
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm">❄️</span>
+                  <span>Cold Leads</span>
+                </div>
+                <span 
+                  class="px-2 py-0.5 rounded-full text-[11px] font-extrabold shrink-0"
+                  [ngClass]="filterInterest() === 'Cold' ? 'bg-white/20 text-white' : 'bg-blue-200/70 text-blue-900'"
+                >
+                  {{ coldLeadsCount() }}
+                </span>
+              </button>
+            </div>
           </div>
 
         </div>
@@ -1346,7 +1355,7 @@ export class LeadListComponent implements OnInit {
     return stall ? stall.name : 'Stall 01 - Main Exhibition';
   }
 
-  filteredLeads = computed(() => {
+  dateAndStallFilteredLeads = computed(() => {
     let list = this.allLeads();
 
     // 1. Stall Filter
@@ -1390,19 +1399,13 @@ export class LeadListComponent implements OnInit {
       });
     }
 
-    // 5. Interest Level Filter
-    const interest = this.filterInterest();
-    if (interest && interest !== 'ALL') {
-      list = list.filter((l) => l.interestLevel === interest);
-    }
-
-    // 6. Sync Status Filter
+    // 5. Sync Status Filter
     const sync = this.filterSyncStatus();
     if (sync && sync !== 'ALL') {
       list = list.filter((l) => l.syncStatus === sync);
     }
 
-    // 7. Media Filter
+    // 6. Media Filter
     const media = this.filterHasMedia();
     if (media === 'CARD_ONLY') {
       list = list.filter((l) => !!l.photoBlob);
@@ -1410,6 +1413,22 @@ export class LeadListComponent implements OnInit {
       list = list.filter((l) => !!l.voiceBlob || !!l.voiceNotesTranscript);
     } else if (media === 'ANY_MEDIA') {
       list = list.filter((l) => !!l.photoBlob || !!l.voiceBlob || !!l.voiceNotesTranscript);
+    }
+
+    return list;
+  });
+
+  hotLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Hot').length);
+  warmLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Warm').length);
+  coldLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Cold').length);
+
+  filteredLeads = computed(() => {
+    let list = this.dateAndStallFilteredLeads();
+
+    // Interest Level Filter
+    const interest = this.filterInterest();
+    if (interest && interest !== 'ALL') {
+      list = list.filter((l) => l.interestLevel === interest);
     }
 
     return list;
