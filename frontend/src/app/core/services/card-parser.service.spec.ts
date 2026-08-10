@@ -346,4 +346,24 @@ describe('CardParserService', () => {
     expect(parsed.website).toBe('www.dkbelt.com');
     expect(parsed.phone).toContain('99449 23516');
   });
+
+  it('should extract exactly 2 unique phone numbers without duplicates for Sivabalan B card', () => {
+    const rawCardText = `
+      homefirst
+      We'll take you home
+      Sivabalan B
+      Relationship Manager
+      +91 8903613984 / 9952293135
+      sivabalan.b@homefirstindia.com
+      4B, Dhanaas Arcata, Trichy Road, Singanallur, Coimbatore-641005
+    `;
+
+    const parsed = service.parseCardText(rawCardText);
+
+    expect(parsed.name).toBe('Sivabalan B');
+    expect(parsed.designation).toBe('Relationship Manager');
+    expect(parsed.email).toBe('sivabalan.b@homefirstindia.com');
+    expect(parsed.phone).toBe('+91 89036 13984, +91 99522 93135');
+    expect(parsed.phone?.split(',').length).toBe(2);
+  });
 });

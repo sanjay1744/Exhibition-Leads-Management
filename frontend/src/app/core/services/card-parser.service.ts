@@ -561,6 +561,16 @@ export class CardParserService {
 
   private extractPhone(text: string): string | undefined {
     const phones: string[] = [];
+    const phoneDigitsSet = new Set<string>();
+
+    const addPhone = (formatted: string) => {
+      const digits = formatted.replace(/\D/g, '');
+      const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+      if (last10.length >= 7 && !phoneDigitsSet.has(last10)) {
+        phoneDigitsSet.add(last10);
+        phones.push(formatted);
+      }
+    };
 
     // Pre-repair text for common OCR misreads in phone numbers e.g. "4919965516076" -> "+91 99655 16076"
     const cleanedText = text
@@ -581,9 +591,7 @@ export class CardParserService {
       } else {
         formatted = match[0].trim();
       }
-      if (!phones.includes(formatted)) {
-        phones.push(formatted);
-      }
+      addPhone(formatted);
     }
 
     // Match landline numbers e.g. 0422 2967078, 2967127, +91 422 2967078
@@ -595,9 +603,7 @@ export class CardParserService {
         if (digits.length === 10 && digits.startsWith('0422')) {
           formatted = '+91 422 ' + digits.slice(4);
         }
-        if (!phones.includes(formatted)) {
-          phones.push(formatted);
-        }
+        addPhone(formatted);
       }
     }
 
@@ -785,8 +791,9 @@ export class CardParserService {
             }
           }
 
-          // Strip leading phone digits, numbers, or noise symbols before company name (e.g. "01 923516 63 SRIDHARSHINI ENTERPRISES")
+          // Strip leading phone digits, numbers, or noise symbols before company name (e.g. "01 923516 63 SRIDHARSHINI ENTERPRISES", "t (3 SRIDHARSHINI ENTERPRISE")
           cleaned = cleaned.replace(/^(?:\+?\d[\d\s.-]{2,15}|\d{2,10}\s+)+/g, '').trim();
+          cleaned = cleaned.replace(/^[a-z0-9()\[\]{}._\-\s]*\b(?=[A-Z]{3,})/g, '').trim();
           cleaned = cleaned.replace(/^[\d\s._\-|/:\\]+/, '').trim();
 
           // Strip leading designation text if prepended to company line
@@ -872,9 +879,10 @@ export class CardParserService {
 
     if (domainStem && domainStem.length >= 4) {
       for (const line of lines) {
-        const lineClean = line.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+        if (line.includes('@') || line.toLowerCase().includes('www.') || line.toLowerCase().includes('http')) continue;
+        const lineClean = line.replace(/[^a-zA-Z0-9\s.&'-]/g, '').trim();
         const lineUpper = lineClean.toUpperCase();
-        if (lineClean.length >= 3 && lineClean.length <= 35 && !lineClean.includes('@') && !lineClean.includes('www.')) {
+        if (lineClean.length >= 3 && lineClean.length <= 35) {
           if (lineUpper.replace(/\s+/g, '').toLowerCase().includes(domainStem)) {
             return lineClean;
           }

@@ -517,16 +517,37 @@ export { ExtractedCardData };
                 <input type="text" [(ngModel)]="modalData.company" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Aurora Tech Pvt Ltd" />
               </div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Phone / Mobile</label>
-                  <input type="text" [(ngModel)]="modalData.phone" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="+011 123 456 789" />
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-xs font-bold text-slate-700">Phone / Mobile Numbers</label>
+                  @if (modalPhoneNumbers.length < 3) {
+                    <button type="button" (click)="addModalPhoneInput()" class="text-[11px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-blue-50">
+                      <span class="material-icons text-xs">add</span> Add Phone
+                    </button>
+                  }
                 </div>
+                <div class="space-y-1.5">
+                  @for (ph of modalPhoneNumbers; track $index) {
+                    <div class="flex items-center gap-1.5">
+                      <input 
+                        type="text" 
+                        [(ngModel)]="modalPhoneNumbers[$index]" 
+                        class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-medium" 
+                        [placeholder]="$index === 0 ? '+91 98765 43210 (Primary Phone)' : '+91 0422 2967078 (Phone ' + ($index + 1) + ')'" 
+                      />
+                      @if ($index > 0) {
+                        <button type="button" (click)="removeModalPhoneInput($index)" title="Remove phone" class="p-1 text-slate-400 hover:text-red-600 rounded">
+                          <span class="material-icons text-base">delete_outline</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
 
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                  <input type="email" [(ngModel)]="modalData.email" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="maria.olivia@aurora.com" />
-                </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                <input type="email" [(ngModel)]="modalData.email" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="maria.olivia@aurora.com" />
               </div>
 
               <div>
@@ -1068,6 +1089,62 @@ export class OcrScannerComponent implements OnDestroy {
     }
   }
 
+  modalPhoneNumbers: string[] = [''];
+
+  get modalPhone(): string {
+    return this.modalPhoneNumbers.map(p => p.trim()).filter(p => p.length > 0).join(', ');
+  }
+
+  set modalPhone(val: string) {
+    if (!val || !val.trim()) {
+      this.modalPhoneNumbers = [''];
+      return;
+    }
+    const phonePattern = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b|(?:\+?91[\s.-]?)?(?:0?\d{3,4}[\s.-]?)?[2-5]\d{6,7}/g;
+    const matches = val.match(phonePattern);
+    if (matches && matches.length > 0) {
+      const uniquePhones: string[] = [];
+      const digitsSet = new Set<string>();
+      for (const ph of matches) {
+        const trimmed = ph.trim();
+        const digits = trimmed.replace(/\D/g, '');
+        const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+        if (!digitsSet.has(last10)) {
+          digitsSet.add(last10);
+          uniquePhones.push(trimmed);
+        }
+      }
+      this.modalPhoneNumbers = uniquePhones.slice(0, 3);
+    } else {
+      const parts = val.split(/[,/]+|\s{2,}/).map(p => p.trim()).filter(p => p.length > 0);
+      const uniqueParts: string[] = [];
+      const digitsSet = new Set<string>();
+      for (const p of parts) {
+        const digits = p.replace(/\D/g, '');
+        const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+        if (last10.length >= 7 && !digitsSet.has(last10)) {
+          digitsSet.add(last10);
+          uniqueParts.push(p);
+        } else if (last10.length < 7 && !uniqueParts.includes(p)) {
+          uniqueParts.push(p);
+        }
+      }
+      this.modalPhoneNumbers = uniqueParts.length > 0 ? uniqueParts.slice(0, 3) : [''];
+    }
+  }
+
+  addModalPhoneInput(): void {
+    if (this.modalPhoneNumbers.length < 3) {
+      this.modalPhoneNumbers.push('');
+    }
+  }
+
+  removeModalPhoneInput(index: number): void {
+    if (index > 0 && index < this.modalPhoneNumbers.length) {
+      this.modalPhoneNumbers.splice(index, 1);
+    }
+  }
+
   applyData(): void {
     const data = this.extractedData();
     if (data) {
@@ -1078,6 +1155,7 @@ export class OcrScannerComponent implements OnDestroy {
   openEditModal(): void {
     const current = this.extractedData() || {};
     this.modalData = { ...current };
+    this.modalPhone = current.phone || '';
     this.showModal.set(true);
   }
 
@@ -1086,6 +1164,7 @@ export class OcrScannerComponent implements OnDestroy {
   }
 
   saveAndApplyModal(): void {
+    this.modalData.phone = this.modalPhone;
     this.extractedData.set({ ...this.modalData });
     this.cardExtracted.emit({ ...this.modalData });
     this.closeEditModal();
