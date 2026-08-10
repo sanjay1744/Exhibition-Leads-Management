@@ -18,9 +18,6 @@ import { StallService } from '../../core/services/stall.service';
         <div>
           <div class="flex items-center gap-2.5">
             <h1 class="text-xl font-black text-slate-900 uppercase tracking-tight">LEADS DIRECTORY</h1>
-            <span class="bg-blue-100/80 text-blue-800 border border-blue-200/80 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
-              {{ filteredLeads().length }} Total
-            </span>
           </div>
           <p class="text-xs text-slate-500 font-medium">Live Management Grid of Captured Visitor Enquiries {{ selectedStallId() === 'ALL' ? 'for All Stalls' : ('for ' + (stallService.activeStall()?.name || 'Active Stall')) }}</p>
         </div>
@@ -114,9 +111,6 @@ import { StallService } from '../../core/services/stall.service';
                 </svg>
               </div>
               <span class="text-xs font-black text-slate-900 uppercase tracking-wide">FILTER & SEARCH LEADS</span>
-              <span class="text-[11px] bg-blue-50 text-blue-700 border border-blue-200/60 px-2.5 py-0.5 rounded-full font-bold">
-                {{ filteredLeads().length }} Result{{ filteredLeads().length === 1 ? '' : 's' }}
-              </span>
             </div>
 
             @if (hasActiveFilters()) {
