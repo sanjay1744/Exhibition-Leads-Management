@@ -469,28 +469,31 @@ export { ExtractedCardData };
 
     <!-- Review & Edit Modal for Extracted OCR Fields -->
     @if (showModal()) {
-      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn max-h-[95vh] flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between border-b pb-3 mb-4">
-              <div class="flex items-center gap-2">
-                <span class="material-icons text-blue-600">auto_fix_high</span>
-                <h3 class="text-base font-bold text-slate-900">Review Extracted Business Card</h3>
-              </div>
-              <button (click)="closeEditModal()" class="text-slate-400 hover:text-slate-600">
-                <span class="material-icons">close</span>
-              </button>
+      <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 animate-fadeIn max-h-[85vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
+          
+          <!-- Fixed Modal Header -->
+          <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/80">
+            <div class="flex items-center gap-2">
+              <span class="material-icons text-blue-600">auto_fix_high</span>
+              <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Review Extracted Business Card</h3>
             </div>
+            <button (click)="closeEditModal()" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors" title="Close">
+              <span class="material-icons text-base">close</span>
+            </button>
+          </div>
 
+          <!-- Scrollable Modal Content Body -->
+          <div class="p-5 space-y-4 flex-1 overflow-y-auto min-h-0">
             @if (previewDataUrl()) {
-              <div class="mb-4 flex flex-col items-center justify-center">
-                <div class="bg-slate-900/90 rounded-xl p-2.5 border border-slate-700/80 shadow-md inline-flex flex-col items-center justify-center relative max-w-full">
-                  <img [src]="previewDataUrl()" alt="Cropped Card Preview" class="max-h-48 max-w-full object-contain rounded-lg border border-slate-800" />
+              <div class="flex flex-col items-center justify-center">
+                <div class="bg-slate-900/90 rounded-xl p-2 border border-slate-700/80 shadow-md inline-flex flex-col items-center justify-center relative max-w-full">
+                  <img [src]="previewDataUrl()" alt="Cropped Card Preview" class="max-h-36 max-w-full object-contain rounded border border-slate-800" />
                 </div>
               </div>
             }
 
-            <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
+            <div class="space-y-3">
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
                 <input type="text" [(ngModel)]="modalData.name" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Maria Olivia" />
@@ -517,16 +520,37 @@ export { ExtractedCardData };
                 <input type="text" [(ngModel)]="modalData.company" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Aurora Tech Pvt Ltd" />
               </div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Phone / Mobile</label>
-                  <input type="text" [(ngModel)]="modalData.phone" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="+011 123 456 789" />
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-xs font-bold text-slate-700">Phone / Mobile Numbers</label>
+                  @if (modalPhoneNumbers.length < 3) {
+                    <button type="button" (click)="addModalPhoneInput()" class="text-[11px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-blue-50">
+                      <span class="material-icons text-xs">add</span> Add Phone
+                    </button>
+                  }
                 </div>
+                <div class="space-y-1.5">
+                  @for (ph of modalPhoneNumbers; track $index) {
+                    <div class="flex items-center gap-1.5">
+                      <input 
+                        type="text" 
+                        [(ngModel)]="modalPhoneNumbers[$index]" 
+                        class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-medium" 
+                        [placeholder]="$index === 0 ? '+91 98765 43210 (Primary Phone)' : '+91 0422 2967078 (Phone ' + ($index + 1) + ')'" 
+                      />
+                      @if ($index > 0) {
+                        <button type="button" (click)="removeModalPhoneInput($index)" title="Remove phone" class="p-1 text-slate-400 hover:text-red-600 rounded">
+                          <span class="material-icons text-base">delete_outline</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
 
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                  <input type="email" [(ngModel)]="modalData.email" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="maria.olivia@aurora.com" />
-                </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                <input type="email" [(ngModel)]="modalData.email" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="maria.olivia@aurora.com" />
               </div>
 
               <div>
@@ -541,8 +565,9 @@ export { ExtractedCardData };
             </div>
           </div>
 
-          <div class="mt-4 flex items-center justify-end gap-2 border-t pt-3">
-            <button type="button" (click)="closeEditModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+          <!-- Fixed Modal Footer -->
+          <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+            <button type="button" (click)="closeEditModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">Cancel</button>
             <button type="button" (click)="saveAndApplyModal()" class="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md flex items-center gap-1">
               <span class="material-icons text-xs">check</span> Confirm & Apply
             </button>
@@ -948,16 +973,19 @@ export class OcrScannerComponent implements OnDestroy {
       let res1 = await this.runTesseractOcr(warped.dataUrl);
       let parsedData1 = this.parser.parseCardText(res1.text, res1.lineMetadata);
 
-      // Pass 2: Adaptive Contrast Binarization Pass (extracts faint/grey ink)
-      this.statusMessage.set('Adaptive Binarization Pass (Pass 2)...');
-      this.progressPercent.set(70);
-      try {
-        const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
-        const res2 = await this.runTesseractOcr(binarizedUrl);
-        const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
-        parsedData1 = this.parser.mergeCardData(parsedData1, parsedData2);
-      } catch {
-        // fallback
+      // Pass 2: Secondary Fallback Pass (only triggered as second opinion if Pass 1 is missing fields)
+      const hasMissingFields = !parsedData1.name || !parsedData1.email || !parsedData1.phone || !parsedData1.company;
+      if (hasMissingFields) {
+        this.statusMessage.set('Secondary Fallback Pass (Pass 2)...');
+        this.progressPercent.set(70);
+        try {
+          const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
+          const res2 = await this.runTesseractOcr(binarizedUrl);
+          const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
+          parsedData1 = this.parser.mergeCardData(parsedData1, parsedData2);
+        } catch {
+          // fallback
+        }
       }
 
       parsedData1.photoDataUrl = warped.dataUrl;
@@ -1065,6 +1093,62 @@ export class OcrScannerComponent implements OnDestroy {
     }
   }
 
+  modalPhoneNumbers: string[] = [''];
+
+  get modalPhone(): string {
+    return this.modalPhoneNumbers.map(p => p.trim()).filter(p => p.length > 0).join(', ');
+  }
+
+  set modalPhone(val: string) {
+    if (!val || !val.trim()) {
+      this.modalPhoneNumbers = [''];
+      return;
+    }
+    const phonePattern = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b|(?:\+?91[\s.-]?)?(?:0?\d{3,4}[\s.-]?)?[2-5]\d{6,7}/g;
+    const matches = val.match(phonePattern);
+    if (matches && matches.length > 0) {
+      const uniquePhones: string[] = [];
+      const digitsSet = new Set<string>();
+      for (const ph of matches) {
+        const trimmed = ph.trim();
+        const digits = trimmed.replace(/\D/g, '');
+        const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+        if (!digitsSet.has(last10)) {
+          digitsSet.add(last10);
+          uniquePhones.push(trimmed);
+        }
+      }
+      this.modalPhoneNumbers = uniquePhones.slice(0, 3);
+    } else {
+      const parts = val.split(/[,/]+|\s{2,}/).map(p => p.trim()).filter(p => p.length > 0);
+      const uniqueParts: string[] = [];
+      const digitsSet = new Set<string>();
+      for (const p of parts) {
+        const digits = p.replace(/\D/g, '');
+        const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+        if (last10.length >= 7 && !digitsSet.has(last10)) {
+          digitsSet.add(last10);
+          uniqueParts.push(p);
+        } else if (last10.length < 7 && !uniqueParts.includes(p)) {
+          uniqueParts.push(p);
+        }
+      }
+      this.modalPhoneNumbers = uniqueParts.length > 0 ? uniqueParts.slice(0, 3) : [''];
+    }
+  }
+
+  addModalPhoneInput(): void {
+    if (this.modalPhoneNumbers.length < 3) {
+      this.modalPhoneNumbers.push('');
+    }
+  }
+
+  removeModalPhoneInput(index: number): void {
+    if (index > 0 && index < this.modalPhoneNumbers.length) {
+      this.modalPhoneNumbers.splice(index, 1);
+    }
+  }
+
   applyData(): void {
     const data = this.extractedData();
     if (data) {
@@ -1075,6 +1159,7 @@ export class OcrScannerComponent implements OnDestroy {
   openEditModal(): void {
     const current = this.extractedData() || {};
     this.modalData = { ...current };
+    this.modalPhone = current.phone || '';
     this.showModal.set(true);
   }
 
@@ -1083,6 +1168,7 @@ export class OcrScannerComponent implements OnDestroy {
   }
 
   saveAndApplyModal(): void {
+    this.modalData.phone = this.modalPhone;
     this.extractedData.set({ ...this.modalData });
     this.cardExtracted.emit({ ...this.modalData });
     this.closeEditModal();

@@ -1,5 +1,37 @@
 import { Injectable } from '@angular/core';
 
+export interface FieldCandidateDiagnostic {
+  field: 'name' | 'designation' | 'company' | 'phone' | 'email' | 'website' | 'address';
+  selectedValue?: string;
+  evaluatedLines: { line: string; status: 'selected' | 'rejected' | 'candidate'; score?: number; reason: string }[];
+}
+
+export interface MergeFieldScore {
+  field: string;
+  pass1Val?: string;
+  pass1Score: number;
+  pass2Val?: string;
+  pass2Score: number;
+  winner: 'pass1' | 'pass2' | 'equal' | 'none';
+  finalVal?: string;
+}
+
+export interface OcrDebugTelemetry {
+  timestamp: string;
+  pass1WarpedUrl?: string;
+  pass2BinarizedUrl?: string;
+  pass1RawText?: string;
+  pass2RawText?: string;
+  pass1LineMetadata?: OcrLineMetadata[];
+  pass2LineMetadata?: OcrLineMetadata[];
+  pass1Extracted?: ExtractedCardData;
+  pass2Extracted?: ExtractedCardData;
+  fieldDiagnostics?: FieldCandidateDiagnostic[];
+  mergeScores?: MergeFieldScore[];
+  finalMerged?: ExtractedCardData;
+  apiResponse?: any;
+}
+
 export interface ExtractedCardData {
   name?: string;
   designation?: string;
@@ -126,14 +158,57 @@ export class CardParserService {
   private readonly STOP_WORDS = ['THE', 'AND', 'FOR', 'WITH', 'THIS', 'THAT', 'FROM', 'RE', 'A', 'AN', 'OF', 'IN', 'ON', 'AT', 'TO'];
 
   /**
-   * Sanitizes extracted text fields by removing unwanted OCR special characters, braces, and trailing symbols.
+   * Sanitizes extracted text fields by removing unwanted OCR special characters, braces, icon artifacts, and field labels.
    */
-  private cleanField(val?: string, type?: 'name' | 'company' | 'designation'): string | undefined {
+  private cleanField(val?: string, type?: 'name' | 'company' | 'designation' | 'phone' | 'email' | 'website' | 'address'): string | undefined {
     if (!val) return undefined;
     let s = val.trim();
 
+    // 1. Remove SVG tags, SVG icon attributes, injected icon tags & Unicode icon emojis / symbols / bullets
+    s = s.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, ' ');
+    s = s.replace(/<\/?(?:svg|path|g|circle|rect|ellipse|line|polyline|polygon|use|defs|symbol|clipPath|linearGradient|radialGradient)[^>]*>/gi, ' ');
+    s = s.replace(/\b(?:xmlns|viewbox|fill|stroke|stroke-width|d="[^"]*"|clip-path|fa-[a-z0-9-]+|bi-[a-z0-9-]+|icon-[a-z0-9-]+|material-icons)\b[^=\s]*=?/gi, ' ');
+    s = s.replace(/\[(?:ADD|PH|EMAIL|WEB|\?|\=|\+|\!|X)\]/gi, ' ');
+    s = s.replace(/[📍🏢🏠📌🗺️🧭🌍🌐⌂⌖🎯©®●•§€£ø☎📱📞✉📧💻🔗▪▫▶◄✦★◆◇❖✓✔✕✖♂♀✆✈⚑⚐👤💼🏷️🆔ℹ️❌❓❗⭕⚪⚫🔴🔵🔲🔳◾◽🔺🔻💠🔘]/g, ' ');
+    s = s.replace(/\((?:📍|👤|💼|🏢|📞|✉|🌐|c|e|w|o|p|m|t|ph|add|mob|tel|\?|\!)\)/gi, ' ');
+    s = s.replace(/^\[\?\]\s*/, '');
+
+    // 1b. Remove icon OCR misread prefixes e.g. "G4 :", "=K 52 :", "[0 :", "[ 0 :", "- 451", leading quotes
+    s = s.replace(/^[^\w\s]*\[\s*[0Oo]?\s*:?\s*/gi, '');
+    s = s.replace(/^[^\w\s]*(?:G4|C4|E4|M4|=?K\s*\d{1,3}|G-4)\s*:?\s*/gi, '');
+    s = s.replace(/^[^\w\s]*["'“”’`\\|=~]+\s*/g, '');
+
+    // 2. Remove field label prefixes at the start of values e.g. "Address:", "Ph:", "Email:", "Name:", "Designation:", "Company:"
+    if (type === 'address') {
+      s = s.replace(/^[^\w\s]*\b(?:add|address|loc|location|off|office|factory|site|regd|head office|corporate office|h\.?o\.?)\b[\s.:-]*/i, '');
+    } else if (type === 'phone') {
+      s = s.replace(/^[^\w\s]*\b(?:tel|mob|mobile|phone|ph|cell|call|fax|p|m|t|c|f)\b[\s.:-]*/i, '');
+    } else if (type === 'email') {
+      s = s.replace(/^[^\w\s]*\b(?:email|e-mail|mail|e)\b[\s.:-]*/i, '');
+    } else if (type === 'website') {
+      s = s.replace(/^[^\w\s]*\b(?:website|web|site|url|w)\b[\s.:-]*/i, '');
+    } else if (type === 'name') {
+      s = s.replace(/^[^\w\s]*\b(?:name|person|contact|contact person)\b[\s.:-]*/i, '');
+    } else if (type === 'designation') {
+      s = s.replace(/^[^\w\s]*\b(?:designation|title|role|position)\b[\s.:-]*/i, '');
+    } else if (type === 'company') {
+      s = s.replace(/^[^\w\s]*\b(?:company|firm|organization|org)\b[\s.:-]*/i, '');
+    }
+
+    // 3. Remove single-letter OCR icon misreads at the start of values (e.g. "o Coimbatore", "e Managing Director", "c +91...")
+    if (type !== 'name') {
+      s = s.replace(/^[a-z]\b[\s.:-]*/i, '');
+    } else {
+      // For names, only remove single lowercase letters at the very start e.g. "e R. SUNDARRAJ" -> "R. SUNDARRAJ" (preserve uppercase initials like "R.")
+      s = s.replace(/^[a-z]\s+([A-Z])/, '$1');
+    }
+
+    // 4. Type-specific character sanitization
     if (type === 'name') {
-      // Auto-repair common OCR suffix errors on names e.g. "SUNDARRAI Ree" -> "SUNDARRAJ", "SUNDARRA" -> "SUNDARRAJ"
+      // Auto-repair common OCR symbol misreads of 'J' at the end of names e.g. "PUSHPARA]" -> "PUSHPARAJ", "SUNDARRA)" -> "SUNDARRAJ"
+      s = s.replace(/([A-Z]{2,})(?:RA|PA|MA|BA|GA|KA)[\]\)\}\>\|/\\]+/gi, '$1RAJ');
+      s = s.replace(/([A-Z]{3,})[\]\)\}\>]+/gi, '$1J');
+      s = s.replace(/RA[\]\)\}\>]/gi, 'RAJ');
       s = s.replace(/RAI\s+Ree$/i, 'RAJ');
       s = s.replace(/RAI$/i, 'RAJ');
       s = s.replace(/\b(SUNDAR|PUSHPA|SELVA|DHARMA|NAGA|YUVA|KAMA|NATA|JAYA|MUTHU|BALA|RAM)RAI?\b/i, (m, g1) => g1.toUpperCase() + 'RAJ');
@@ -149,13 +224,58 @@ export class CardParserService {
     } else if (type === 'company') {
       // Allow letters, digits, spaces, dots, ampersands, hyphens, apostrophes (strip /, }, {, ], [, ~, |, #, etc.)
       s = s.replace(/[^a-zA-Z0-9\s.&'-]/g, ' ');
+    } else if (type === 'phone') {
+      s = s.replace(/[^0-9+\s().-]/g, ' ');
+    } else if (type === 'address') {
+      s = s.replace(/[^a-zA-Z0-9\s,./#()'-]/g, ' ');
+      s = s.replace(/\s*,\s*,+/g, ',');
+      s = s.replace(/^,\s*|\s*,\s*$/g, '');
     }
 
     // Collapse multiple spaces & trim leading/trailing noise symbols
     s = s.replace(/\s+/g, ' ').trim();
-    s = s.replace(/^[-_.~=*\s|:/\\{}()\[\]]+|[-_.~=*\s|:/\\{}()\[\]]+$/g, '').trim();
+    s = s.replace(/^[-_.~=*\s|:/\\{}()\[\]#,]+|[-_.~=*\s|:/\\{}()\[\]#,]+$/g, '').trim();
 
     return s.length >= 2 ? s : undefined;
+  }
+
+  private splitLineIntoSegments(rawLine: string): string[] {
+    // 1. Primary split on 2 or more spaces, tabs, pipes, bullet symbols, or injected tags
+    const rawSegments = rawLine
+      .split(/\s{2,}|\t+|[|•]|(?=\[(?:PH|EMAIL|WEB|ADD)\])/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    const subSegments: string[] = [];
+
+    const phoneRegex = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b|(?:\+?91[\s.-]?)?(?:0?\d{3,4}[\s.-]?)?[2-5]\d{6,7}/i;
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i;
+    const webRegex = /(?:https?:\/\/|www\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i;
+
+    for (const seg of rawSegments) {
+      // Check if segment has text preceding a phone number, email, or website e.g. "T.R. Manikandan +91 99449 23516"
+      const phoneMatch = seg.match(phoneRegex);
+      const emailMatch = seg.match(emailRegex);
+      const webMatch = seg.match(webRegex);
+
+      const fieldMatch = phoneMatch || emailMatch || webMatch;
+
+      if (fieldMatch && fieldMatch.index && fieldMatch.index > 0) {
+        const prefixText = seg.substring(0, fieldMatch.index).trim();
+        const fieldText = seg.substring(fieldMatch.index).trim();
+
+        // Only split if prefixText contains actual letters/words (e.g. "T.R. Manikandan") and not just label prefixes like "Ph:" or "Mob:"
+        if (prefixText.length >= 2 && !/^(?:ph|phone|mob|mobile|cell|tel|call|p|m|t|c|f|email|e-mail|mail|web|website|site|add|address|loc|location|off|office)[:\s-]*$/i.test(prefixText)) {
+          subSegments.push(prefixText);
+          subSegments.push(fieldText);
+          continue;
+        }
+      }
+
+      subSegments.push(seg);
+    }
+
+    return subSegments.filter(s => !/^[-_.~=*\s|:]+$/.test(s));
   }
 
   /**
@@ -168,14 +288,22 @@ export class CardParserService {
 
     const cleanedText = this.sanitizeOcrText(rawText);
 
-    const lines = cleanedText
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l.length > 0 && !/^[-_.~=*\s|:]+$/.test(l));
+    const lines: string[] = [];
+    for (const rawLine of cleanedText.split('\n')) {
+      const segments = this.splitLineIntoSegments(rawLine);
+      for (const seg of segments) {
+        lines.push(seg);
+      }
+    }
 
-    const email = this.extractEmail(cleanedText);
-    const website = this.extractWebsite(cleanedText);
-    const phone = this.extractPhone(cleanedText);
+    let email = this.extractEmail(cleanedText);
+    email = this.cleanField(email, 'email');
+
+    let website = this.extractWebsite(cleanedText);
+    website = this.cleanField(website, 'website');
+
+    let phone = this.extractPhone(cleanedText);
+    phone = this.cleanField(phone, 'phone');
 
     let designation = this.extractDesignation(lines);
     designation = this.cleanField(designation, 'designation');
@@ -208,7 +336,8 @@ export class CardParserService {
       name = this.cleanField(name, 'name');
     }
 
-    const address = this.extractAddress(lines, { email, phone, website, designation, company, name });
+    let address = this.extractAddress(lines, { email, phone, website, designation, company, name });
+    address = this.cleanField(address, 'address');
 
     return {
       name,
@@ -220,6 +349,69 @@ export class CardParserService {
       address,
       rawText: cleanedText
     };
+  }
+
+  scoreField(str?: string, type?: string): number {
+    if (!str || !str.trim()) return -100;
+    const val = str.trim();
+    let score = 10;
+
+    const words = val.split(/\s+/).filter(w => w.length > 0);
+    const singleChars = words.filter(w => w.length === 1 && !/^[AI]$/i.test(w)).length;
+    if (words.length >= 2 && singleChars / words.length > 0.25) score -= 50;
+
+    if (type === 'name') {
+      if (/\d/.test(val) || /\+91/.test(val)) score -= 100;
+      if (!words.some(w => w.replace(/[^a-zA-Z]/g, '').length >= 3)) score -= 50;
+      if (words.some(w => /^[A-Z]\.?$/i.test(w))) score += 35;
+      if (words.every(w => /^[A-Z][a-z.]*$/i.test(w))) score += 20;
+      if (/\b(?:director|manager|officer|directo|fn|bs|hts|aka|saaf|saanfor|my)\b/i.test(val)) score -= 50;
+    } else if (type === 'company') {
+      if (this.COMPANY_SUFFIXES.some(s => val.toUpperCase().includes(s))) score += 40;
+      if (/\b(?:fn|bs|hts|my|tr)\b/i.test(val)) score -= 30;
+    } else if (type === 'phone') {
+      if (/^\+91\s[6-9]\d{4}\s\d{5}/.test(val)) score += 30;
+      if (/^\+91\s422\s\d{6,7}/.test(val)) score += 30;
+    }
+
+    return score;
+  }
+
+  getDiagnosticBreakdown(rawText: string, lineMetadata: OcrLineMetadata[] = []): FieldCandidateDiagnostic[] {
+    const cleaned = this.sanitizeOcrText(rawText);
+    const lines: string[] = [];
+    for (const rawLine of cleaned.split('\n')) {
+      const segments = this.splitLineIntoSegments(rawLine);
+      for (const seg of segments) {
+        lines.push(seg);
+      }
+    }
+    const parsed = this.parseCardText(rawText, lineMetadata);
+
+    const diagnostics: FieldCandidateDiagnostic[] = [];
+    const fields: ('name' | 'designation' | 'company' | 'phone' | 'email' | 'website' | 'address')[] = 
+      ['email', 'phone', 'website', 'designation', 'name', 'company', 'address'];
+
+    for (const field of fields) {
+      const selectedValue = (parsed as any)[field];
+      const evaluatedLines = lines.map(line => {
+        const isMatch = selectedValue && line.toLowerCase().includes(selectedValue.toLowerCase());
+        return {
+          line,
+          status: isMatch ? ('selected' as const) : ('candidate' as const),
+          score: this.scoreField(line, field),
+          reason: isMatch ? `Matched extracted ${field}` : `Evaluated as line candidate for ${field}`
+        };
+      });
+
+      diagnostics.push({
+        field,
+        selectedValue,
+        evaluatedLines
+      });
+    }
+
+    return diagnostics;
   }
 
   /**
@@ -258,27 +450,51 @@ export class CardParserService {
 
     const pickBest = (field1?: string, field2?: string, type?: string): string | undefined => {
       if (!field1 && !field2) return undefined;
-      if (!field1) return field2;
-      if (!field2) return field1;
-      const s1 = scoreField(field1, type);
-      const s2 = scoreField(field2, type);
-      return s1 >= s2 ? field1 : field2;
+      const f1 = field1?.trim();
+      const f2 = field2?.trim();
+      if (!f1) return f2;
+      if (!f2) return f1;
+
+      const s1 = scoreField(f1, type);
+      // Pass 1 Primary Rule: If Pass 1 has a valid score (>= 0), keep Pass 1 without letting Pass 2 override it
+      if (s1 >= 0) {
+        return f1;
+      }
+
+      // Pass 2 Secondary Fallback Rule: Only if Pass 1 score was invalid/noisy (< 0), check if Pass 2 is better
+      const s2 = scoreField(f2, type);
+      return s2 > s1 ? f2 : f1;
     };
 
     return {
       name: this.cleanField(pickBest(primary.name, secondary.name, 'name'), 'name'),
       designation: this.cleanField(pickBest(primary.designation, secondary.designation, 'designation'), 'designation'),
       company: this.cleanField(pickBest(primary.company, secondary.company, 'company'), 'company'),
-      phone: pickBest(primary.phone, secondary.phone, 'phone'),
-      email: pickBest(primary.email, secondary.email, 'email'),
-      website: pickBest(primary.website, secondary.website, 'website'),
-      address: pickBest(primary.address, secondary.address, 'address'),
+      phone: this.cleanField(pickBest(primary.phone, secondary.phone, 'phone'), 'phone'),
+      email: this.cleanField(pickBest(primary.email, secondary.email, 'email'), 'email'),
+      website: this.cleanField(pickBest(primary.website, secondary.website, 'website'), 'website'),
+      address: this.cleanField(pickBest(primary.address, secondary.address, 'address'), 'address'),
       rawText: primary.rawText || secondary.rawText
     };
   }
 
   private sanitizeOcrText(text: string): string {
     return text
+      // Strip inline SVG markup & SVG element tags (e.g. <svg>...</svg>, <path...>)
+      .replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, ' ')
+      .replace(/<\/?(?:svg|path|g|circle|rect|ellipse|line|polyline|polygon|use|defs|symbol|clipPath|linearGradient|radialGradient)[^>]*>/gi, ' ')
+      .replace(/\b(?:xmlns|viewbox|fill|stroke|stroke-width|d="[^"]*"|clip-path|fa-[a-z0-9-]+|bi-[a-z0-9-]+|icon-[a-z0-9-]+|material-icons)\b[^=\s]*=?/gi, ' ')
+      // Fix phone icon OCR misreads e.g. "[0 :4919965516076", "[ 0 :", "[0:", "* +91", "- 451" -> " [PH] +91"
+      .replace(/^[^\w\s\n]*\[\s*[0Oo]?\s*:?\s*/gmi, ' [PH] ')
+      .replace(/^[^\w\s\n]*[-*•=]\s*(?=\+?91|\+?\d{2,4}\s+\d)/gmi, ' [PH] ')
+      // Fix email icon OCR misreads e.g. "G4 :sundar1870@gmail.com", "=K 52 :sundar1870@gmail.com", "C4:sundar..."
+      .replace(/^[^\w\s\n]*(?:G4|C4|E4|M4|=?K\s*\d{1,3}|G-4)\s*:?\s*/gmi, ' [EMAIL] ')
+      // Fix country code OCR misread ":4919..." or "4919..." -> "+91 9..."
+      .replace(/[:\s\b]491([6-9]\d{9})\b/g, ' +91 $1')
+      .replace(/[:\s\b]491\s*([6-9]\d{4}[\s.-]?\d{5})\b/g, ' +91 $1')
+      // Strip leading noise quotes/colons e.g. "\" R.SUNDARRAJ", "'NAREN GROUP", ": +91..."
+      .replace(/^[^\w\s\n]*["'“”’`\\|=~]+\s*/gm, '')
+      .replace(/^[^\w\s\n]*:\s*(?=[A-Za-z0-9])/gm, '')
       // Replace explicit location icons & symbols BEFORE stripping non-ASCII characters
       .replace(/[📍🏢🏠📌🗺️🧭🌍🌐⌂⌖🎯©®●•§€£ø]/g, ' [ADD] ')
       // Tag line-leading address prefixes e.g. "Address:", "Add:", "Office:", "Location:"
@@ -291,8 +507,11 @@ export class CardParserService {
       .replace(/[✉📧]/g, ' [EMAIL] ')
       // Replace website icons
       .replace(/[🌐💻🔗]/g, ' [WEB] ')
-      // Fix email OCR spaces e.g. "pushparaj . s @ ariyAitech .com" -> "pushparaj.s@ariyAitech.com"
+      // Fix email OCR spaces e.g. "pushparaj . s @ ariyAitech .com" -> "pushparaj.s@ariyAitech.com" or "sundar1870@gmail. com" -> "sundar1870@gmail.com"
       .replace(/([a-zA-Z0-9._%+-]+)\s*@\s*([a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})/g, '$1@$2.$3')
+      .replace(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})/g, '$1.$2')
+      // Fix website OCR spaces e.g. "www. narengroup. in" -> "www.narengroup.in"
+      .replace(/(www\.[a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})/gi, '$1.$2')
       // Remove trailing noise symbols like "| :" or "~"
       .replace(/[|:~]+\s*$/gm, '')
       // Keep normal printable ASCII
@@ -302,6 +521,7 @@ export class CardParserService {
   private extractEmail(text: string): string | undefined {
     const normalized = text
       .replace(/([a-zA-Z0-9._%+-]+)\s*@\s*([a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})/gi, '$1@$2.$3')
+      .replace(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})/gi, '$1.$2')
       .replace(/([a-zA-Z0-9._%+-]+)\s*\[\s*at\s*\]\s*([a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})/gi, '$1@$2.$3');
 
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
@@ -341,11 +561,27 @@ export class CardParserService {
 
   private extractPhone(text: string): string | undefined {
     const phones: string[] = [];
+    const phoneDigitsSet = new Set<string>();
+
+    const addPhone = (formatted: string) => {
+      const digits = formatted.replace(/\D/g, '');
+      const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+      if (last10.length >= 7 && !phoneDigitsSet.has(last10)) {
+        phoneDigitsSet.add(last10);
+        phones.push(formatted);
+      }
+    };
+
+    // Pre-repair text for common OCR misreads in phone numbers e.g. "4919965516076" -> "+91 99655 16076"
+    const cleanedText = text
+      .replace(/\[\s*[0Oo]?\s*:?\s*/gi, ' ')
+      .replace(/[:\s\b]491([6-9]\d{9})\b/g, ' +91 $1')
+      .replace(/[:\s\b]491\s*([6-9]\d{4}[\s.-]?\d{5})\b/g, ' +91 $1');
 
     // Match all international or 10-digit mobile numbers
     const mobileRegex = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b/g;
     let match: RegExpExecArray | null;
-    while ((match = mobileRegex.exec(text)) !== null) {
+    while ((match = mobileRegex.exec(cleanedText)) !== null) {
       const digits = match[0].replace(/\D/g, '');
       let formatted = '';
       if (digits.length === 10) {
@@ -355,23 +591,19 @@ export class CardParserService {
       } else {
         formatted = match[0].trim();
       }
-      if (!phones.includes(formatted)) {
-        phones.push(formatted);
-      }
+      addPhone(formatted);
     }
 
     // Match landline numbers e.g. 0422 2967078, 2967127, +91 422 2967078
     const landlineRegex = /(?:\+?91[\s.-]?)?(?:0?\d{3,4}[\s.-]?)?[2-5]\d{6,7}/g;
-    while ((match = landlineRegex.exec(text)) !== null) {
+    while ((match = landlineRegex.exec(cleanedText)) !== null) {
       const digits = match[0].replace(/\D/g, '');
       if (digits.length >= 7 && digits.length <= 12) {
         let formatted = match[0].trim();
         if (digits.length === 10 && digits.startsWith('0422')) {
           formatted = '+91 422 ' + digits.slice(4);
         }
-        if (!phones.includes(formatted)) {
-          phones.push(formatted);
-        }
+        addPhone(formatted);
       }
     }
 
@@ -405,7 +637,9 @@ export class CardParserService {
 
     // Pass 1: Multi-word & Predefined designation pattern matching
     for (const line of lines) {
-      const cleaned = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
+      let cleaned = line.replace(/^(?:\[(?:ADD|PH|EMAIL|WEB|\?|\=|\+|\!)\]|[📍🏢🏠📌🗺️🧭🌍🌐⌂⌖🎯©®●•§€£ø☎📱📞✉📧💻🔗▪▫▶◄✦★◆◇❖✓✔✕✖♂♀✆✈⚑⚐👤💼🏷️🆔ℹ️\?]|[\s.:-]*\b(?:designation|title|role|position)\b[\s.:-]*)+/gi, '').trim();
+      cleaned = cleaned.replace(/^[a-z]\s+([A-Z])/i, '$1');
+      cleaned = cleaned.replace(/^[|:~_\-\s()\[\]{}]+|[|:~_\-\s()\[\]{}]+$/g, '').trim();
       const upper = cleaned.toUpperCase();
       if (!cleaned || cleaned.length > 60) continue;
 
@@ -503,6 +737,8 @@ export class CardParserService {
     // 1. Explicit Suffix Match or Fuzzy Typo Match (High Confidence)
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i];
+      line = line.replace(/^(?:\[(?:ADD|PH|EMAIL|WEB|\?|\=|\+|\!)\]|[📍🏢🏠📌🗺️🧭🌍🌐⌂⌖🎯©®●•§€£ø☎📱📞✉📧💻🔗▪▫▶◄✦★◆◇❖✓✔✕✖♂♀✆✈⚑⚐👤💼🏷️🆔ℹ️\?]|[\s.:-]*\b(?:company|firm|organization|org)\b[\s.:-]*)+/gi, '').trim();
+      line = line.replace(/^[a-z]\s+([A-Z])/i, '$1');
       const upper = line.toUpperCase();
 
       if (this.ADDRESS_KEYWORD_REGEX.test(upper) && !upper.includes('PVT LTD') && !upper.includes('PRIVATE LIMITED') && !upper.includes('GROUP')) {
@@ -555,8 +791,9 @@ export class CardParserService {
             }
           }
 
-          // Strip leading phone digits, numbers, or noise symbols before company name (e.g. "01 923516 63 SRIDHARSHINI ENTERPRISES")
+          // Strip leading phone digits, numbers, or noise symbols before company name (e.g. "01 923516 63 SRIDHARSHINI ENTERPRISES", "t (3 SRIDHARSHINI ENTERPRISE")
           cleaned = cleaned.replace(/^(?:\+?\d[\d\s.-]{2,15}|\d{2,10}\s+)+/g, '').trim();
+          cleaned = cleaned.replace(/^[a-z0-9()\[\]{}._\-\s]*\b(?=[A-Z]{3,})/g, '').trim();
           cleaned = cleaned.replace(/^[\d\s._\-|/:\\]+/, '').trim();
 
           // Strip leading designation text if prepended to company line
@@ -642,9 +879,10 @@ export class CardParserService {
 
     if (domainStem && domainStem.length >= 4) {
       for (const line of lines) {
-        const lineClean = line.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+        if (line.includes('@') || line.toLowerCase().includes('www.') || line.toLowerCase().includes('http')) continue;
+        const lineClean = line.replace(/[^a-zA-Z0-9\s.&'-]/g, '').trim();
         const lineUpper = lineClean.toUpperCase();
-        if (lineClean.length >= 3 && lineClean.length <= 35 && !lineClean.includes('@') && !lineClean.includes('www.')) {
+        if (lineClean.length >= 3 && lineClean.length <= 35) {
           if (lineUpper.replace(/\s+/g, '').toLowerCase().includes(domainStem)) {
             return lineClean;
           }
@@ -782,8 +1020,42 @@ export class CardParserService {
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].trim();
 
-      // Clean leading/trailing non-name symbols
-      line = line.replace(/^[|:~_\-\s]+|[|:~_\-\s]+$/g, '').trim();
+      // Clean leading/trailing non-name symbols, icon artifacts, and labels
+      line = line.replace(/^(?:\[(?:ADD|PH|EMAIL|WEB|\?|\=|\+|\!)\]|[📍🏢🏠📌🗺️🧭🌍🌐⌂⌖🎯©®●•§€£ø☎📱📞✉📧💻🔗▪▫▶◄✦★◆◇❖✓✔✕✖♂♀✆✈⚑⚐👤💼🏷️🆔ℹ️\?]|[\s.:-]*\b(?:name|person|contact|contact person)\b[\s.:-]*)+/gi, '').trim();
+      line = line.replace(/^[a-z]\s+([A-Z])/, '$1');
+      line = line.replace(/^[|:~_\-\s()\[\]{}]+|[|:~_\-\s()\[\]{}]+$/g, '').trim();
+
+      // Auto-repair common OCR symbol misreads of 'J' at the end of names e.g. "PUSHPARA]" -> "PUSHPARAJ", "SUNDARRA)" -> "SUNDARRAJ"
+      line = line.replace(/([A-Z]{2,})(?:RA|PA|MA|BA|GA|KA)[\]\)\}\>\|/\\]+/gi, '$1RAJ');
+      line = line.replace(/([A-Z]{3,})[\]\)\}\>]+/gi, '$1J');
+      line = line.replace(/RA[\]\)\}\>]/gi, 'RAJ');
+
+      // Strip trailing phone numbers/prefixes appended to person names on the same line e.g. "T.R. Manikandan +91 99449 23516" -> "T.R. Manikandan"
+      line = line.replace(/\s*(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}.*$/i, '').trim();
+      line = line.replace(/\s*(?:\+?\d{1,3}[\s.-]?)?(?:\d{3,5}[\s.-]?){2,4}.*$/i, '').trim();
+      line = line.replace(/\s*(?:ph|phone|mob|mobile|cell|tel|call)[\s.:-]*\d.*$/i, '').trim();
+
+      // Multi-Line Name Combination check: if line[i] and line[i+1] are consecutive uppercase name words
+      if (i + 1 < lines.length) {
+        let nextLine = lines[i + 1].trim().replace(/([A-Z]{2,})(?:RA|PA|MA|BA|GA|KA)[\]\)\}\>\|/\\]+/gi, '$1RAJ').replace(/([A-Z]{3,})[\]\)\}\>]+/gi, '$1J');
+        const isNextNameWord = /^[a-zA-Z\s.'-]+$/.test(nextLine) && nextLine.length >= 2 && nextLine.length <= 30 && !designationKeywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(nextLine.toUpperCase())) && !this.COMPANY_SUFFIXES.some(k => nextLine.toUpperCase().includes(k)) && !/\d/.test(nextLine);
+        const isCurrNameWord = /^[a-zA-Z\s.'-]+$/.test(line) && line.length >= 2 && line.length <= 30;
+
+        if (isCurrNameWord && isNextNameWord) {
+          const combinedName = line + ' ' + nextLine;
+          let combinedScore = 30;
+          if (emailUserStem && combinedName.toLowerCase().includes(emailUserStem)) {
+            combinedScore += 100;
+          }
+          if (alreadyExtracted.designation) {
+            const desUpper = alreadyExtracted.designation.toUpperCase();
+            if (i + 2 < lines.length && lines[i + 2].toUpperCase().includes(desUpper)) {
+              combinedScore += 80;
+            }
+          }
+          candidates.push({ text: combinedName, score: combinedScore });
+        }
+      }
 
       // Strip leading logo noise artifacts prepended to name e.g. "a. Yat le EEE CL R. SUNDARRAJ" -> "R. SUNDARRAJ"
       line = line.replace(/^(?:[a-z]\.?(?:\s+[a-z]{1,4}|\s+Yat|\s+le|\s+EEE|\s+CL|\s+Lo|\s+LW|\s+Tv|\s+Ju|\s+Scan|\s+Carat)+\s+)+/i, '').trim();
@@ -841,6 +1113,12 @@ export class CardParserService {
 
       const validNameWords = words.filter(w => w.length >= 1 && !this.STOP_WORDS.includes(w.toUpperCase()));
       if (validNameWords.length === 0) continue;
+
+      // Reject label noise lines containing only 1-2 letter acronyms (e.g. "I P :", "WE:", "BW:", "BE P:")
+      const hasSubstantialNameWord = words.some(w => w.replace(/[^a-zA-Z]/g, '').length >= 3);
+      if (!hasSubstantialNameWord) {
+        continue;
+      }
 
       let score = 10;
       if (namePrefixes.includes(firstWordUpper) && words.length >= 2) {
@@ -919,8 +1197,10 @@ export class CardParserService {
       // Check if line contains [ADD] tag (from location icon or prefix)
       const hasAddTag = line.includes('[ADD]');
 
-      // Clean [ADD] tag from beginning of line for final output
-      const cleanLine = line.replace(/\[ADD\]/gi, '').trim();
+      // Clean [ADD] tag, icon symbols, and address label prefixes from line for final output
+      let cleanLine = line.replace(/^(?:\[(?:ADD|PH|EMAIL|WEB|\?|\=|\+|\!)\]|[📍🏢🏠📌🗺️🧭🌍🌐⌂⌖🎯©®●•§€£ø☎📱📞✉📧💻🔗▪▫▶◄✦★◆◇❖✓✔✕✖♂♀✆✈⚑⚐👤💼🏷️🆔ℹ️\?]|[\s.:-]*\b(?:add|address|loc|location|off|office|factory|site|regd|head office|corporate office|h\.?o\.?)\b[\s.:-]*)+/gi, '').trim();
+      cleanLine = cleanLine.replace(/^[a-z]\s+([A-Z0-9])/i, '$1');
+      cleanLine = cleanLine.replace(/^[-_.~=*\s|:/\\{}()\[\]#,]+|[-_.~=*\s|:/\\{}()\[\]#,]+$/g, '').trim();
       const cleanUpper = cleanLine.toUpperCase();
 
       if (!cleanLine) continue;

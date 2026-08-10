@@ -9,6 +9,7 @@ import { ProfileComponent } from './features/profile/profile.component';
 import { NotificationConfigComponent } from './features/admin/notification-config.component';
 import { SmtpConfigComponent } from './features/admin/smtp-config.component';
 import { NotificationLogsComponent } from './features/admin/notification-logs.component';
+import { OcrDebuggerComponent } from './features/admin/ocr-debugger.component';
 import { LoginComponent } from './features/auth/login.component';
 import { authGuard } from './core/guards/auth.guard';
 
@@ -25,6 +26,7 @@ export const routes: Routes = [
   { path: 'admin/notification-config', component: NotificationConfigComponent, canActivate: [authGuard] },
   { path: 'admin/smtp-config', component: SmtpConfigComponent, canActivate: [authGuard] },
   { path: 'admin/notification-logs', component: NotificationLogsComponent, canActivate: [authGuard] },
+  { path: 'ocr-debugger', component: OcrDebuggerComponent, canActivate: [authGuard] },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: 'dashboard' },
 ];
