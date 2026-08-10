@@ -16,7 +16,7 @@ import { getApiUrl } from '../../core/config/api.config';
   standalone: true,
   imports: [CommonModule, FormsModule, OcrScannerComponent, QrScannerComponent, VoiceRecorderComponent],
   template: `
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-5xl mx-auto pb-16 md:pb-8">
       <!-- Page Header -->
       <div class="page-title-bar flex items-center justify-between mb-6">
         <div>
