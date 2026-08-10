@@ -557,24 +557,24 @@ import { StallService } from '../../core/services/stall.service';
           </div>
 
           <!-- Dashboard Interest Level Metrics Row -->
-          <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            <span class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">LEAD INTEREST DASHBOARD:</span>
+          <div class="pt-3 border-t border-slate-100 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3">
+            <span class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider block">LEAD INTEREST DASHBOARD:</span>
             
-            <div class="grid grid-cols-3 gap-2.5 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
+            <div class="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
               <!-- Hot Leads Metric Button -->
               <button 
                 type="button" 
                 (click)="filterInterest.set(filterInterest() === 'Hot' ? 'ALL' : 'Hot'); currentPage.set(1)" 
-                class="px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-2.5 shadow-2xs active:scale-95 cursor-pointer"
+                class="px-2 sm:px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-1 sm:gap-2.5 shadow-2xs active:scale-95 cursor-pointer min-w-0"
                 [ngClass]="filterInterest() === 'Hot' ? 'bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-500/20' : 'bg-red-50/60 hover:bg-red-100/80 text-red-800 border-red-200/80'"
               >
-                <div class="flex items-center gap-1.5">
-                  <span class="text-sm">🔥</span>
-                  <span>Hot Leads</span>
+                <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span class="text-xs sm:text-sm shrink-0">🔥</span>
+                  <span class="text-[11px] sm:text-xs font-extrabold truncate">Hot<span class="hidden sm:inline"> Leads</span></span>
                 </div>
                 <span 
-                  class="px-2 py-0.5 rounded-full text-[11px] font-extrabold shrink-0"
-                  [ngClass]="filterInterest() === 'Hot' ? 'bg-white/20 text-white' : 'bg-red-200/70 text-red-900'"
+                  class="w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 flex items-center justify-center text-center"
+                  [ngClass]="filterInterest() === 'Hot' ? 'bg-white/25 text-white' : 'bg-red-200/80 text-red-900'"
                 >
                   {{ hotLeadsCount() }}
                 </span>
@@ -584,16 +584,16 @@ import { StallService } from '../../core/services/stall.service';
               <button 
                 type="button" 
                 (click)="filterInterest.set(filterInterest() === 'Warm' ? 'ALL' : 'Warm'); currentPage.set(1)" 
-                class="px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-2.5 shadow-2xs active:scale-95 cursor-pointer"
+                class="px-2 sm:px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-1 sm:gap-2.5 shadow-2xs active:scale-95 cursor-pointer min-w-0"
                 [ngClass]="filterInterest() === 'Warm' ? 'bg-amber-500 text-white border-amber-500 shadow-md ring-2 ring-amber-500/20' : 'bg-amber-50/60 hover:bg-amber-100/80 text-amber-800 border-amber-200/80'"
               >
-                <div class="flex items-center gap-1.5">
-                  <span class="text-sm">⚡</span>
-                  <span>Warm Leads</span>
+                <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span class="text-xs sm:text-sm shrink-0">⚡</span>
+                  <span class="text-[11px] sm:text-xs font-extrabold truncate">Warm<span class="hidden sm:inline"> Leads</span></span>
                 </div>
                 <span 
-                  class="px-2 py-0.5 rounded-full text-[11px] font-extrabold shrink-0"
-                  [ngClass]="filterInterest() === 'Warm' ? 'bg-white/20 text-white' : 'bg-amber-200/70 text-amber-900'"
+                  class="w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 flex items-center justify-center text-center"
+                  [ngClass]="filterInterest() === 'Warm' ? 'bg-white/25 text-white' : 'bg-amber-200/80 text-amber-900'"
                 >
                   {{ warmLeadsCount() }}
                 </span>
@@ -603,16 +603,16 @@ import { StallService } from '../../core/services/stall.service';
               <button 
                 type="button" 
                 (click)="filterInterest.set(filterInterest() === 'Cold' ? 'ALL' : 'Cold'); currentPage.set(1)" 
-                class="px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-2.5 shadow-2xs active:scale-95 cursor-pointer"
+                class="px-2 sm:px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-1 sm:gap-2.5 shadow-2xs active:scale-95 cursor-pointer min-w-0"
                 [ngClass]="filterInterest() === 'Cold' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-500/20' : 'bg-blue-50/60 hover:bg-blue-100/80 text-blue-800 border-blue-200/80'"
               >
-                <div class="flex items-center gap-1.5">
-                  <span class="text-sm">❄️</span>
-                  <span>Cold Leads</span>
+                <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span class="text-xs sm:text-sm shrink-0">❄️</span>
+                  <span class="text-[11px] sm:text-xs font-extrabold truncate">Cold<span class="hidden sm:inline"> Leads</span></span>
                 </div>
                 <span 
-                  class="px-2 py-0.5 rounded-full text-[11px] font-extrabold shrink-0"
-                  [ngClass]="filterInterest() === 'Cold' ? 'bg-white/20 text-white' : 'bg-blue-200/70 text-blue-900'"
+                  class="w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 flex items-center justify-center text-center"
+                  [ngClass]="filterInterest() === 'Cold' ? 'bg-white/25 text-white' : 'bg-blue-200/80 text-blue-900'"
                 >
                   {{ coldLeadsCount() }}
                 </span>
