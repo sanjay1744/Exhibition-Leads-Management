@@ -12,46 +12,614 @@ import { StallService } from '../../core/services/stall.service';
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div>
-      <!-- Active Stall (Project) Selector Bar -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold">
-            <span class="material-icons text-lg">storefront</span>
+    <div>
+      <!-- Page Title & Top Action Bar -->
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-xl font-black text-slate-900 uppercase tracking-tight">LEADS DIRECTORY</h1>
+            <span class="bg-blue-100/80 text-blue-800 border border-blue-200/80 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
+              {{ filteredLeads().length }} Total
+            </span>
           </div>
-          <div>
-            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ACTIVE STALL (PROJECT)</div>
-            <div class="flex items-center gap-2">
-              <select 
-                [ngModel]="selectedStallId()" 
-                (ngModelChange)="onStallFilterChange($event)" 
-                class="border border-slate-300 rounded-md px-3 py-1 text-xs font-bold text-slate-800 bg-slate-50 outline-none focus:border-blue-600"
-              >
-                <option value="ALL">All Stalls (All Leads)</option>
-                @for (stall of stallService.stalls(); track stall.id) {
-                  <option [value]="stall.id">{{ stall.name }} ({{ stall.code }})</option>
-                }
-              </select>
-            </div>
-          </div>
+          <p class="text-xs text-slate-500 font-medium">Live Management Grid of Captured Visitor Enquiries {{ selectedStallId() === 'ALL' ? 'for All Stalls' : ('for ' + (stallService.activeStall()?.name || 'Active Stall')) }}</p>
         </div>
 
-        <div class="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium border">
-          Owner: <strong>{{ selectedStallId() === 'ALL' ? 'All Owners' : (stallService.activeStall()?.ownerName || 'Thalaimalai') }}</strong>
+        <div class="flex items-center gap-2.5">
+          <a routerLink="/capture" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs px-4 py-2.5 rounded-xl font-extrabold flex items-center gap-2 shadow-sm transition-all hover:shadow-md">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add New Lead
+          </a>
         </div>
       </div>
 
-      <!-- Page Title & Top Action Buttons -->
-      <div class="page-title-bar flex items-center justify-between mb-6">
-        <div>
-          <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">LEADS</h1>
-          <p class="text-xs text-slate-500">Live Grid of Captured Visitor Enquiries {{ selectedStallId() === 'ALL' ? 'for All Stalls' : ('for ' + (stallService.activeStall()?.name || 'Active Stall')) }}</p>
+      <!-- Combined Control Header: Active Stall + Multi-Column Filter Bar -->
+      <div class="bg-white border border-slate-200/80 rounded-2xl mb-6 shadow-sm divide-y divide-slate-100 relative">
+        
+        <!-- Top Section: Active Stall Selector -->
+        <div class="p-3.5 sm:p-4 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3 rounded-t-2xl">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold shrink-0">
+              <span class="material-icons text-lg">storefront</span>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase font-extrabold text-slate-700 tracking-wider">ACTIVE STALL (PROJECT)</div>
+              <div class="relative">
+                <div 
+                  (click)="openStallDropdown()" 
+                  class="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 bg-white outline-none hover:border-slate-400 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-2.5 min-w-[200px]"
+                  [ngClass]="showStallDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20' : ''"
+                >
+                  <span class="truncate text-slate-900 font-bold">{{ getSelectedStallName() }}</span>
+                  <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showStallDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </div>
+
+                @if (showStallDropdown()) {
+                  <div class="absolute left-0 top-full mt-1.5 z-50 w-72 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xl backdrop-blur-md">
+                    <div class="fixed inset-0 z-[-1]" (click)="showStallDropdown.set(false)"></div>
+
+                    <button 
+                      type="button"
+                      (click)="onStallFilterChange('ALL'); showStallDropdown.set(false)"
+                      class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                      [ngClass]="selectedStallId() === 'ALL' ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                    >
+                      <span>All Stalls (All Leads)</span>
+                      @if (selectedStallId() === 'ALL') {
+                        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      }
+                    </button>
+
+                    @for (stall of stallService.stalls(); track stall.id) {
+                      <button 
+                        type="button"
+                        (click)="onStallFilterChange(stall.id); showStallDropdown.set(false)"
+                        class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                        [ngClass]="selectedStallId() === stall.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                      >
+                        <span class="truncate">{{ stall.name }} ({{ stall.code }})</span>
+                        @if (selectedStallId() === stall.id) {
+                          <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        }
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="text-xs bg-white text-slate-700 px-3.5 py-1.5 rounded-xl font-medium border border-slate-200 shadow-2xs flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Owner: <strong class="font-extrabold text-slate-900">{{ selectedStallId() === 'ALL' ? 'All Owners' : (stallService.activeStall()?.ownerName || 'Thalaimalai') }}</strong>
+          </div>
         </div>
 
-        <div class="page-actions flex items-center gap-2">
-          <a routerLink="/capture" class="btn btn-primary text-xs px-4 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-md">
-            <span class="material-icons text-sm">add</span>
-            Add New Lead
-          </a>
+        <!-- Bottom Section: Advanced Filter & Search Grid -->
+        <div class="p-4 space-y-4">
+          <!-- Filter Header Bar -->
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                </svg>
+              </div>
+              <span class="text-xs font-black text-slate-900 uppercase tracking-wide">FILTER & SEARCH LEADS</span>
+              <span class="text-[11px] bg-blue-50 text-blue-700 border border-blue-200/60 px-2.5 py-0.5 rounded-full font-bold">
+                {{ filteredLeads().length }} Result{{ filteredLeads().length === 1 ? '' : 's' }}
+              </span>
+            </div>
+
+            @if (hasActiveFilters()) {
+              <button 
+                type="button" 
+                (click)="resetAllFilters()" 
+                class="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100/80 px-3 py-1 rounded-lg border border-rose-200/80 transition-all shadow-2xs"
+              >
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Reset Filters
+              </button>
+            }
+          </div>
+
+          <!-- Filter Controls Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            
+            <!-- 1. Text Search Input -->
+            <div class="lg:col-span-2">
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">SEARCH (NAME / COMPANY / PHONE / NO.)</label>
+              <div class="relative flex items-center">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3 shrink-0 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input 
+                  type="text" 
+                  [ngModel]="searchTerm()" 
+                  (ngModelChange)="searchTerm.set($event); currentPage.set(1)" 
+                  placeholder="Search by visitor name, company, phone..." 
+                  class="w-full text-xs pl-9 pr-8 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium bg-slate-50/60 focus:bg-white transition-all text-slate-900 placeholder-slate-400 shadow-2xs"
+                />
+                @if (searchTerm()) {
+                  <button 
+                    type="button" 
+                    (click)="searchTerm.set(''); currentPage.set(1)" 
+                    class="absolute right-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-md hover:bg-slate-100 transition-colors"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- 2. Date Created From -->
+            <div class="relative">
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">From Date*</label>
+              <div 
+                (click)="openDatePicker('from')" 
+                class="w-full text-xs px-3 py-2 border rounded-xl outline-none transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-1.5 bg-slate-50/60 hover:bg-white"
+                [ngClass]="showDatePicker() === 'from' ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white' : 'border-slate-200'"
+              >
+                <span [ngClass]="filterDateFrom() ? 'font-bold text-slate-900' : 'font-medium text-slate-400'" class="truncate">
+                  {{ filterDateFrom() ? formatDateDisplay(filterDateFrom()) : 'Select Date' }}
+                </span>
+                <button type="button" class="text-blue-600 hover:text-blue-800 p-0.5 shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Calendar Popover for From Date -->
+              @if (showDatePicker() === 'from') {
+                <div class="absolute left-0 top-full mt-2 z-50 w-72 bg-slate-100 border border-slate-200 rounded-2xl p-3.5 shadow-2xl">
+                  <!-- Backdrop click blocker -->
+                  <div class="fixed inset-0 z-[-1]" (click)="closeDatePicker()"></div>
+
+                  <!-- Calendar Header Bar -->
+                  <div class="flex items-center justify-between mb-3 px-1">
+                    <div class="flex items-center gap-1 text-xs font-bold uppercase text-slate-800 tracking-wider">
+                      <span>{{ monthShortNames[currentPickerMonth()] }} {{ currentPickerYear() }}</span>
+                      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                      <button 
+                        type="button" 
+                        (click)="prevPickerMonth()" 
+                        class="w-7 h-7 rounded-full bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition-all"
+                        title="Previous Month"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                      </button>
+                      <button 
+                        type="button" 
+                        (click)="nextPickerMonth()" 
+                        class="w-7 h-7 rounded-full bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition-all"
+                        title="Next Month"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Days of Week Header -->
+                  <div class="grid grid-cols-7 gap-1 text-center mb-1.5">
+                    @for (wDay of weekDayNames; track $index) {
+                      <div class="text-[11px] font-bold text-slate-500 py-0.5">
+                        {{ wDay }}
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Month Subtitle -->
+                  <div class="text-[10px] font-bold uppercase text-slate-400 tracking-wider px-1 mb-1">
+                    {{ monthShortNames[currentPickerMonth()] }}
+                  </div>
+
+                  <!-- Days Grid -->
+                  <div class="grid grid-cols-7 gap-1 text-center text-xs mb-3">
+                    @for (cell of pickerCalendarDays(); track cell.dateStr) {
+                      <button
+                        type="button"
+                        (click)="selectPickerDate(cell.dateStr)"
+                        [disabled]="!cell.isCurrentMonth"
+                        class="w-8 h-8 rounded-full font-semibold flex items-center justify-center transition-all mx-auto text-[11px]"
+                        [ngClass]="{
+                          'opacity-30 cursor-not-allowed text-slate-400': !cell.isCurrentMonth,
+                          'bg-[#2b6693] text-white shadow-sm font-bold': isDateSelected(cell.dateStr),
+                          'ring-2 ring-[#2b6693] text-[#2b6693] font-bold bg-white': isTodayDate(cell.dateStr) && !isDateSelected(cell.dateStr),
+                          'bg-blue-100/70 text-blue-900 font-bold': isInRangeDate(cell.dateStr) && !isDateSelected(cell.dateStr),
+                          'hover:bg-slate-200 text-slate-700': cell.isCurrentMonth && !isDateSelected(cell.dateStr) && !isInRangeDate(cell.dateStr)
+                        }"
+                      >
+                        {{ cell.dayNum }}
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Quick Range Buttons Inside Popover -->
+                  <div class="pt-2 border-t border-slate-200/80 flex items-center justify-between gap-1 text-[10px]">
+                    <button 
+                      type="button" 
+                      (click)="setTodayFilter(); closeDatePicker()" 
+                      class="text-blue-700 hover:text-blue-900 font-bold px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
+                    >
+                      Today
+                    </button>
+                    <button 
+                      type="button" 
+                      (click)="setThisMonthFilter(); closeDatePicker()" 
+                      class="text-blue-700 hover:text-blue-900 font-bold px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
+                    >
+                      This Month
+                    </button>
+                    <button 
+                      type="button" 
+                      (click)="filterDateFrom.set(''); filterDateTo.set(''); closeDatePicker()" 
+                      class="text-rose-600 hover:text-rose-800 font-bold px-2 py-1 bg-white hover:bg-rose-50 border border-slate-200 rounded-lg transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                </div>
+              }
+            </div>
+
+            <!-- 3. Date Created To -->
+            <div class="relative">
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">To Date*</label>
+              <div 
+                (click)="openDatePicker('to')" 
+                class="w-full text-xs px-3 py-2 border rounded-xl outline-none transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-1.5 bg-slate-50/60 hover:bg-white"
+                [ngClass]="showDatePicker() === 'to' ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white' : 'border-slate-200'"
+              >
+                <span [ngClass]="filterDateTo() ? 'font-bold text-slate-900' : 'font-medium text-slate-400'" class="truncate">
+                  {{ filterDateTo() ? formatDateDisplay(filterDateTo()) : 'Select Date' }}
+                </span>
+                <button type="button" class="text-blue-600 hover:text-blue-800 p-0.5 shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Calendar Popover for To Date -->
+              @if (showDatePicker() === 'to') {
+                <div class="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 z-50 w-72 bg-slate-100 border border-slate-200 rounded-2xl p-3.5 shadow-2xl">
+                  <!-- Backdrop click blocker -->
+                  <div class="fixed inset-0 z-[-1]" (click)="closeDatePicker()"></div>
+
+                  <!-- Calendar Header Bar -->
+                  <div class="flex items-center justify-between mb-3 px-1">
+                    <div class="flex items-center gap-1 text-xs font-bold uppercase text-slate-800 tracking-wider">
+                      <span>{{ monthShortNames[currentPickerMonth()] }} {{ currentPickerYear() }}</span>
+                      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                      <button 
+                        type="button" 
+                        (click)="prevPickerMonth()" 
+                        class="w-7 h-7 rounded-full bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition-all"
+                        title="Previous Month"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                      </button>
+                      <button 
+                        type="button" 
+                        (click)="nextPickerMonth()" 
+                        class="w-7 h-7 rounded-full bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition-all"
+                        title="Next Month"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Days of Week Header -->
+                  <div class="grid grid-cols-7 gap-1 text-center mb-1.5">
+                    @for (wDay of weekDayNames; track $index) {
+                      <div class="text-[11px] font-bold text-slate-500 py-0.5">
+                        {{ wDay }}
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Month Subtitle -->
+                  <div class="text-[10px] font-bold uppercase text-slate-400 tracking-wider px-1 mb-1">
+                    {{ monthShortNames[currentPickerMonth()] }}
+                  </div>
+
+                  <!-- Days Grid -->
+                  <div class="grid grid-cols-7 gap-1 text-center text-xs mb-3">
+                    @for (cell of pickerCalendarDays(); track cell.dateStr) {
+                      <button
+                        type="button"
+                        (click)="selectPickerDate(cell.dateStr)"
+                        [disabled]="!cell.isCurrentMonth"
+                        class="w-8 h-8 rounded-full font-semibold flex items-center justify-center transition-all mx-auto text-[11px]"
+                        [ngClass]="{
+                          'opacity-30 cursor-not-allowed text-slate-400': !cell.isCurrentMonth,
+                          'bg-[#2b6693] text-white shadow-sm font-bold': isDateSelected(cell.dateStr),
+                          'ring-2 ring-[#2b6693] text-[#2b6693] font-bold bg-white': isTodayDate(cell.dateStr) && !isDateSelected(cell.dateStr),
+                          'bg-blue-100/70 text-blue-900 font-bold': isInRangeDate(cell.dateStr) && !isDateSelected(cell.dateStr),
+                          'hover:bg-slate-200 text-slate-700': cell.isCurrentMonth && !isDateSelected(cell.dateStr) && !isInRangeDate(cell.dateStr)
+                        }"
+                      >
+                        {{ cell.dayNum }}
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Quick Range Buttons Inside Popover -->
+                  <div class="pt-2 border-t border-slate-200/80 flex items-center justify-between gap-1 text-[10px]">
+                    <button 
+                      type="button" 
+                      (click)="setTodayFilter(); closeDatePicker()" 
+                      class="text-blue-700 hover:text-blue-900 font-bold px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
+                    >
+                      Today
+                    </button>
+                    <button 
+                      type="button" 
+                      (click)="setThisMonthFilter(); closeDatePicker()" 
+                      class="text-blue-700 hover:text-blue-900 font-bold px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
+                    >
+                      This Month
+                    </button>
+                    <button 
+                      type="button" 
+                      (click)="filterDateFrom.set(''); filterDateTo.set(''); closeDatePicker()" 
+                      class="text-rose-600 hover:text-rose-800 font-bold px-2 py-1 bg-white hover:bg-rose-50 border border-slate-200 rounded-lg transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                </div>
+              }
+            </div>
+
+            <!-- 4. Interest Level Custom Dropdown -->
+            <div class="relative">
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">INTEREST LEVEL</label>
+              <div 
+                (click)="openInterestDropdown()" 
+                class="w-full text-xs px-3 py-2 border rounded-xl outline-none transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-1.5 bg-slate-50/60 hover:bg-white"
+                [ngClass]="showInterestDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white' : 'border-slate-200'"
+              >
+                <span [ngClass]="filterInterest() !== 'ALL' ? 'font-bold text-slate-900' : 'font-medium text-slate-400'" class="truncate">
+                  {{ filterInterest() === 'ALL' ? 'All Levels' : filterInterest() }}
+                </span>
+                <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showInterestDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
+
+              <!-- Custom Rounded Dropdown Menu -->
+              @if (showInterestDropdown()) {
+                <div class="absolute left-0 top-full mt-1.5 z-50 w-full min-w-[140px] bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xl backdrop-blur-md">
+                  <div class="fixed inset-0 z-[-1]" (click)="showInterestDropdown.set(false)"></div>
+
+                  <button 
+                    type="button"
+                    (click)="filterInterest.set('ALL'); currentPage.set(1); showInterestDropdown.set(false)"
+                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between"
+                    [ngClass]="filterInterest() === 'ALL' ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-50'"
+                  >
+                    <span>All Levels</span>
+                    @if (filterInterest() === 'ALL') {
+                      <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    }
+                  </button>
+
+                  <button 
+                    type="button"
+                    (click)="filterInterest.set('Hot'); currentPage.set(1); showInterestDropdown.set(false)"
+                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between"
+                    [ngClass]="filterInterest() === 'Hot' ? 'bg-red-50 text-red-700 font-bold' : 'text-slate-700 hover:bg-slate-50'"
+                  >
+                    <span>Hot</span>
+                    @if (filterInterest() === 'Hot') {
+                      <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    }
+                  </button>
+
+                  <button 
+                    type="button"
+                    (click)="filterInterest.set('Warm'); currentPage.set(1); showInterestDropdown.set(false)"
+                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between"
+                    [ngClass]="filterInterest() === 'Warm' ? 'bg-amber-50 text-amber-700 font-bold' : 'text-slate-700 hover:bg-slate-50'"
+                  >
+                    <span>Warm</span>
+                    @if (filterInterest() === 'Warm') {
+                      <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    }
+                  </button>
+
+                  <button 
+                    type="button"
+                    (click)="filterInterest.set('Cold'); currentPage.set(1); showInterestDropdown.set(false)"
+                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between"
+                    [ngClass]="filterInterest() === 'Cold' ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-50'"
+                  >
+                    <span>Cold</span>
+                    @if (filterInterest() === 'Cold') {
+                      <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    }
+                  </button>
+
+                </div>
+              }
+            </div>
+
+            <!-- 5. Sync Status Custom Dropdown -->
+            <div class="relative">
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">SYNC STATUS</label>
+              <div 
+                (click)="openSyncDropdown()" 
+                class="w-full text-xs px-3 py-2 border rounded-xl outline-none transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-1.5 bg-slate-50/60 hover:bg-white"
+                [ngClass]="showSyncDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white' : 'border-slate-200'"
+              >
+                <span [ngClass]="filterSyncStatus() !== 'ALL' ? 'font-bold text-slate-900' : 'font-medium text-slate-400'" class="truncate">
+                  {{ filterSyncStatus() === 'ALL' ? 'All Statuses' : filterSyncStatus() }}
+                </span>
+                <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showSyncDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
+
+              <!-- Custom Rounded Dropdown Menu -->
+              @if (showSyncDropdown()) {
+                <div class="absolute right-0 sm:left-0 sm:right-auto top-full mt-1.5 z-50 w-full min-w-[140px] bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xl backdrop-blur-md">
+                  <div class="fixed inset-0 z-[-1]" (click)="showSyncDropdown.set(false)"></div>
+
+                  <button 
+                    type="button"
+                    (click)="filterSyncStatus.set('ALL'); currentPage.set(1); showSyncDropdown.set(false)"
+                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between"
+                    [ngClass]="filterSyncStatus() === 'ALL' ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-50'"
+                  >
+                    <span>All Statuses</span>
+                    @if (filterSyncStatus() === 'ALL') {
+                      <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    }
+                  </button>
+
+                  <button 
+                    type="button"
+                    (click)="filterSyncStatus.set('Pending'); currentPage.set(1); showSyncDropdown.set(false)"
+                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between"
+                    [ngClass]="filterSyncStatus() === 'Pending' ? 'bg-amber-50 text-amber-700 font-bold' : 'text-slate-700 hover:bg-slate-50'"
+                  >
+                    <span>Pending Sync</span>
+                    @if (filterSyncStatus() === 'Pending') {
+                      <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    }
+                  </button>
+
+                  <button 
+                    type="button"
+                    (click)="filterSyncStatus.set('Synced'); currentPage.set(1); showSyncDropdown.set(false)"
+                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center justify-between"
+                    [ngClass]="filterSyncStatus() === 'Synced' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-700 hover:bg-slate-50'"
+                  >
+                    <span>Synced</span>
+                    @if (filterSyncStatus() === 'Synced') {
+                      <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    }
+                  </button>
+
+                </div>
+              }
+            </div>
+
+          </div>
+
+          <!-- Dashboard Interest Level Metrics Row -->
+          <div class="pt-3 border-t border-slate-100 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3">
+            <span class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider block">LEAD INTEREST DASHBOARD:</span>
+            
+            <div class="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
+              <!-- Hot Leads Metric Button -->
+              <button 
+                type="button" 
+                (click)="filterInterest.set(filterInterest() === 'Hot' ? 'ALL' : 'Hot'); currentPage.set(1)" 
+                class="px-2 sm:px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-1 sm:gap-2.5 shadow-2xs active:scale-95 cursor-pointer min-w-0"
+                [ngClass]="filterInterest() === 'Hot' ? 'bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-500/20' : 'bg-red-50/60 hover:bg-red-100/80 text-red-800 border-red-200/80'"
+              >
+                <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span class="text-xs sm:text-sm shrink-0">🔥</span>
+                  <span class="text-[11px] sm:text-xs font-extrabold truncate">Hot<span class="hidden sm:inline"> Leads</span></span>
+                </div>
+                <span 
+                  class="w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 flex items-center justify-center text-center"
+                  [ngClass]="filterInterest() === 'Hot' ? 'bg-white/25 text-white' : 'bg-red-200/80 text-red-900'"
+                >
+                  {{ hotLeadsCount() }}
+                </span>
+              </button>
+
+              <!-- Warm Leads Metric Button -->
+              <button 
+                type="button" 
+                (click)="filterInterest.set(filterInterest() === 'Warm' ? 'ALL' : 'Warm'); currentPage.set(1)" 
+                class="px-2 sm:px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-1 sm:gap-2.5 shadow-2xs active:scale-95 cursor-pointer min-w-0"
+                [ngClass]="filterInterest() === 'Warm' ? 'bg-amber-500 text-white border-amber-500 shadow-md ring-2 ring-amber-500/20' : 'bg-amber-50/60 hover:bg-amber-100/80 text-amber-800 border-amber-200/80'"
+              >
+                <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span class="text-xs sm:text-sm shrink-0">⚡</span>
+                  <span class="text-[11px] sm:text-xs font-extrabold truncate">Warm<span class="hidden sm:inline"> Leads</span></span>
+                </div>
+                <span 
+                  class="w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 flex items-center justify-center text-center"
+                  [ngClass]="filterInterest() === 'Warm' ? 'bg-white/25 text-white' : 'bg-amber-200/80 text-amber-900'"
+                >
+                  {{ warmLeadsCount() }}
+                </span>
+              </button>
+
+              <!-- Cold Leads Metric Button -->
+              <button 
+                type="button" 
+                (click)="filterInterest.set(filterInterest() === 'Cold' ? 'ALL' : 'Cold'); currentPage.set(1)" 
+                class="px-2 sm:px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-1 sm:gap-2.5 shadow-2xs active:scale-95 cursor-pointer min-w-0"
+                [ngClass]="filterInterest() === 'Cold' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-500/20' : 'bg-blue-50/60 hover:bg-blue-100/80 text-blue-800 border-blue-200/80'"
+              >
+                <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span class="text-xs sm:text-sm shrink-0">❄️</span>
+                  <span class="text-[11px] sm:text-xs font-extrabold truncate">Cold<span class="hidden sm:inline"> Leads</span></span>
+                </div>
+                <span 
+                  class="w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 flex items-center justify-center text-center"
+                  [ngClass]="filterInterest() === 'Cold' ? 'bg-white/25 text-white' : 'bg-blue-200/80 text-blue-900'"
+                >
+                  {{ coldLeadsCount() }}
+                </span>
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -74,6 +642,7 @@ import { StallService } from '../../core/services/stall.service';
             <thead>
               <tr class="bg-[#1a3a5c] text-white text-[11px] font-bold uppercase tracking-wider">
                 <th class="py-1.5 px-4 border-r border-white/20">LEAD NO.</th>
+                <th class="py-1.5 px-4 border-r border-white/20 whitespace-nowrap min-w-[120px]">DATE OF CREATION</th>
                 <th class="py-1.5 px-4 border-r border-white/20">VISITOR NAME</th>
                 <th class="py-1.5 px-4 border-r border-white/20">STALL NAME</th>
                 <th class="py-1.5 px-4 border-r border-white/20">COMPANY</th>
@@ -95,6 +664,11 @@ import { StallService } from '../../core/services/stall.service';
                   <!-- Lead Number -->
                   <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
                     {{ lead.leadNumber }}
+                  </td>
+
+                  <!-- Date of Creation -->
+                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60 whitespace-nowrap font-mono text-[11px]">
+                    {{ formatCreatedDate(lead.createdAt) }}
                   </td>
 
                   <!-- Visitor Name -->
@@ -176,7 +750,7 @@ import { StallService } from '../../core/services/stall.service';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="10" class="py-12 text-center text-slate-400">
+                  <td colspan="12" class="py-12 text-center text-slate-400">
                     No visitor lead records found.
                   </td>
                 </tr>
@@ -451,9 +1025,282 @@ export class LeadListComponent implements OnInit {
   selectedLeadForView = signal<LocalLead | null>(null);
   selectedStallId = signal<string>('ALL');
 
+  searchTerm = signal<string>('');
+  filterDateFrom = signal<string>('');
+  filterDateTo = signal<string>('');
+  filterInterest = signal<string>('ALL');
+  filterSyncStatus = signal<string>('ALL');
+  filterHasMedia = signal<string>('ALL');
+
   pageSize = signal(20);
   pageSizeSelect = 20;
   currentPage = signal(1);
+
+  hasActiveFilters = computed(() => {
+    return !!(
+      this.searchTerm().trim() ||
+      this.filterDateFrom() ||
+      this.filterDateTo() ||
+      this.filterInterest() !== 'ALL' ||
+      this.filterSyncStatus() !== 'ALL' ||
+      this.filterHasMedia() !== 'ALL'
+    );
+  });
+
+  resetAllFilters(): void {
+    this.searchTerm.set('');
+    this.filterDateFrom.set('');
+    this.filterDateTo.set('');
+    this.filterInterest.set('ALL');
+    this.filterSyncStatus.set('ALL');
+    this.filterHasMedia.set('ALL');
+    this.currentPage.set(1);
+  }
+
+  setTodayFilter(): void {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (this.isTodayActive()) {
+      this.filterDateFrom.set('');
+      this.filterDateTo.set('');
+    } else {
+      this.filterDateFrom.set(todayStr);
+      this.filterDateTo.set(todayStr);
+    }
+    this.currentPage.set(1);
+  }
+
+  isTodayActive(): boolean {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return this.filterDateFrom() === todayStr && this.filterDateTo() === todayStr;
+  }
+
+  setHotLeadsFilter(): void {
+    this.filterInterest.set(this.filterInterest() === 'Hot' ? 'ALL' : 'Hot');
+    this.currentPage.set(1);
+  }
+
+  setPendingSyncFilter(): void {
+    this.filterSyncStatus.set(this.filterSyncStatus() === 'Pending' ? 'ALL' : 'Pending');
+    this.currentPage.set(1);
+  }
+
+  setMediaOnlyFilter(): void {
+    this.filterHasMedia.set(this.filterHasMedia() === 'ANY_MEDIA' ? 'ALL' : 'ANY_MEDIA');
+    this.currentPage.set(1);
+  }
+
+  // Custom Rounded Dropdown Signals & Methods
+  showInterestDropdown = signal(false);
+  showSyncDropdown = signal(false);
+  showStallDropdown = signal(false);
+
+  openInterestDropdown(): void {
+    this.closeDatePicker();
+    this.showSyncDropdown.set(false);
+    this.showStallDropdown.set(false);
+    this.showInterestDropdown.update((v) => !v);
+  }
+
+  openSyncDropdown(): void {
+    this.closeDatePicker();
+    this.showInterestDropdown.set(false);
+    this.showStallDropdown.set(false);
+    this.showSyncDropdown.update((v) => !v);
+  }
+
+  openStallDropdown(): void {
+    this.closeDatePicker();
+    this.showInterestDropdown.set(false);
+    this.showSyncDropdown.set(false);
+    this.showStallDropdown.update((v) => !v);
+  }
+
+  getSelectedStallName(): string {
+    if (this.selectedStallId() === 'ALL') return 'All Stalls (All Leads)';
+    const found = this.stallService.stalls().find((s) => s.id === this.selectedStallId());
+    return found ? `${found.name} (${found.code})` : 'All Stalls (All Leads)';
+  }
+
+  // Premium Custom Date Picker Popover Signals & Methods
+  showDatePicker = signal<'from' | 'to' | null>(null);
+  currentPickerYear = signal<number>(new Date().getFullYear());
+  currentPickerMonth = signal<number>(new Date().getMonth());
+
+  monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  weekDayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  openDatePicker(mode: 'from' | 'to'): void {
+    this.showInterestDropdown.set(false);
+    this.showSyncDropdown.set(false);
+    this.showStallDropdown.set(false);
+
+    if (this.showDatePicker() === mode) {
+      this.showDatePicker.set(null);
+      return;
+    }
+
+    let targetDateStr = mode === 'from' ? this.filterDateFrom() : this.filterDateTo();
+    if (!targetDateStr && mode === 'to' && this.filterDateFrom()) {
+      targetDateStr = this.filterDateFrom();
+    }
+
+    if (targetDateStr) {
+      const parts = targetDateStr.split('-');
+      if (parts.length === 3) {
+        this.currentPickerYear.set(parseInt(parts[0], 10));
+        this.currentPickerMonth.set(parseInt(parts[1], 10) - 1);
+      }
+    } else {
+      this.currentPickerYear.set(new Date().getFullYear());
+      this.currentPickerMonth.set(new Date().getMonth());
+    }
+
+    this.showDatePicker.set(mode);
+  }
+
+  closeDatePicker(): void {
+    this.showDatePicker.set(null);
+  }
+
+  prevPickerMonth(): void {
+    if (this.currentPickerMonth() === 0) {
+      this.currentPickerMonth.set(11);
+      this.currentPickerYear.update((y) => y - 1);
+    } else {
+      this.currentPickerMonth.update((m) => m - 1);
+    }
+  }
+
+  nextPickerMonth(): void {
+    if (this.currentPickerMonth() === 11) {
+      this.currentPickerMonth.set(0);
+      this.currentPickerYear.update((y) => y + 1);
+    } else {
+      this.currentPickerMonth.update((m) => m + 1);
+    }
+  }
+
+  pickerCalendarDays = computed(() => {
+    const year = this.currentPickerYear();
+    const month = this.currentPickerMonth();
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const prevDaysInMonth = new Date(year, month, 0).getDate();
+
+    const result: { dateStr: string; dayNum: number; isCurrentMonth: boolean }[] = [];
+
+    // Previous month padding
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const dayNum = prevDaysInMonth - i;
+      const prevM = month === 0 ? 11 : month - 1;
+      const prevY = month === 0 ? year - 1 : year;
+      const mStr = String(prevM + 1).padStart(2, '0');
+      const dStr = String(dayNum).padStart(2, '0');
+      result.push({
+        dateStr: `${prevY}-${mStr}-${dStr}`,
+        dayNum,
+        isCurrentMonth: false
+      });
+    }
+
+    // Current month days
+    const mStr = String(month + 1).padStart(2, '0');
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = String(d).padStart(2, '0');
+      result.push({
+        dateStr: `${year}-${mStr}-${dStr}`,
+        dayNum: d,
+        isCurrentMonth: true
+      });
+    }
+
+    // Next month padding
+    const totalCells = Math.ceil(result.length / 7) * 7;
+    const nextCount = totalCells - result.length;
+    const nextM = month === 11 ? 0 : month + 1;
+    const nextY = month === 11 ? year + 1 : year;
+    const nextMStr = String(nextM + 1).padStart(2, '0');
+    for (let d = 1; d <= nextCount; d++) {
+      const dStr = String(d).padStart(2, '0');
+      result.push({
+        dateStr: `${nextY}-${nextMStr}-${dStr}`,
+        dayNum: d,
+        isCurrentMonth: false
+      });
+    }
+
+    return result;
+  });
+
+  selectPickerDate(dateStr: string): void {
+    const mode = this.showDatePicker();
+    if (mode === 'from') {
+      this.filterDateFrom.set(dateStr);
+      if (this.filterDateTo() && this.filterDateTo() < dateStr) {
+        this.filterDateTo.set('');
+      }
+      this.currentPage.set(1);
+      this.showDatePicker.set('to');
+    } else if (mode === 'to') {
+      if (this.filterDateFrom() && dateStr < this.filterDateFrom()) {
+        this.filterDateTo.set(this.filterDateFrom());
+        this.filterDateFrom.set(dateStr);
+      } else {
+        this.filterDateTo.set(dateStr);
+      }
+      this.currentPage.set(1);
+      this.showDatePicker.set(null);
+    }
+  }
+
+  isDateSelected(dateStr: string): boolean {
+    const mode = this.showDatePicker();
+    if (mode === 'from') {
+      return this.filterDateFrom() === dateStr;
+    } else if (mode === 'to') {
+      return this.filterDateTo() === dateStr;
+    }
+    return this.filterDateFrom() === dateStr || this.filterDateTo() === dateStr;
+  }
+
+  isTodayDate(dateStr: string): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    return dateStr === today;
+  }
+
+  isInRangeDate(dateStr: string): boolean {
+    const from = this.filterDateFrom();
+    const to = this.filterDateTo();
+    if (!from || !to) return false;
+    return dateStr >= from && dateStr <= to;
+  }
+
+  formatDateDisplay(dateStr: string): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const y = parts[0];
+    const mIdx = parseInt(parts[1], 10) - 1;
+    const d = parts[2];
+    const mName = this.monthShortNames[mIdx] || parts[1];
+    return `${d}/${mName}/${y}`;
+  }
+
+  setThisMonthFilter(): void {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    this.filterDateFrom.set(this.formatYYYYMMDD(firstDay));
+    this.filterDateTo.set(this.formatYYYYMMDD(now));
+    this.currentPage.set(1);
+  }
+
+  formatYYYYMMDD(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
 
   async ngOnInit(): Promise<void> {
     await this.loadLeads();
@@ -477,6 +1324,20 @@ export class LeadListComponent implements OnInit {
     return phoneStr.split(/[,/]+/).map(p => p.trim()).filter(p => p.length > 0);
   }
 
+  formatCreatedDate(dateStr: string | undefined | null): string {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '-';
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return '-';
+    }
+  }
+
   onStallFilterChange(stallId: string): void {
     this.selectedStallId.set(stallId);
     if (stallId !== 'ALL') {
@@ -494,12 +1355,83 @@ export class LeadListComponent implements OnInit {
     return stall ? stall.name : 'Stall 01 - Main Exhibition';
   }
 
-  filteredLeads = computed(() => {
+  dateAndStallFilteredLeads = computed(() => {
+    let list = this.allLeads();
+
+    // 1. Stall Filter
     const stallId = this.selectedStallId();
-    if (stallId === 'ALL' || !stallId) {
-      return this.allLeads();
+    if (stallId && stallId !== 'ALL') {
+      list = list.filter((l) => l.exhibitionId === stallId || (!l.exhibitionId && stallId === '33333333-3333-3333-3333-333333333333'));
     }
-    return this.allLeads().filter((l) => l.exhibitionId === stallId || (!l.exhibitionId && stallId === '33333333-3333-3333-3333-333333333333'));
+
+    // 2. Text Search (Name, Lead No, Company, Phone, Designation, Address, Email, Remarks)
+    const q = this.searchTerm().trim().toLowerCase();
+    if (q) {
+      list = list.filter((l) => 
+        (l.name && l.name.toLowerCase().includes(q)) ||
+        (l.leadNumber && l.leadNumber.toLowerCase().includes(q)) ||
+        (l.company && l.company.toLowerCase().includes(q)) ||
+        (l.phone && l.phone.toLowerCase().includes(q)) ||
+        (l.designation && l.designation.toLowerCase().includes(q)) ||
+        (l.email && l.email.toLowerCase().includes(q)) ||
+        (l.address && l.address.toLowerCase().includes(q)) ||
+        (l.remarks && l.remarks.toLowerCase().includes(q))
+      );
+    }
+
+    // 3. Date From Filter
+    const fromStr = this.filterDateFrom();
+    if (fromStr) {
+      const fromTime = new Date(fromStr + 'T00:00:00').getTime();
+      list = list.filter((l) => {
+        if (!l.createdAt) return false;
+        return new Date(l.createdAt).getTime() >= fromTime;
+      });
+    }
+
+    // 4. Date To Filter
+    const toStr = this.filterDateTo();
+    if (toStr) {
+      const toTime = new Date(toStr + 'T23:59:59').getTime();
+      list = list.filter((l) => {
+        if (!l.createdAt) return false;
+        return new Date(l.createdAt).getTime() <= toTime;
+      });
+    }
+
+    // 5. Sync Status Filter
+    const sync = this.filterSyncStatus();
+    if (sync && sync !== 'ALL') {
+      list = list.filter((l) => l.syncStatus === sync);
+    }
+
+    // 6. Media Filter
+    const media = this.filterHasMedia();
+    if (media === 'CARD_ONLY') {
+      list = list.filter((l) => !!l.photoBlob);
+    } else if (media === 'VOICE_ONLY') {
+      list = list.filter((l) => !!l.voiceBlob || !!l.voiceNotesTranscript);
+    } else if (media === 'ANY_MEDIA') {
+      list = list.filter((l) => !!l.photoBlob || !!l.voiceBlob || !!l.voiceNotesTranscript);
+    }
+
+    return list;
+  });
+
+  hotLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Hot').length);
+  warmLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Warm').length);
+  coldLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Cold').length);
+
+  filteredLeads = computed(() => {
+    let list = this.dateAndStallFilteredLeads();
+
+    // Interest Level Filter
+    const interest = this.filterInterest();
+    if (interest && interest !== 'ALL') {
+      list = list.filter((l) => l.interestLevel === interest);
+    }
+
+    return list;
   });
 
   paginatedLeads = computed(() => {
