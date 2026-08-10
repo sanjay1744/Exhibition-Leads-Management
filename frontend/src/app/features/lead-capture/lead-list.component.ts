@@ -77,13 +77,13 @@ import { StallService } from '../../core/services/stall.service';
                 <th class="py-1.5 px-4 border-r border-white/20">VISITOR NAME</th>
                 <th class="py-1.5 px-4 border-r border-white/20">STALL NAME</th>
                 <th class="py-1.5 px-4 border-r border-white/20">COMPANY</th>
-                <th class="py-1.5 px-4 border-r border-white/20">MOBILE</th>
-                <th class="py-1.5 px-4 border-r border-white/20">DESIGNATION</th>
-                <th class="py-1.5 px-4 border-r border-white/20 text-center">INTEREST LEVEL</th>
-                <th class="py-1.5 px-4 border-r border-white/20 text-center">SYNC STATUS</th>
-                <th class="py-1.5 px-3 border-r border-white/20 text-center w-14">View</th>
-                <th class="py-1.5 px-3 border-r border-white/20 text-center w-14">Edit</th>
-                <th class="py-1.5 px-3 text-center w-14">Delete</th>
+                <th class="py-1.5 px-3 border-r border-white/20 min-w-[170px]">MOBILE</th>
+                <th class="py-1.5 px-3 border-r border-white/20">DESIGNATION</th>
+                <th class="py-1.5 px-2 border-r border-white/20 text-center w-24">INTEREST LEVEL</th>
+                <th class="py-1.5 px-2 border-r border-white/20 text-center w-24">SYNC STATUS</th>
+                <th class="py-1.5 px-1 border-r border-white/20 text-center w-12 uppercase">View</th>
+                <th class="py-1.5 px-1 border-r border-white/20 text-center w-12 uppercase">Edit</th>
+                <th class="py-1.5 px-1 text-center w-12 uppercase">Delete</th>
               </tr>
             </thead>
             <tbody class="text-xs text-slate-700 font-normal">
@@ -117,9 +117,11 @@ import { StallService } from '../../core/services/stall.service';
                     {{ lead.company }}
                   </td>
 
-                  <!-- Mobile -->
-                  <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
-                    {{ lead.phone }}
+                  <!-- Mobile (1 number per line, whitespace-nowrap, min-w 170px) -->
+                  <td class="py-1.5 px-3 text-xs font-normal text-slate-700 border-r border-slate-200/60 min-w-[170px] whitespace-nowrap">
+                    @for (num of getPhoneNumbersList(lead.phone); track num) {
+                      <div class="whitespace-nowrap font-mono text-[11px] leading-snug">{{ num }}</div>
+                    }
                   </td>
 
                   <!-- Designation -->
@@ -127,10 +129,10 @@ import { StallService } from '../../core/services/stall.service';
                     {{ lead.designation || '-' }}
                   </td>
 
-                  <!-- Interest Level -->
-                  <td class="py-1.5 px-4 text-xs font-normal text-center border-r border-slate-200/60">
+                  <!-- Interest Level (Compact w-24) -->
+                  <td class="py-1.5 px-2 text-xs font-normal text-center border-r border-slate-200/60 w-24">
                     <span 
-                      class="px-2.5 py-0.5 rounded-full text-xs font-normal inline-block"
+                      class="px-2 py-0.5 rounded-full text-[11px] font-medium inline-block"
                       [ngClass]="{
                         'bg-red-100 text-red-700 border border-red-200': lead.interestLevel === 'Hot',
                         'bg-amber-100 text-amber-700 border border-amber-200': lead.interestLevel === 'Warm',
@@ -141,32 +143,32 @@ import { StallService } from '../../core/services/stall.service';
                     </span>
                   </td>
 
-                  <!-- Sync Status Pill -->
-                  <td class="py-1.5 px-4 text-xs font-normal text-center border-r border-slate-200/60">
+                  <!-- Sync Status Pill (Compact w-24) -->
+                  <td class="py-1.5 px-2 text-xs font-normal text-center border-r border-slate-200/60 w-24">
                     <span 
-                      class="px-2.5 py-0.5 rounded text-xs font-normal inline-block"
+                      class="px-2 py-0.5 rounded text-[11px] font-medium inline-block"
                       [ngClass]="lead.syncStatus === 'Synced' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-orange-50 text-orange-600 border border-orange-200'"
                     >
                       {{ lead.syncStatus === 'Synced' ? 'Synced' : 'Pending' }}
                     </span>
                   </td>
 
-                  <!-- Action Column 1: View Modal Trigger -->
-                  <td class="py-1.5 px-3 text-center border-r border-slate-200/60">
+                  <!-- Action Column 1: View Modal Trigger (Compact w-12) -->
+                  <td class="py-1.5 px-1 text-center border-r border-slate-200/60 w-12">
                     <button (click)="openViewModal(lead)" class="text-slate-500 hover:text-blue-600 p-0.5 transition" title="View Details">
                       <span class="material-icons text-base">visibility</span>
                     </button>
                   </td>
 
-                  <!-- Action Column 2: Edit -->
-                  <td class="py-1.5 px-3 text-center border-r border-slate-200/60">
+                  <!-- Action Column 2: Edit (Compact w-12) -->
+                  <td class="py-1.5 px-1 text-center border-r border-slate-200/60 w-12">
                     <button (click)="editLead(lead)" class="text-blue-600 hover:text-blue-800 p-0.5 transition" title="Edit Record">
                       <span class="material-icons text-base">edit</span>
                     </button>
                   </td>
 
-                  <!-- Action Column 3: Delete -->
-                  <td class="py-1.5 px-3 text-center">
+                  <!-- Action Column 3: Delete (Compact w-12) -->
+                  <td class="py-1.5 px-1 text-center w-12">
                     <button (click)="deleteLead(lead)" class="text-rose-600 hover:text-rose-800 p-0.5 transition" title="Delete Record">
                       <span class="material-icons text-base">delete</span>
                     </button>
@@ -468,6 +470,11 @@ export class LeadListComponent implements OnInit {
       }
     }
     this.allLeads.set(list);
+  }
+
+  getPhoneNumbersList(phoneStr: string | undefined | null): string[] {
+    if (!phoneStr || !phoneStr.trim()) return ['-'];
+    return phoneStr.split(/[,/]+/).map(p => p.trim()).filter(p => p.length > 0);
   }
 
   onStallFilterChange(stallId: string): void {
