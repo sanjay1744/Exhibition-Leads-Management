@@ -27,7 +27,7 @@ import { StallService } from '../../core/services/stall.service';
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
             </svg>
-            Add New Lead
+              New Lead
           </a>
         </div>
       </div>
@@ -1361,7 +1361,7 @@ export class LeadListComponent implements OnInit {
     // 2. Text Search (Name, Lead No, Company, Phone, Designation, Address, Email, Remarks)
     const q = this.searchTerm().trim().toLowerCase();
     if (q) {
-      list = list.filter((l) => 
+      list = list.filter((l) =>
         (l.name && l.name.toLowerCase().includes(q)) ||
         (l.leadNumber && l.leadNumber.toLowerCase().includes(q)) ||
         (l.company && l.company.toLowerCase().includes(q)) ||
