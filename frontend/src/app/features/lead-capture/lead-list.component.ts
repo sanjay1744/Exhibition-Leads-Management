@@ -12,192 +12,230 @@ import { StallService } from '../../core/services/stall.service';
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div>
-      <!-- Active Stall (Project) Selector Bar -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold">
-            <span class="material-icons text-lg">storefront</span>
-          </div>
-          <div>
-            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ACTIVE STALL (PROJECT)</div>
-            <div class="flex items-center gap-2">
-              <select 
-                [ngModel]="selectedStallId()" 
-                (ngModelChange)="onStallFilterChange($event)" 
-                class="border border-slate-300 rounded-md px-3 py-1 text-xs font-bold text-slate-800 bg-slate-50 outline-none focus:border-blue-600"
-              >
-                <option value="ALL">All Stalls (All Leads)</option>
-                @for (stall of stallService.stalls(); track stall.id) {
-                  <option [value]="stall.id">{{ stall.name }} ({{ stall.code }})</option>
-                }
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium border">
-          Owner: <strong>{{ selectedStallId() === 'ALL' ? 'All Owners' : (stallService.activeStall()?.ownerName || 'Thalaimalai') }}</strong>
-        </div>
-      </div>
-
-      <!-- Advanced Multi-Column Filter System Card -->
-      <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm space-y-3.5">
-        <!-- Filter Header Bar -->
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-          <div class="flex items-center gap-2">
-            <span class="material-icons text-blue-600 text-lg">filter_alt</span>
-            <span class="text-xs font-extrabold text-slate-800 uppercase tracking-wide">FILTER & SEARCH LEADS</span>
-            <span class="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-bold">
-              {{ filteredLeads().length }} Result{{ filteredLeads().length === 1 ? '' : 's' }}
+    <div>
+      <!-- Page Title & Top Action Bar -->
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-xl font-black text-slate-900 uppercase tracking-tight">LEADS DIRECTORY</h1>
+            <span class="bg-blue-100/80 text-blue-800 border border-blue-200/80 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
+              {{ filteredLeads().length }} Total
             </span>
           </div>
-
-          @if (hasActiveFilters()) {
-            <button 
-              type="button" 
-              (click)="resetAllFilters()" 
-              class="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-200 transition-colors"
-            >
-              <span class="material-icons text-xs">restart_alt</span>
-              Clear All Filters
-            </button>
-          }
+          <p class="text-xs text-slate-500 font-medium">Live Management Grid of Captured Visitor Enquiries {{ selectedStallId() === 'ALL' ? 'for All Stalls' : ('for ' + (stallService.activeStall()?.name || 'Active Stall')) }}</p>
         </div>
 
-        <!-- Filter Controls Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          
-          <!-- 1. Text Search Input -->
-          <div class="lg:col-span-2">
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">SEARCH (NAME / COMPANY / PHONE / NO.)</label>
-            <div class="relative flex items-center">
-              <span class="material-icons absolute left-2.5 text-slate-400 text-sm">search</span>
-              <input 
-                type="text" 
-                [ngModel]="searchTerm()" 
-                (ngModelChange)="searchTerm.set($event); currentPage.set(1)" 
-                placeholder="Search by visitor name, company, phone..." 
-                class="w-full text-xs pl-8 pr-7 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50"
-              />
-              @if (searchTerm()) {
-                <button 
-                  type="button" 
-                  (click)="searchTerm.set(''); currentPage.set(1)" 
-                  class="absolute right-2 text-slate-400 hover:text-slate-600"
-                >
-                  <span class="material-icons text-xs">close</span>
-                </button>
-              }
-            </div>
-          </div>
-
-          <!-- 2. Date Created From -->
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">DATE FROM</label>
-            <input 
-              type="date" 
-              [ngModel]="filterDateFrom()" 
-              (ngModelChange)="filterDateFrom.set($event); currentPage.set(1)" 
-              class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50 text-slate-800"
-            />
-          </div>
-
-          <!-- 3. Date Created To -->
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">DATE TO</label>
-            <input 
-              type="date" 
-              [ngModel]="filterDateTo()" 
-              (ngModelChange)="filterDateTo.set($event); currentPage.set(1)" 
-              class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50 text-slate-800"
-            />
-          </div>
-
-          <!-- 4. Interest Level Filter -->
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">INTEREST LEVEL</label>
-            <select 
-              [ngModel]="filterInterest()" 
-              (ngModelChange)="filterInterest.set($event); currentPage.set(1)" 
-              class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50 text-slate-800"
-            >
-              <option value="ALL">All Levels</option>
-              <option value="Hot">🔥 Hot</option>
-              <option value="Warm">⚡ Warm</option>
-              <option value="Cold">❄️ Cold</option>
-            </select>
-          </div>
-
-          <!-- 5. Sync Status Filter -->
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">SYNC STATUS</label>
-            <select 
-              [ngModel]="filterSyncStatus()" 
-              (ngModelChange)="filterSyncStatus.set($event); currentPage.set(1)" 
-              class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium bg-slate-50/50 text-slate-800"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="Pending">⏳ Pending Sync</option>
-              <option value="Synced">✅ Synced</option>
-            </select>
-          </div>
-
-        </div>
-
-        <!-- Filter Quick Preset Chips -->
-        <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 text-xs">
-          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">QUICK PRESETS:</span>
-          
-          <button 
-            type="button" 
-            (click)="setTodayFilter()" 
-            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors"
-            [ngClass]="isTodayActive() ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
-          >
-            📅 Today
-          </button>
-
-          <button 
-            type="button" 
-            (click)="setHotLeadsFilter()" 
-            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors"
-            [ngClass]="filterInterest() === 'Hot' ? 'bg-red-600 text-white border-red-600 shadow-xs' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
-          >
-            🔥 Hot Leads
-          </button>
-
-          <button 
-            type="button" 
-            (click)="setPendingSyncFilter()" 
-            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors"
-            [ngClass]="filterSyncStatus() === 'Pending' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
-          >
-            ⏳ Pending Sync
-          </button>
-
-          <button 
-            type="button" 
-            (click)="setMediaOnlyFilter()" 
-            class="px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors"
-            [ngClass]="filterHasMedia() === 'ANY_MEDIA' ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
-          >
-            📸 With Scanned Card / Voice
-          </button>
+        <div class="flex items-center gap-2.5">
+          <a routerLink="/capture" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs px-4 py-2.5 rounded-xl font-extrabold flex items-center gap-2 shadow-sm transition-all hover:shadow-md">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add New Lead
+          </a>
         </div>
       </div>
 
-      <!-- Page Title & Top Action Buttons -->
-      <div class="page-title-bar flex items-center justify-between mb-6">
-        <div>
-          <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">LEADS</h1>
-          <p class="text-xs text-slate-500">Live Grid of Captured Visitor Enquiries {{ selectedStallId() === 'ALL' ? 'for All Stalls' : ('for ' + (stallService.activeStall()?.name || 'Active Stall')) }}</p>
+      <!-- Combined Control Header: Active Stall + Multi-Column Filter Bar -->
+      <div class="bg-white border border-slate-200/80 rounded-2xl mb-6 shadow-sm overflow-hidden divide-y divide-slate-100">
+        
+        <!-- Top Section: Active Stall Selector -->
+        <div class="p-3.5 sm:p-4 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold shrink-0">
+              <span class="material-icons text-lg">storefront</span>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase font-black text-slate-400 tracking-wider">ACTIVE STALL (PROJECT)</div>
+              <div class="flex items-center gap-2">
+                <select 
+                  [ngModel]="selectedStallId()" 
+                  (ngModelChange)="onStallFilterChange($event)" 
+                  class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 bg-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all cursor-pointer shadow-2xs"
+                >
+                  <option value="ALL">All Stalls (All Leads)</option>
+                  @for (stall of stallService.stalls(); track stall.id) {
+                    <option [value]="stall.id">{{ stall.name }} ({{ stall.code }})</option>
+                  }
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-xs bg-white text-slate-700 px-3.5 py-1.5 rounded-xl font-medium border border-slate-200 shadow-2xs flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Owner: <strong class="font-extrabold text-slate-900">{{ selectedStallId() === 'ALL' ? 'All Owners' : (stallService.activeStall()?.ownerName || 'Thalaimalai') }}</strong>
+          </div>
         </div>
 
-        <div class="page-actions flex items-center gap-2">
-          <a routerLink="/capture" class="btn btn-primary text-xs px-4 py-2 rounded-lg font-bold flex items-center gap-1.5 shadow-md">
-            <span class="material-icons text-sm">add</span>
-            Add New Lead
-          </a>
+        <!-- Bottom Section: Advanced Filter & Search Grid -->
+        <div class="p-4 space-y-4">
+          <!-- Filter Header Bar -->
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                </svg>
+              </div>
+              <span class="text-xs font-black text-slate-800 uppercase tracking-wide">FILTER & SEARCH LEADS</span>
+              <span class="text-[11px] bg-blue-50 text-blue-700 border border-blue-200/60 px-2.5 py-0.5 rounded-full font-bold">
+                {{ filteredLeads().length }} Result{{ filteredLeads().length === 1 ? '' : 's' }}
+              </span>
+            </div>
+
+            @if (hasActiveFilters()) {
+              <button 
+                type="button" 
+                (click)="resetAllFilters()" 
+                class="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100/80 px-3 py-1 rounded-lg border border-rose-200/80 transition-all shadow-2xs"
+              >
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Reset Filters
+              </button>
+            }
+          </div>
+
+          <!-- Filter Controls Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            
+            <!-- 1. Text Search Input -->
+            <div class="lg:col-span-2">
+              <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">SEARCH (NAME / COMPANY / PHONE / NO.)</label>
+              <div class="relative flex items-center">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3 shrink-0 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input 
+                  type="text" 
+                  [ngModel]="searchTerm()" 
+                  (ngModelChange)="searchTerm.set($event); currentPage.set(1)" 
+                  placeholder="Search by visitor name, company, phone..." 
+                  class="w-full text-xs pl-9 pr-8 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium bg-slate-50/60 focus:bg-white transition-all text-slate-800 placeholder-slate-400 shadow-2xs"
+                />
+                @if (searchTerm()) {
+                  <button 
+                    type="button" 
+                    (click)="searchTerm.set(''); currentPage.set(1)" 
+                    class="absolute right-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-md hover:bg-slate-100 transition-colors"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- 2. Date Created From -->
+            <div>
+              <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">DATE FROM</label>
+              <input 
+                type="date" 
+                [ngModel]="filterDateFrom()" 
+                (ngModelChange)="filterDateFrom.set($event); currentPage.set(1)" 
+                class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium bg-slate-50/60 focus:bg-white transition-all text-slate-800 cursor-pointer shadow-2xs"
+              />
+            </div>
+
+            <!-- 3. Date Created To -->
+            <div>
+              <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">DATE TO</label>
+              <input 
+                type="date" 
+                [ngModel]="filterDateTo()" 
+                (ngModelChange)="filterDateTo.set($event); currentPage.set(1)" 
+                class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium bg-slate-50/60 focus:bg-white transition-all text-slate-800 cursor-pointer shadow-2xs"
+              />
+            </div>
+
+            <!-- 4. Interest Level Filter -->
+            <div>
+              <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">INTEREST LEVEL</label>
+              <select 
+                [ngModel]="filterInterest()" 
+                (ngModelChange)="filterInterest.set($event); currentPage.set(1)" 
+                class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium bg-slate-50/60 focus:bg-white transition-all text-slate-800 cursor-pointer shadow-2xs"
+              >
+                <option value="ALL">All Levels</option>
+                <option value="Hot">Hot</option>
+                <option value="Warm">Warm</option>
+                <option value="Cold">Cold</option>
+              </select>
+            </div>
+
+            <!-- 5. Sync Status Filter -->
+            <div>
+              <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">SYNC STATUS</label>
+              <select 
+                [ngModel]="filterSyncStatus()" 
+                (ngModelChange)="filterSyncStatus.set($event); currentPage.set(1)" 
+                class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium bg-slate-50/60 focus:bg-white transition-all text-slate-800 cursor-pointer shadow-2xs"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="Pending">Pending Sync</option>
+                <option value="Synced">Synced</option>
+              </select>
+            </div>
+
+          </div>
+
+          <!-- Filter Quick Preset Chips -->
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
+            <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">QUICK PRESETS:</span>
+            
+            <button 
+              type="button" 
+              (click)="setTodayFilter()" 
+              class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
+              [ngClass]="isTodayActive() ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-600 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              Today
+            </button>
+
+            <button 
+              type="button" 
+              (click)="setHotLeadsFilter()" 
+              class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
+              [ngClass]="filterInterest() === 'Hot' ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-red-600 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              Hot Leads
+            </button>
+
+            <button 
+              type="button" 
+              (click)="setPendingSyncFilter()" 
+              class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
+              [ngClass]="filterSyncStatus() === 'Pending' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Pending Sync
+            </button>
+
+            <button 
+              type="button" 
+              (click)="setMediaOnlyFilter()" 
+              class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
+              [ngClass]="filterHasMedia() === 'ANY_MEDIA' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              With Scanned Card / Voice
+            </button>
+          </div>
+
         </div>
       </div>
 
