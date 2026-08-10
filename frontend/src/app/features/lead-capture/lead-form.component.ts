@@ -276,7 +276,7 @@ import { getApiUrl } from '../../core/config/api.config';
 
             <button type="submit" class="btn btn-primary px-8 py-2.5 rounded-lg text-xs font-bold shadow-md">
               <span class="material-icons text-sm">save</span>
-              {{ isEditMode() ? 'Update Lead Record' : 'Save Lead to ' + (stallService.activeStall()?.code || 'Active Stall') }}
+              {{ isEditMode() ? 'Update Lead Record' : 'Save Lead' }}
             </button>
           </div>
         </form>
