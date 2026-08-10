@@ -45,14 +45,14 @@ import { StallService } from '../../core/services/stall.service';
               <span class="material-icons text-lg">storefront</span>
             </div>
             <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ACTIVE STALL (PROJECT)</div>
+              <div class="text-[10px] uppercase font-extrabold text-slate-700 tracking-wider">ACTIVE STALL (PROJECT)</div>
               <div class="relative">
                 <div 
                   (click)="openStallDropdown()" 
                   class="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 bg-white outline-none hover:border-slate-400 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-2.5 min-w-[200px]"
                   [ngClass]="showStallDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20' : ''"
                 >
-                  <span class="truncate">{{ getSelectedStallName() }}</span>
+                  <span class="truncate text-slate-900 font-bold">{{ getSelectedStallName() }}</span>
                   <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showStallDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                   </svg>
@@ -99,7 +99,7 @@ import { StallService } from '../../core/services/stall.service';
 
           <div class="text-xs bg-white text-slate-700 px-3.5 py-1.5 rounded-xl font-medium border border-slate-200 shadow-2xs flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Owner: <strong class="font-bold text-slate-900">{{ selectedStallId() === 'ALL' ? 'All Owners' : (stallService.activeStall()?.ownerName || 'Thalaimalai') }}</strong>
+            Owner: <strong class="font-extrabold text-slate-900">{{ selectedStallId() === 'ALL' ? 'All Owners' : (stallService.activeStall()?.ownerName || 'Thalaimalai') }}</strong>
           </div>
         </div>
 
@@ -113,7 +113,7 @@ import { StallService } from '../../core/services/stall.service';
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
                 </svg>
               </div>
-              <span class="text-xs font-bold text-slate-800 uppercase tracking-wide">FILTER & SEARCH LEADS</span>
+              <span class="text-xs font-black text-slate-900 uppercase tracking-wide">FILTER & SEARCH LEADS</span>
               <span class="text-[11px] bg-blue-50 text-blue-700 border border-blue-200/60 px-2.5 py-0.5 rounded-full font-bold">
                 {{ filteredLeads().length }} Result{{ filteredLeads().length === 1 ? '' : 's' }}
               </span>
@@ -138,7 +138,7 @@ import { StallService } from '../../core/services/stall.service';
             
             <!-- 1. Text Search Input -->
             <div class="lg:col-span-2">
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">SEARCH (NAME / COMPANY / PHONE / NO.)</label>
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">SEARCH (NAME / COMPANY / PHONE / NO.)</label>
               <div class="relative flex items-center">
                 <svg class="w-4 h-4 text-slate-400 absolute left-3 shrink-0 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -148,7 +148,7 @@ import { StallService } from '../../core/services/stall.service';
                   [ngModel]="searchTerm()" 
                   (ngModelChange)="searchTerm.set($event); currentPage.set(1)" 
                   placeholder="Search by visitor name, company, phone..." 
-                  class="w-full text-xs pl-9 pr-8 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium bg-slate-50/60 focus:bg-white transition-all text-slate-800 placeholder-slate-400 shadow-2xs"
+                  class="w-full text-xs pl-9 pr-8 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium bg-slate-50/60 focus:bg-white transition-all text-slate-900 placeholder-slate-400 shadow-2xs"
                 />
                 @if (searchTerm()) {
                   <button 
@@ -166,13 +166,13 @@ import { StallService } from '../../core/services/stall.service';
 
             <!-- 2. Date Created From -->
             <div class="relative">
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">From Date*</label>
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">From Date*</label>
               <div 
                 (click)="openDatePicker('from')" 
                 class="w-full text-xs px-3 py-2 border rounded-xl outline-none transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-1.5 bg-slate-50/60 hover:bg-white"
                 [ngClass]="showDatePicker() === 'from' ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white' : 'border-slate-200'"
               >
-                <span class="font-semibold text-slate-700 truncate">
+                <span [ngClass]="filterDateFrom() ? 'font-bold text-slate-900' : 'font-medium text-slate-400'" class="truncate">
                   {{ filterDateFrom() ? formatDateDisplay(filterDateFrom()) : 'Select Date' }}
                 </span>
                 <button type="button" class="text-blue-600 hover:text-blue-800 p-0.5 shrink-0">
@@ -287,13 +287,13 @@ import { StallService } from '../../core/services/stall.service';
 
             <!-- 3. Date Created To -->
             <div class="relative">
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">To Date*</label>
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">To Date*</label>
               <div 
                 (click)="openDatePicker('to')" 
                 class="w-full text-xs px-3 py-2 border rounded-xl outline-none transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-1.5 bg-slate-50/60 hover:bg-white"
                 [ngClass]="showDatePicker() === 'to' ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white' : 'border-slate-200'"
               >
-                <span class="font-semibold text-slate-700 truncate">
+                <span [ngClass]="filterDateTo() ? 'font-bold text-slate-900' : 'font-medium text-slate-400'" class="truncate">
                   {{ filterDateTo() ? formatDateDisplay(filterDateTo()) : 'Select Date' }}
                 </span>
                 <button type="button" class="text-blue-600 hover:text-blue-800 p-0.5 shrink-0">
@@ -408,16 +408,16 @@ import { StallService } from '../../core/services/stall.service';
 
             <!-- 4. Interest Level Custom Dropdown -->
             <div class="relative">
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">INTEREST LEVEL</label>
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">INTEREST LEVEL</label>
               <div 
                 (click)="openInterestDropdown()" 
                 class="w-full text-xs px-3 py-2 border rounded-xl outline-none transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-1.5 bg-slate-50/60 hover:bg-white"
                 [ngClass]="showInterestDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white' : 'border-slate-200'"
               >
-                <span class="font-semibold text-slate-700 truncate">
+                <span [ngClass]="filterInterest() !== 'ALL' ? 'font-bold text-slate-900' : 'font-medium text-slate-400'" class="truncate">
                   {{ filterInterest() === 'ALL' ? 'All Levels' : filterInterest() }}
                 </span>
-                <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showInterestDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showInterestDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
               </div>
@@ -489,16 +489,16 @@ import { StallService } from '../../core/services/stall.service';
 
             <!-- 5. Sync Status Custom Dropdown -->
             <div class="relative">
-              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">SYNC STATUS</label>
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">SYNC STATUS</label>
               <div 
                 (click)="openSyncDropdown()" 
                 class="w-full text-xs px-3 py-2 border rounded-xl outline-none transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-1.5 bg-slate-50/60 hover:bg-white"
                 [ngClass]="showSyncDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20 bg-white' : 'border-slate-200'"
               >
-                <span class="font-semibold text-slate-700 truncate">
+                <span [ngClass]="filterSyncStatus() !== 'ALL' ? 'font-bold text-slate-900' : 'font-medium text-slate-400'" class="truncate">
                   {{ filterSyncStatus() === 'ALL' ? 'All Statuses' : filterSyncStatus() }}
                 </span>
-                <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showSyncDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showSyncDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
               </div>
@@ -558,7 +558,7 @@ import { StallService } from '../../core/services/stall.service';
 
           <!-- Filter Quick Preset Chips -->
           <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">QUICK PRESETS:</span>
+            <span class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">QUICK PRESETS:</span>
             
             <button 
               type="button" 
