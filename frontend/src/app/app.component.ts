@@ -72,12 +72,14 @@ import { ToastService } from './core/services/toast.service';
               <span class="nav-text">Dashboard</span>
             </a>
 
-            <!-- 1.5 OCR Debugger -->
+            <!-- 1.5 OCR Debugger (Hidden from UI as requested) -->
+            <!-- 
             <a routerLink="/ocr-debugger" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link font-bold text-amber-300">
               <span class="material-icons nav-chevron">chevron_right</span>
               <span class="material-icons nav-icon text-amber-400">bug_report</span>
               <span class="nav-text">OCR Debugger</span>
             </a>
+            -->
 
             <!-- 2. Expandable Admin Folder -->
             <div>
@@ -105,10 +107,12 @@ import { ToastService } from './core/services/toast.service';
                     <span class="material-icons nav-icon text-sm">history</span>
                     <span class="nav-text">Notification Logs</span>
                   </a>
+                  <!--
                   <a routerLink="/ocr-debugger" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                     <span class="material-icons nav-icon text-sm text-blue-400">bug_report</span>
                     <span class="nav-text font-bold text-blue-300">OCR Debugger</span>
                   </a>
+                  -->
                 </div>
               }
             </div>
