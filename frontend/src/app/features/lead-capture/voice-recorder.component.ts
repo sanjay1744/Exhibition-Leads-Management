@@ -7,27 +7,34 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="card-panel p-0 overflow-hidden h-full flex flex-col justify-between hover:shadow-md transition bg-white border border-slate-200 rounded-xl">
+    <div class="card-panel p-0 overflow-hidden h-full flex flex-col justify-between hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
       <div>
-        <!-- Header -->
-        <div class="bg-[#1a3a5c] text-white p-3.5 px-4 flex items-center justify-between shadow-xs">
-          <div class="flex items-center gap-2">
-            <span class="material-icons text-blue-300 text-lg">mic</span>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-white">Voice Note Audio</h3>
+        <!-- Header with Rich Navy Gradient (#1a3a5c) -->
+        <div class="bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] text-white p-3.5 px-4 flex items-center justify-between shadow-xs border-b border-white/10">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0 backdrop-blur-xs">
+              <span class="material-icons text-blue-200 text-lg">mic</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-white">Voice Note Audio</h3>
+              <p class="text-[10px] text-blue-200/80 font-medium">Spoken Notes to Text</p>
+            </div>
           </div>
           @if (isRecording()) {
-            <div class="flex items-center gap-1.5 bg-red-500/20 text-red-300 px-2 py-0.5 rounded text-[11px] font-mono animate-pulse">
-              <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+            <div class="flex items-center gap-1.5 bg-rose-500/20 text-rose-200 border border-rose-400/30 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold animate-pulse">
+              <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
               REC {{ formatTime(recordingDuration()) }}
             </div>
+          } @else {
+            <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-400/20 text-rose-100 border border-rose-300/30">AI Speech</span>
           }
         </div>
 
         <div class="p-4 space-y-3">
-          <p class="text-xs text-slate-500">Record spoken discussion notes. Auto-transcribed for Lead Remarks.</p>
+          <p class="text-xs text-slate-500 leading-relaxed">Record spoken notes to auto-fill remarks.</p>
 
           @if (errorMessage()) {
-            <div class="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs flex items-start gap-2">
+            <div class="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-start gap-2">
               <span class="material-icons text-base text-rose-500 flex-shrink-0">error_outline</span>
               <span>{{ errorMessage() }}</span>
             </div>
@@ -38,10 +45,10 @@ import { FormsModule } from '@angular/forms';
             <button 
               type="button"
               (click)="startRecording()" 
-              class="w-full btn bg-red-600 hover:bg-red-700 text-white justify-center text-xs py-2.5 rounded-lg font-bold shadow-sm transition flex items-center gap-2"
+              class="w-full justify-center text-xs py-2.5 px-4 rounded-xl font-extrabold shadow-sm hover:shadow-md flex items-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white active:scale-[0.98] transition-all cursor-pointer"
             >
-              <span class="material-icons text-sm">fiber_manual_record</span>
-              Record Voice Note
+              <span class="material-icons text-base">fiber_manual_record</span>
+              <span>Record Voice Note</span>
             </button>
           }
 
