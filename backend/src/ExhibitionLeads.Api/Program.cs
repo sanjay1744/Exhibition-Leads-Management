@@ -79,87 +79,11 @@ app.UseCors("AllowAngularPwa");
 app.UseStaticFiles();
 
 
-// Ensure DB exists without deleting existing data
+// Ensure DB exists and schema is updated without deleting existing data
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.EnsureCreated();
-
-    if (!dbContext.Users.Any())
-    {
-        var defaultPasswordHash = AuthController.HashPassword("Admin@123");
-        
-        var thalaimalaiUser = new User 
-        { 
-            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), 
-            FullName = "Thalaimalai", 
-            Username = "Thalaimalai", 
-            Email = "thalaimalai@ariyai.com",
-            UserGroup = "Naren-Marketing", 
-            Role = "StallOwner", 
-            Status = "Active", 
-            PasswordHash = defaultPasswordHash 
-        };
-
-        var sanjayUser = new User 
-        { 
-            Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), 
-            FullName = "Sanjay", 
-            Username = "sanjay", 
-            Email = "sanjay@ariyai.com",
-            UserGroup = "Naren Admin", 
-            Role = "Admin", 
-            Status = "Active", 
-            PasswordHash = defaultPasswordHash 
-        };
-
-        dbContext.Users.AddRange(thalaimalaiUser, sanjayUser);
-
-        Guid defaultExhibitionId = Guid.Parse("44444444-4444-4444-4444-444444444444");
-        if (!dbContext.Exhibitions.Any())
-        {
-            var defaultExhibition = new Exhibition
-            {
-                Id = defaultExhibitionId,
-                Code = "EXH-2026-001",
-                Name = "International Industrial TexFair 2026",
-                Organizer = "SIMA Trade Association",
-                Venue = "Codissia Trade Fair Complex, Coimbatore",
-                StartDate = DateTime.UtcNow.Date,
-                EndDate = DateTime.UtcNow.Date.AddDays(4),
-                DurationDays = 4,
-                Description = "Premier South India Industrial & Textile Machinery Expo 2026",
-                Status = "Active"
-            };
-            dbContext.Exhibitions.Add(defaultExhibition);
-        }
-
-        if (!dbContext.Stalls.Any())
-        {
-            var defaultStall = new Stall
-            {
-                Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-                Name = "Stall 01 - Main Exhibition",
-                Code = "STL-2026-001",
-                ExhibitionId = defaultExhibitionId,
-                EventName = "International Industrial TexFair 2026",
-                Organizer = "SIMA Trade Association",
-                DurationDays = 4,
-                StartDate = DateTime.UtcNow.Date,
-                EndDate = DateTime.UtcNow.Date.AddDays(4),
-                Location = "Codissia Trade Fair Complex, Coimbatore",
-                HallNumber = "Hall A",
-                BoothNumber = "Booth 12",
-                OwnerId = thalaimalaiUser.Id,
-                OwnerName = thalaimalaiUser.FullName,
-                Status = "Active"
-            };
-            dbContext.Stalls.Add(defaultStall);
-            thalaimalaiUser.AssignedStallId = defaultStall.Id;
-        }
-
-        dbContext.SaveChanges();
-    }
+    DbInitializer.Initialize(dbContext, AuthController.HashPassword);
 }
 
 // Enable Swagger UI for easy testing across environments

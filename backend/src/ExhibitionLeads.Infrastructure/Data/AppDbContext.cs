@@ -28,6 +28,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Lead>(entity =>
         {
+            entity.Property(l => l.Budget).HasPrecision(18, 2);
             entity.HasIndex(e => e.LeadNumber).IsUnique();
             entity.HasIndex(e => e.Phone);
             entity.HasIndex(e => e.Email);

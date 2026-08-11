@@ -403,6 +403,7 @@ import { ToastService } from '../../core/services/toast.service';
                     type="number" 
                     [(ngModel)]="formDurationDays" 
                     min="1"
+                    placeholder="e.g. 4"
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
@@ -676,16 +677,14 @@ export class ExhibitionMasterComponent implements OnInit {
     this.isEditMode.set(false);
     this.editingId.set(null);
     this.formName = '';
-    this.formOrganizer = 'SIMA Association';
-    this.formVenue = 'Codissia Trade Fair Complex, Coimbatore';
-    this.formStartDate = new Date().toISOString().split('T')[0];
-    this.formEndDate = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
-    this.formDurationDays = 4;
+    this.formOrganizer = '';
+    this.formVenue = '';
+    this.formStartDate = '';
+    this.formEndDate = '';
+    this.formDurationDays = null as any;
     this.formDescription = '';
-    this.formStatus = 'Active';
-    this.inlineStalls = [
-      { name: 'Stall 01 - Machinery', hallNumber: 'Hall A', boothNumber: 'Booth 01', ownerName: 'Thalaimalai' }
-    ];
+    this.formStatus = 'Upcoming';
+    this.inlineStalls = [];
 
     this.exhibitionService.getNextCode().subscribe({
       next: (res) => this.formCode.set(res.code),
@@ -718,10 +717,10 @@ export class ExhibitionMasterComponent implements OnInit {
 
   addInlineStall(): void {
     this.inlineStalls.push({
-      name: `Stall 0${this.inlineStalls.length + 1}`,
-      hallNumber: 'Hall A',
-      boothNumber: `Booth 0${this.inlineStalls.length + 1}`,
-      ownerName: 'Thalaimalai'
+      name: '',
+      hallNumber: '',
+      boothNumber: '',
+      ownerName: ''
     });
   }
 

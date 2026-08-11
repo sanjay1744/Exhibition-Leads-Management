@@ -276,15 +276,15 @@ export interface StallMasterDto {
 
                 <!-- Row 2.5: Parent Exhibition Selection -->
                 <div>
-                  <label class="form-label font-bold text-xs text-indigo-900 mb-1 flex items-center gap-1">
-                    <span class="material-icons text-indigo-600 text-xs">event_available</span>
+                  <label class="form-label font-bold text-xs text-slate-700 mb-1 flex items-center gap-1">
+                    <span class="material-icons text-blue-600 text-xs">event_available</span>
                     Link to Master Exhibition *
                   </label>
                   <select 
                     [(ngModel)]="formData.exhibitionId" 
                     (change)="onExhibitionChange(formData.exhibitionId!)"
                     name="exhibitionId" 
-                    class="form-control text-xs font-bold text-indigo-900 bg-indigo-50/50 border-indigo-200"
+                    class="form-control text-xs font-semibold"
                   >
                     <option value="">-- Direct Stall (No Parent Exhibition) --</option>
                     @for (exh of exhibitions(); track exh.id) {
@@ -641,15 +641,15 @@ export class StallMasterComponent implements OnInit {
           code: nextCode,
           eventName: '',
           organizer: '',
-          durationDays: 4,
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
-          location: 'Codissia Trade Fair Complex, Coimbatore',
-          hallNumber: 'Hall A',
-          boothNumber: 'Booth 12',
+          durationDays: null as any,
+          startDate: '',
+          endDate: '',
+          location: '',
+          hallNumber: '',
+          boothNumber: '',
           ownerId: this.currentUser?.token || '11111111-1111-1111-1111-111111111111',
           ownerName: this.currentUser?.fullName || 'Thalaimalai',
-          exhibitionId: presetExhibitionId || (this.exhibitions().length > 0 ? this.exhibitions()[0].id : '')
+          exhibitionId: presetExhibitionId || ''
         };
         if (this.formData.exhibitionId) {
           this.onExhibitionChange(this.formData.exhibitionId);
