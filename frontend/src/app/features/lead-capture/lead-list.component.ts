@@ -20,7 +20,7 @@ import { ExhibitionService } from '../../core/services/exhibition.service';
           <div class="flex items-center gap-2.5">
             <h1 class="text-xl font-black text-slate-900 uppercase tracking-tight">LEADS DIRECTORY</h1>
           </div>
-          <p class="text-xs text-slate-500 font-medium">Live Management Grid of Captured Visitor Enquiries {{ selectedStallId() === 'ALL' ? 'for All Stalls' : ('for ' + (stallService.activeStall()?.name || 'Active Stall')) }}</p>
+          <h2 class="text-xs text-slate-500 font-semibold uppercase tracking-wide mt-0.5">{{ headerSubtitle() }}</h2>
         </div>
 
         <div class="flex items-center gap-2.5">
@@ -1105,10 +1105,33 @@ export class LeadListComponent implements OnInit {
   selectedExhibitionId = signal<string>('ALL');
   selectedStallId = signal<string>('ALL');
 
+  headerSubtitle = computed(() => {
+    const exhId = this.selectedExhibitionId();
+    const stallId = this.selectedStallId();
+
+    const selectedExh = exhId !== 'ALL' ? this.exhibitionService.exhibitions().find((e) => e.id === exhId) : null;
+    const selectedStall = stallId !== 'ALL' ? this.stallService.stalls().find((s) => s.id === stallId) : null;
+
+    if (selectedExh && selectedStall) {
+      return `${selectedExh.name.toUpperCase()} • ${selectedStall.name.toUpperCase()}`;
+    } else if (selectedExh && !selectedStall) {
+      return `${selectedExh.name.toUpperCase()} (ALL STALLS)`;
+    } else if (!selectedExh && selectedStall) {
+      const parentExh = selectedStall.exhibitionId
+        ? this.exhibitionService.exhibitions().find((e) => e.id === selectedStall.exhibitionId)
+        : null;
+      return parentExh
+        ? `${parentExh.name.toUpperCase()} • ${selectedStall.name.toUpperCase()}`
+        : selectedStall.name.toUpperCase();
+    } else {
+      return 'ALL EXHIBITIONS & STALLS';
+    }
+  });
+
   searchTerm = signal<string>('');
   filterDateFrom = signal<string>('');
   filterDateTo = signal<string>('');
-  filterInterest = signal<string>('ALL');
+  filterInterest = signal<string>('Hot');
   filterSyncStatus = signal<string>('ALL');
   filterHasMedia = signal<string>('ALL');
   showFilterSection = signal<boolean>(false);
