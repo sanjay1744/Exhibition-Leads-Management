@@ -369,9 +369,11 @@ import { getApiUrl } from '../../core/config/api.config';
                     {{ lead.company || '-' }}
                   </td>
 
-                  <!-- Mobile -->
-                  <td class="py-2 px-3 font-mono text-[11px] text-slate-700 border-r border-slate-200/60 whitespace-nowrap">
-                    {{ lead.phone }}
+                  <!-- Mobile (1 number per line, no commas, min-w 170px) -->
+                  <td class="py-2 px-3 border-r border-slate-200/60 min-w-[170px] whitespace-nowrap">
+                    @for (num of getPhoneNumbersList(lead.phone); track num) {
+                      <div class="whitespace-nowrap font-mono text-[11px] leading-snug">{{ num }}</div>
+                    }
                   </td>
 
                   <!-- Designation -->
@@ -730,20 +732,8 @@ export class LeadFormComponent implements OnInit {
       await this.loadLeadForEdit(idParam);
     }
 
-    await this.loadRecentSessionLeads();
-  }
-
-  async loadRecentSessionLeads(): Promise<void> {
-    const all = await this.db.getAllLeads();
-    const activeStallId = this.stallService.activeStall()?.id;
-    if (activeStallId) {
-      const recent = all
-        .filter(l => l.exhibitionId === activeStallId || (!l.exhibitionId && activeStallId === '33333333-3333-3333-3333-333333333333'))
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      this.sessionLeads.set(recent);
-    } else {
-      this.sessionLeads.set(all.slice(0, 15));
-    }
+    // Temporary preview grid starts empty for each new session
+    this.sessionLeads.set([]);
   }
 
   formatTimeDisplay(dateStr: string | undefined | null): string {
@@ -755,6 +745,11 @@ export class LeadFormComponent implements OnInit {
     } catch {
       return '-';
     }
+  }
+
+  getPhoneNumbersList(phoneStr: string | undefined | null): string[] {
+    if (!phoneStr || !phoneStr.trim()) return ['-'];
+    return phoneStr.split(/[,/]+/).map(p => p.trim()).filter(p => p.length > 0);
   }
 
   loadLeadForEditFromPreview(lead: LocalLead): void {
