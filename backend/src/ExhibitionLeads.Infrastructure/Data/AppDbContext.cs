@@ -12,12 +12,19 @@ public class AppDbContext : DbContext
     public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Stall> Stalls => Set<Stall>();
+    public DbSet<Exhibition> Exhibitions => Set<Exhibition>();
     public DbSet<SmtpConfig> SmtpConfigs => Set<SmtpConfig>();
     public DbSet<NotificationConfig> NotificationConfigs => Set<NotificationConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Exhibition>(entity =>
+        {
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.Status);
+        });
 
         modelBuilder.Entity<Lead>(entity =>
         {
@@ -40,6 +47,7 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(s => s.Code).IsUnique();
             entity.HasIndex(s => s.OwnerId);
+            entity.HasIndex(s => s.ExhibitionId);
         });
 
         modelBuilder.Entity<SmtpConfig>(entity =>

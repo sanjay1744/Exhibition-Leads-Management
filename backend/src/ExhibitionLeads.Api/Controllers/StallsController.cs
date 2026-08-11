@@ -32,16 +32,21 @@ public class StallsController : ControllerBase
         string OwnerName,
         string Status,
         DateTime CreatedAt,
-        int LeadCount
+        int LeadCount,
+        Guid? ExhibitionId = null
     );
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<StallDto>>> GetStalls([FromQuery] string? ownerId)
+    public async Task<ActionResult<IEnumerable<StallDto>>> GetStalls([FromQuery] string? ownerId, [FromQuery] string? exhibitionId)
     {
         var query = _context.Stalls.AsQueryable();
         if (!string.IsNullOrEmpty(ownerId) && Guid.TryParse(ownerId, out var oGuid))
         {
             query = query.Where(s => s.OwnerId == oGuid);
+        }
+        if (!string.IsNullOrEmpty(exhibitionId) && Guid.TryParse(exhibitionId, out var eGuid))
+        {
+            query = query.Where(s => s.ExhibitionId == eGuid);
         }
 
         var stalls = await query.OrderByDescending(s => s.CreatedAt).ToListAsync();
@@ -66,7 +71,8 @@ public class StallsController : ControllerBase
             s.OwnerName,
             s.Status,
             s.CreatedAt,
-            leadCounts.TryGetValue(s.Id, out var count) ? count : 0
+            leadCounts.TryGetValue(s.Id, out var count) ? count : 0,
+            s.ExhibitionId
         ));
 
         return Ok(dtos);
@@ -93,7 +99,8 @@ public class StallsController : ControllerBase
         string? HallNumber,
         string? BoothNumber,
         object? OwnerId,
-        string? OwnerName
+        string? OwnerName,
+        Guid? ExhibitionId
     );
 
     [HttpPost]
@@ -125,18 +132,27 @@ public class StallsController : ControllerBase
             ownerGuid = parsedGuid;
         }
 
-        var duration = request.DurationDays.HasValue && request.DurationDays.Value > 0 ? request.DurationDays.Value : 4;
+        Exhibition? exh = null;
+        if (request.ExhibitionId.HasValue && request.ExhibitionId.Value != Guid.Empty)
+        {
+            exh = await _context.Exhibitions.FindAsync(request.ExhibitionId.Value);
+        }
+
+        var duration = request.DurationDays.HasValue && request.DurationDays.Value > 0 
+            ? request.DurationDays.Value 
+            : (exh?.DurationDays ?? 4);
 
         var stall = new Stall
         {
             Name = request.Name,
             Code = code,
-            EventName = !string.IsNullOrWhiteSpace(request.EventName) ? request.EventName : request.Name,
-            Organizer = !string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer : "Internal Exhibition Team",
+            ExhibitionId = exh?.Id ?? request.ExhibitionId,
+            EventName = exh != null ? exh.Name : (!string.IsNullOrWhiteSpace(request.EventName) ? request.EventName : request.Name),
+            Organizer = exh != null ? exh.Organizer : (!string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer : "Internal Exhibition Team"),
             DurationDays = duration,
-            StartDate = request.StartDate ?? DateTime.UtcNow.Date,
-            EndDate = request.EndDate ?? DateTime.UtcNow.Date.AddDays(duration),
-            Location = !string.IsNullOrWhiteSpace(request.Location) ? request.Location : "Main Convention Center",
+            StartDate = exh != null ? exh.StartDate : (request.StartDate ?? DateTime.UtcNow.Date),
+            EndDate = exh != null ? exh.EndDate : (request.EndDate ?? DateTime.UtcNow.Date.AddDays(duration)),
+            Location = exh != null ? exh.Venue : (!string.IsNullOrWhiteSpace(request.Location) ? request.Location : "Main Convention Center"),
             HallNumber = !string.IsNullOrWhiteSpace(request.HallNumber) ? request.HallNumber : "Hall A",
             BoothNumber = !string.IsNullOrWhiteSpace(request.BoothNumber) ? request.BoothNumber : "Booth 01",
             OwnerId = ownerGuid,
@@ -157,6 +173,20 @@ public class StallsController : ControllerBase
         if (stall == null) return NotFound(new { message = "Stall not found." });
 
         stall.Name = request.Name;
+        if (request.ExhibitionId.HasValue)
+        {
+            stall.ExhibitionId = request.ExhibitionId.Value;
+            var exh = await _context.Exhibitions.FindAsync(request.ExhibitionId.Value);
+            if (exh != null)
+            {
+                stall.EventName = exh.Name;
+                stall.Organizer = exh.Organizer;
+                stall.Location = exh.Venue;
+                stall.StartDate = exh.StartDate;
+                stall.EndDate = exh.EndDate;
+                stall.DurationDays = exh.DurationDays;
+            }
+        }
         if (!string.IsNullOrWhiteSpace(request.EventName)) stall.EventName = request.EventName;
         if (!string.IsNullOrWhiteSpace(request.Organizer)) stall.Organizer = request.Organizer;
         if (request.DurationDays.HasValue && request.DurationDays.Value > 0) stall.DurationDays = request.DurationDays.Value;

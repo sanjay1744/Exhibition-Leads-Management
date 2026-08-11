@@ -115,6 +115,25 @@ using (var scope = app.Services.CreateScope())
 
         dbContext.Users.AddRange(thalaimalaiUser, sanjayUser);
 
+        Guid defaultExhibitionId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        if (!dbContext.Exhibitions.Any())
+        {
+            var defaultExhibition = new Exhibition
+            {
+                Id = defaultExhibitionId,
+                Code = "EXH-2026-001",
+                Name = "International Industrial TexFair 2026",
+                Organizer = "SIMA Trade Association",
+                Venue = "Codissia Trade Fair Complex, Coimbatore",
+                StartDate = DateTime.UtcNow.Date,
+                EndDate = DateTime.UtcNow.Date.AddDays(4),
+                DurationDays = 4,
+                Description = "Premier South India Industrial & Textile Machinery Expo 2026",
+                Status = "Active"
+            };
+            dbContext.Exhibitions.Add(defaultExhibition);
+        }
+
         if (!dbContext.Stalls.Any())
         {
             var defaultStall = new Stall
@@ -122,6 +141,7 @@ using (var scope = app.Services.CreateScope())
                 Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
                 Name = "Stall 01 - Main Exhibition",
                 Code = "STL-2026-001",
+                ExhibitionId = defaultExhibitionId,
                 EventName = "International Industrial TexFair 2026",
                 Organizer = "SIMA Trade Association",
                 DurationDays = 4,
