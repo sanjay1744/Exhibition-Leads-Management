@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { ApplicationDatabase } from '../../core/services/db.service';
 import { LocalLead } from '../../core/models/lead.model';
 import { StallService } from '../../core/services/stall.service';
@@ -10,7 +10,7 @@ import { ExhibitionService } from '../../core/services/exhibition.service';
 @Component({
   selector: 'app-lead-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   template: `
     <div>
     <div>

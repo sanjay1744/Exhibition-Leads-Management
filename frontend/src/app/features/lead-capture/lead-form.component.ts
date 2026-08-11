@@ -642,6 +642,7 @@ export class LeadFormComponent implements OnInit {
   existingLeadNumber: string | null = null;
   existingCreatedAt: string | null = null;
   isEditMode = signal(false);
+  activeToolTab = signal<'all' | 'ocr' | 'qr' | 'voice'>('all');
 
   name = '';
   company = '';
