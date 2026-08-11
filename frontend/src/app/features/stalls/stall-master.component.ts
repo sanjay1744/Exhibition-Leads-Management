@@ -321,22 +321,11 @@ export interface StallMasterDto {
                 <!-- Row 4: Duration (Days) & Dates -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Duration (Days) *</label>
-                    <input 
-                      type="number" 
-                      [(ngModel)]="formData.durationDays" 
-                      name="durationDays" 
-                      required 
-                      class="form-control text-xs font-semibold" 
-                      placeholder="4" 
-                    />
-                  </div>
-
-                  <div>
                     <label class="form-label font-bold text-xs text-slate-700 mb-1">Start Date</label>
                     <input 
                       type="date" 
                       [(ngModel)]="formData.startDate" 
+                      (ngModelChange)="onDateChange()"
                       name="startDate" 
                       class="form-control text-xs font-semibold" 
                     />
@@ -347,8 +336,22 @@ export interface StallMasterDto {
                     <input 
                       type="date" 
                       [(ngModel)]="formData.endDate" 
+                      (ngModelChange)="onDateChange()"
                       name="endDate" 
                       class="form-control text-xs font-semibold" 
+                    />
+                  </div>
+
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Duration (Days) *</label>
+                    <input 
+                      type="number" 
+                      [(ngModel)]="formData.durationDays" 
+                      name="durationDays" 
+                      readonly
+                      tabindex="-1"
+                      class="form-control text-xs font-bold bg-slate-100 text-blue-900 cursor-not-allowed outline-none select-none" 
+                      placeholder="Auto-calculated" 
                     />
                   </div>
                 </div>
@@ -405,7 +408,7 @@ export interface StallMasterDto {
               <div class="flex justify-end gap-2 pt-3 border-t">
                 <button type="button" (click)="closeModal()" class="btn btn-outline-pill text-xs">Cancel</button>
                 <button type="submit" class="btn btn-primary text-xs px-6 py-2 rounded-lg font-bold shadow-md">
-                  {{ isEditMode() ? 'Update Stall Project' : 'Save Stall Project' }}
+                  {{ isEditMode() ? 'Update' : 'Save' }}
                 </button>
               </div>
             </form>
@@ -683,7 +686,20 @@ export class StallMasterComponent implements OnInit {
       ownerName: stall.ownerName || 'Thalaimalai',
       exhibitionId: stall.exhibitionId || ''
     };
+    this.onDateChange();
     this.isModalOpen.set(true);
+  }
+
+  onDateChange(): void {
+    if (this.formData.startDate && this.formData.endDate) {
+      const start = new Date(this.formData.startDate);
+      const end = new Date(this.formData.endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        this.formData.durationDays = diffDays;
+      }
+    }
   }
 
   closeModal(): void {

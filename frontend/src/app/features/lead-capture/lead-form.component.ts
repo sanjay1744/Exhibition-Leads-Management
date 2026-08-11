@@ -21,7 +21,7 @@ import { getApiUrl } from '../../core/config/api.config';
       <div class="page-title-bar flex items-center justify-between mb-6">
         <div>
           <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">
-            {{ isEditMode() ? 'EDIT LEAD ENTRY' : 'NEW LEAD ENTRY' }}
+            {{ isEditMode() ? 'EDIT LEAD ENTRY' : 'NEW LEADS' }}
           </h1>
           <p class="page-subtitle text-xs text-slate-500">
             {{ isEditMode() ? 'Modify visitor details for record ID: ' + editingLeadId : 'Capture visitor details for project: ' + (stallService.activeStall()?.name || 'Main Exhibition') }}

@@ -386,6 +386,7 @@ import { ToastService } from '../../core/services/toast.service';
                   <input 
                     type="date" 
                     [(ngModel)]="formStartDate" 
+                    (ngModelChange)="onDateChange()"
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
@@ -394,6 +395,7 @@ import { ToastService } from '../../core/services/toast.service';
                   <input 
                     type="date" 
                     [(ngModel)]="formEndDate" 
+                    (ngModelChange)="onDateChange()"
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
@@ -402,16 +404,17 @@ import { ToastService } from '../../core/services/toast.service';
                   <input 
                     type="number" 
                     [(ngModel)]="formDurationDays" 
-                    min="1"
-                    placeholder="e.g. 4"
-                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                    readonly
+                    tabindex="-1"
+                    placeholder="Auto-calculated"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold bg-slate-100 text-blue-900 cursor-not-allowed outline-none select-none"
                   />
                 </div>
               </div>
 
               <!-- Description -->
               <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Description / Notes</label>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Description</label>
                 <textarea 
                   [(ngModel)]="formDescription" 
                   rows="2" 
@@ -420,58 +423,7 @@ import { ToastService } from '../../core/services/toast.service';
                 ></textarea>
               </div>
 
-              <!-- Inline Initial Stalls Creator (Only in Create Mode) -->
-              @if (!isEditMode()) {
-                <div class="border-t border-slate-200 pt-4 mt-2">
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-bold text-blue-900 uppercase tracking-wide flex items-center gap-1.5">
-                      <span class="material-icons text-blue-600 text-sm">storefront</span>
-                      Initial Stalls to Create & Link
-                    </label>
-                    <button 
-                      type="button" 
-                      (click)="addInlineStall()" 
-                      class="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded border border-blue-200 text-[11px] font-bold transition flex items-center gap-1"
-                    >
-                      <span class="material-icons text-xs">add</span> Add Stall
-                    </button>
-                  </div>
 
-                  @for (stall of inlineStalls; track $index; let i = $index) {
-                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 mb-2 grid grid-cols-3 gap-2 items-center">
-                      <div>
-                        <input 
-                          type="text" 
-                          [(ngModel)]="stall.name" 
-                          placeholder="Stall Name (e.g. Stall 01)" 
-                          class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs"
-                        />
-                      </div>
-                      <div>
-                        <input 
-                          type="text" 
-                          [(ngModel)]="stall.hallNumber" 
-                          placeholder="Hall & Booth (e.g. Hall A, B12)" 
-                          class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs"
-                        />
-                      </div>
-                      <div class="flex items-center gap-1">
-                        <input 
-                          type="text" 
-                          [(ngModel)]="stall.ownerName" 
-                          placeholder="Owner Name" 
-                          class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs"
-                        />
-                        <button (click)="removeInlineStall(i)" class="p-1 text-slate-400 hover:text-red-600">
-                          <span class="material-icons text-sm">remove_circle</span>
-                        </button>
-                      </div>
-                    </div>
-                  } @empty {
-                    <p class="text-[11px] text-slate-400 italic">No stalls added yet. Click "+ Add Stall" to create stalls along with this exhibition.</p>
-                  }
-                </div>
-              }
             </div>
 
             <!-- Modal Footer -->
@@ -707,8 +659,21 @@ export class ExhibitionMasterComponent implements OnInit {
     this.formDescription = exhibition.description || '';
     this.formStatus = exhibition.status || 'Active';
     this.inlineStalls = [];
+    this.onDateChange();
 
     this.isModalOpen.set(true);
+  }
+
+  onDateChange(): void {
+    if (this.formStartDate && this.formEndDate) {
+      const start = new Date(this.formStartDate);
+      const end = new Date(this.formEndDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        this.formDurationDays = diffDays;
+      }
+    }
   }
 
   closeModal(): void {

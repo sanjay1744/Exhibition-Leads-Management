@@ -5,6 +5,7 @@ import { RouterLink, Router } from '@angular/router';
 import { ApplicationDatabase } from '../../core/services/db.service';
 import { LocalLead } from '../../core/models/lead.model';
 import { StallService } from '../../core/services/stall.service';
+import { ExhibitionService } from '../../core/services/exhibition.service';
 
 @Component({
   selector: 'app-lead-list',
@@ -35,63 +36,126 @@ import { StallService } from '../../core/services/stall.service';
       <!-- Combined Control Header: Active Stall + Multi-Column Filter Bar -->
       <div class="bg-white border border-slate-200/80 rounded-2xl mb-6 shadow-sm divide-y divide-slate-100 relative">
         
-        <!-- Top Section: Active Stall Selector + Owner -->
+        <!-- Top Section: Exhibition Selector + Active Stall Selector + Owner -->
         <div class="p-3.5 sm:p-4 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3 rounded-t-2xl">
-          <div class="flex flex-wrap items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold shrink-0">
-              <span class="material-icons text-lg">storefront</span>
-            </div>
-            <div>
-              <div class="text-[10px] uppercase font-extrabold text-slate-700 tracking-wider">ACTIVE STALL</div>
-              <div class="relative">
-                <div 
-                  (click)="openStallDropdown()" 
-                  class="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 bg-white outline-none hover:border-slate-400 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-2.5 min-w-[200px]"
-                  [ngClass]="showStallDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20' : ''"
-                >
-                  <span class="truncate text-slate-900 font-bold">{{ getSelectedStallName() }}</span>
-                  <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showStallDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
-                </div>
+          <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+            
+            <!-- Exhibition Filter Dropdown -->
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center font-bold shrink-0">
+                <span class="material-icons text-lg">event_available</span>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase font-extrabold text-slate-700 tracking-wider">EXHIBITION</div>
+                <div class="relative">
+                  <div 
+                    (click)="openExhibitionDropdown()" 
+                    class="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 bg-white outline-none hover:border-slate-400 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-2.5 min-w-[200px]"
+                    [ngClass]="showExhibitionDropdown() ? 'border-indigo-600 ring-2 ring-indigo-500/20' : ''"
+                  >
+                    <span class="truncate text-slate-900 font-bold">{{ getSelectedExhibitionName() }}</span>
+                    <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showExhibitionDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </div>
 
-                @if (showStallDropdown()) {
-                  <div class="absolute left-0 top-full mt-1.5 z-50 w-72 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xl backdrop-blur-md">
-                    <div class="fixed inset-0 z-[-1]" (click)="showStallDropdown.set(false)"></div>
+                  @if (showExhibitionDropdown()) {
+                    <div class="absolute left-0 top-full mt-1.5 z-50 w-72 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xl backdrop-blur-md">
+                      <div class="fixed inset-0 z-[-1]" (click)="showExhibitionDropdown.set(false)"></div>
 
-                    <button 
-                      type="button"
-                      (click)="onStallFilterChange('ALL'); showStallDropdown.set(false)"
-                      class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
-                      [ngClass]="selectedStallId() === 'ALL' ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
-                    >
-                      <span>All Stalls (All Leads)</span>
-                      @if (selectedStallId() === 'ALL') {
-                        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      }
-                    </button>
-
-                    @for (stall of stallService.stalls(); track stall.id) {
                       <button 
                         type="button"
-                        (click)="onStallFilterChange(stall.id); showStallDropdown.set(false)"
+                        (click)="onExhibitionFilterChange('ALL'); showExhibitionDropdown.set(false)"
                         class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
-                        [ngClass]="selectedStallId() === stall.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                        [ngClass]="selectedExhibitionId() === 'ALL' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
                       >
-                        <span class="truncate">{{ stall.name }} ({{ stall.code }})</span>
-                        @if (selectedStallId() === stall.id) {
-                          <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <span>All Exhibitions</span>
+                        @if (selectedExhibitionId() === 'ALL') {
+                          <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
                           </svg>
                         }
                       </button>
-                    }
-                  </div>
-                }
+
+                      @for (exh of exhibitionService.exhibitions(); track exh.id) {
+                        <button 
+                          type="button"
+                          (click)="onExhibitionFilterChange(exh.id); showExhibitionDropdown.set(false)"
+                          class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                          [ngClass]="selectedExhibitionId() === exh.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
+                        >
+                          <span class="truncate">{{ exh.name }} ({{ exh.code }})</span>
+                          @if (selectedExhibitionId() === exh.id) {
+                            <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          }
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
               </div>
             </div>
+
+            <!-- Active Stall Selector Dropdown -->
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold shrink-0">
+                <span class="material-icons text-lg">storefront</span>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase font-extrabold text-slate-700 tracking-wider">ACTIVE STALL</div>
+                <div class="relative">
+                  <div 
+                    (click)="openStallDropdown()" 
+                    class="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 bg-white outline-none hover:border-slate-400 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-2.5 min-w-[200px]"
+                    [ngClass]="showStallDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20' : ''"
+                  >
+                    <span class="truncate text-slate-900 font-bold">{{ getSelectedStallName() }}</span>
+                    <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showStallDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </div>
+
+                  @if (showStallDropdown()) {
+                    <div class="absolute left-0 top-full mt-1.5 z-50 w-72 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xl backdrop-blur-md">
+                      <div class="fixed inset-0 z-[-1]" (click)="showStallDropdown.set(false)"></div>
+
+                      <button 
+                        type="button"
+                        (click)="onStallFilterChange('ALL'); showStallDropdown.set(false)"
+                        class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                        [ngClass]="selectedStallId() === 'ALL' ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                      >
+                        <span>All Stalls (All Leads)</span>
+                        @if (selectedStallId() === 'ALL') {
+                          <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        }
+                      </button>
+
+                      @for (stall of dropdownStalls(); track stall.id) {
+                        <button 
+                          type="button"
+                          (click)="onStallFilterChange(stall.id); showStallDropdown.set(false)"
+                          class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                          [ngClass]="selectedStallId() === stall.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                        >
+                          <span class="truncate">{{ stall.name }} ({{ stall.code }})</span>
+                          @if (selectedStallId() === stall.id) {
+                            <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          }
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <div class="text-xs bg-white text-slate-700 px-3.5 py-1.5 rounded-xl font-medium border border-slate-200 shadow-2xs flex items-center gap-1.5">
@@ -643,7 +707,7 @@ import { StallService } from '../../core/services/stall.service';
         <!-- Table Header Title Row -->
         <div class="p-4 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
           <h2 class="text-sm font-bold text-slate-900">
-            {{ selectedStallId() === 'ALL' ? 'All Captured Leads (All Stalls)' : ('Stall Leads (Isolated to ' + (stallService.activeStall()?.code || 'STL-2026-001') + ')') }}
+            {{ selectedStallId() === 'ALL' ? 'All Captured Leads (All Stalls)' : ('Stall Leads (' + (stallService.activeStall()?.code || 'STL-2026-001') + ')') }}
           </h2>
           <span class="text-xs text-slate-400 font-medium">
             Showing {{ filteredLeads().length }} total visitor leads
@@ -1034,9 +1098,11 @@ export class LeadListComponent implements OnInit {
   private db = inject(ApplicationDatabase);
   private router = inject(Router);
   stallService = inject(StallService);
+  exhibitionService = inject(ExhibitionService);
 
   allLeads = signal<LocalLead[]>([]);
   selectedLeadForView = signal<LocalLead | null>(null);
+  selectedExhibitionId = signal<string>('ALL');
   selectedStallId = signal<string>('ALL');
 
   searchTerm = signal<string>('');
@@ -1057,6 +1123,8 @@ export class LeadListComponent implements OnInit {
 
   hasActiveFilters = computed(() => {
     return !!(
+      this.selectedExhibitionId() !== 'ALL' ||
+      this.selectedStallId() !== 'ALL' ||
       this.searchTerm().trim() ||
       this.filterDateFrom() ||
       this.filterDateTo() ||
@@ -1067,6 +1135,8 @@ export class LeadListComponent implements OnInit {
   });
 
   resetAllFilters(): void {
+    this.selectedExhibitionId.set('ALL');
+    this.selectedStallId.set('ALL');
     this.searchTerm.set('');
     this.filterDateFrom.set('');
     this.filterDateTo.set('');
@@ -1112,9 +1182,47 @@ export class LeadListComponent implements OnInit {
   showInterestDropdown = signal(false);
   showSyncDropdown = signal(false);
   showStallDropdown = signal(false);
+  showExhibitionDropdown = signal(false);
+
+  dropdownStalls = computed(() => {
+    const exhId = this.selectedExhibitionId();
+    if (!exhId || exhId === 'ALL') {
+      return this.stallService.stalls();
+    }
+    return this.stallService.stalls().filter(
+      (s) => s.exhibitionId === exhId || (!s.exhibitionId && exhId === '44444444-4444-4444-4444-444444444444')
+    );
+  });
+
+  openExhibitionDropdown(): void {
+    this.closeDatePicker();
+    this.showInterestDropdown.set(false);
+    this.showSyncDropdown.set(false);
+    this.showStallDropdown.set(false);
+    this.showExhibitionDropdown.update((v) => !v);
+  }
+
+  getSelectedExhibitionName(): string {
+    if (this.selectedExhibitionId() === 'ALL') return 'All Exhibitions';
+    const found = this.exhibitionService.exhibitions().find((e) => e.id === this.selectedExhibitionId());
+    return found ? `${found.name} (${found.code})` : 'All Exhibitions';
+  }
+
+  onExhibitionFilterChange(exhibitionId: string): void {
+    this.selectedExhibitionId.set(exhibitionId);
+    if (this.selectedStallId() !== 'ALL') {
+      const validStalls = this.dropdownStalls();
+      const stillValid = validStalls.some((s) => s.id === this.selectedStallId());
+      if (!stillValid) {
+        this.selectedStallId.set('ALL');
+      }
+    }
+    this.currentPage.set(1);
+  }
 
   openInterestDropdown(): void {
     this.closeDatePicker();
+    this.showExhibitionDropdown.set(false);
     this.showSyncDropdown.set(false);
     this.showStallDropdown.set(false);
     this.showInterestDropdown.update((v) => !v);
@@ -1122,6 +1230,7 @@ export class LeadListComponent implements OnInit {
 
   openSyncDropdown(): void {
     this.closeDatePicker();
+    this.showExhibitionDropdown.set(false);
     this.showInterestDropdown.set(false);
     this.showStallDropdown.set(false);
     this.showSyncDropdown.update((v) => !v);
@@ -1129,6 +1238,7 @@ export class LeadListComponent implements OnInit {
 
   openStallDropdown(): void {
     this.closeDatePicker();
+    this.showExhibitionDropdown.set(false);
     this.showInterestDropdown.set(false);
     this.showSyncDropdown.set(false);
     this.showStallDropdown.update((v) => !v);
@@ -1149,6 +1259,7 @@ export class LeadListComponent implements OnInit {
   weekDayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   openDatePicker(mode: 'from' | 'to'): void {
+    this.showExhibitionDropdown.set(false);
     this.showInterestDropdown.set(false);
     this.showSyncDropdown.set(false);
     this.showStallDropdown.set(false);
@@ -1322,6 +1433,8 @@ export class LeadListComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    this.exhibitionService.loadExhibitions();
+    this.stallService.loadStalls();
     await this.loadLeads();
   }
 
@@ -1376,6 +1489,25 @@ export class LeadListComponent implements OnInit {
 
   dateAndStallFilteredLeads = computed(() => {
     let list = this.allLeads();
+
+    // 0. Exhibition Filter
+    const exhId = this.selectedExhibitionId();
+    if (exhId && exhId !== 'ALL') {
+      const stallsInExhibition = new Set(
+        this.stallService.stalls()
+          .filter((s) => s.exhibitionId === exhId)
+          .map((s) => s.id)
+      );
+      const defaultExhId = '44444444-4444-4444-4444-444444444444';
+      const defaultStallId = '33333333-3333-3333-3333-333333333333';
+
+      list = list.filter((l) => {
+        if (l.exhibitionId === exhId) return true;
+        if (l.exhibitionId && stallsInExhibition.has(l.exhibitionId)) return true;
+        if (!l.exhibitionId && (exhId === defaultExhId || stallsInExhibition.has(defaultStallId))) return true;
+        return false;
+      });
+    }
 
     // 1. Stall Filter
     const stallId = this.selectedStallId();
