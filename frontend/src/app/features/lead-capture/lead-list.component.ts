@@ -24,12 +24,16 @@ import { ExhibitionService } from '../../core/services/exhibition.service';
         </div>
 
         <div class="flex items-center gap-2.5">
-          <a routerLink="/capture" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs px-4 py-2.5 rounded-xl font-extrabold flex items-center gap-2 shadow-sm transition-all hover:shadow-md">
+          <button 
+            type="button"
+            (click)="openTargetSelectionModal()" 
+            class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs px-4 py-2.5 rounded-xl font-extrabold flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer"
+          >
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
             </svg>
               New Lead
-          </a>
+          </button>
         </div>
       </div>
 
@@ -1091,6 +1095,95 @@ import { ExhibitionService } from '../../core/services/exhibition.service';
           </div>
         </div>
       }
+      <!-- Modal: Select Target Exhibition & Stall for New Lead Entry -->
+      @if (isTargetModalOpen()) {
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 my-8 animate-in zoom-in-95 duration-150">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <span class="material-icons text-xl">person_add_alt</span>
+                </div>
+                <div>
+                  <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">SELECT TARGET EXHIBITION & STALL</h2>
+                  <p class="text-xs text-slate-500 font-medium">Select event and stall destination to capture lead</p>
+                </div>
+              </div>
+              <button type="button" (click)="closeTargetSelectionModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition">
+                <span class="material-icons text-lg">close</span>
+              </button>
+            </div>
+
+            <div class="space-y-4">
+              <!-- Dropdown 1: Select Exhibition -->
+              <div>
+                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                  1. Select Exhibition *
+                </label>
+                <select 
+                  [ngModel]="targetExhibitionId()" 
+                  (ngModelChange)="selectTargetExhibition($event)"
+                  class="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl outline-none focus:border-blue-600 bg-white shadow-2xs"
+                >
+                  <option value="">-- Select Exhibition Event --</option>
+                  @for (exh of exhibitionService.exhibitions(); track exh.id) {
+                    <option [value]="exh.id">{{ exh.name }} ({{ exh.code }})</option>
+                  }
+                </select>
+              </div>
+
+              <!-- Dropdown 2: Select Stall (Blocked/Disabled until Exhibition selected) -->
+              <div>
+                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                  2. Select Stall *
+                </label>
+                <select 
+                  [(ngModel)]="targetStallId" 
+                  [disabled]="!targetExhibitionId()" 
+                  class="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl outline-none focus:border-blue-600 bg-white shadow-2xs disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border-slate-200"
+                >
+                  <option value="">
+                    {{ !targetExhibitionId() ? '-- Select Exhibition First --' : '-- Select Stall Project --' }}
+                  </option>
+                  @for (stall of targetStalls(); track stall.id) {
+                    <option [value]="stall.id">{{ stall.name }} ({{ stall.code }})</option>
+                  }
+                </select>
+                @if (!targetExhibitionId()) {
+                  <p class="text-[11px] text-amber-600 font-semibold mt-1 flex items-center gap-1">
+                    <span class="material-icons text-xs text-amber-500">info</span>
+                    Stall selection is blocked until an exhibition is selected.
+                  </p>
+                }
+              </div>
+            </div>
+
+            <!-- Modal Action Footer -->
+            <div class="flex items-center justify-end gap-2.5 pt-4 mt-6 border-t border-slate-100">
+              <button 
+                type="button" 
+                (click)="closeTargetSelectionModal()" 
+                class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              
+              <button 
+                type="button" 
+                (click)="proceedToCaptureLead()" 
+                [disabled]="!targetExhibitionId() || !targetStallId()"
+                class="px-5 py-2.5 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
+              >
+                <span>Proceed to Capture Lead</span>
+                <span class="material-icons text-sm">arrow_forward</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      }
     </div>
   `
 })
@@ -1104,6 +1197,44 @@ export class LeadListComponent implements OnInit {
   selectedLeadForView = signal<LocalLead | null>(null);
   selectedExhibitionId = signal<string>('ALL');
   selectedStallId = signal<string>('ALL');
+
+  // New Lead Target Selection Modal Signals & State
+  isTargetModalOpen = signal<boolean>(false);
+  targetExhibitionId = signal<string>('');
+  targetStallId = signal<string>('');
+
+  targetStalls = computed(() => {
+    const exhId = this.targetExhibitionId();
+    if (!exhId) return [];
+    return this.stallService.stalls().filter(
+      (s) => s.exhibitionId === exhId || (!s.exhibitionId && exhId === '44444444-4444-4444-4444-444444444444')
+    );
+  });
+
+  openTargetSelectionModal(): void {
+    this.targetExhibitionId.set('');
+    this.targetStallId.set('');
+    this.isTargetModalOpen.set(true);
+  }
+
+  selectTargetExhibition(exhId: string): void {
+    this.targetExhibitionId.set(exhId);
+    this.targetStallId.set('');
+  }
+
+  closeTargetSelectionModal(): void {
+    this.isTargetModalOpen.set(false);
+  }
+
+  proceedToCaptureLead(): void {
+    const stall = this.stallService.stalls().find((s) => s.id === this.targetStallId());
+    if (stall) {
+      this.stallService.setActiveStall(stall);
+    }
+    const exhId = this.targetExhibitionId();
+    this.isTargetModalOpen.set(false);
+    this.router.navigate(['/capture'], { queryParams: { stallId: this.targetStallId(), exhibitionId: exhId } });
+  }
 
   headerSubtitle = computed(() => {
     const exhId = this.selectedExhibitionId();

@@ -378,6 +378,14 @@ export class LeadFormComponent implements OnInit {
   ];
 
   async ngOnInit(): Promise<void> {
+    const stallIdParam = this.route.snapshot.queryParamMap.get('stallId');
+    if (stallIdParam) {
+      const stall = this.stallService.stalls().find((s) => s.id === stallIdParam);
+      if (stall) {
+        this.stallService.setActiveStall(stall);
+      }
+    }
+
     const idParam = this.route.snapshot.paramMap.get('id') || this.route.snapshot.queryParamMap.get('id');
     if (idParam) {
       this.editingLeadId = idParam;
