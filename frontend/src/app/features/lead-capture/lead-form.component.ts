@@ -339,7 +339,7 @@ import { getApiUrl } from '../../core/config/api.config';
               </tr>
             </thead>
             <tbody class="text-xs text-slate-700 font-normal">
-              @for (lead of sessionLeads(); track lead.id; let idx = $index) {
+              @for (lead of paginatedSessionLeads(); track lead.id; let idx = $index) {
                 <tr 
                   class="border-b border-slate-100 transition hover:bg-blue-50/40"
                   [ngClass]="idx % 2 === 0 ? 'bg-[#f4f8fc]' : 'bg-white'"
@@ -433,6 +433,44 @@ import { getApiUrl } from '../../core/config/api.config';
               }
             </tbody>
           </table>
+        </div>
+
+        <!-- Table Pagination Footer Bar -->
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-6 text-xs text-slate-600 font-medium select-none">
+          <div class="flex items-center gap-2">
+            <span>Items per page:</span>
+            <select [(ngModel)]="pageSizeSelect" (change)="onPageSizeChange()" class="border border-slate-300 rounded px-2.5 py-1 bg-white text-xs outline-none focus:border-blue-600 font-semibold cursor-pointer">
+              <option [value]="10">10</option>
+              <option [value]="20">20</option>
+              <option [value]="50">50</option>
+              <option [value]="100">100</option>
+            </select>
+          </div>
+
+          <div>
+            {{ startIndex() }} - {{ endIndex() }} of {{ sessionLeads().length }}
+          </div>
+
+          <!-- Page Navigation Buttons -->
+          <div class="flex items-center gap-1">
+            <button 
+              [disabled]="currentPage() === 1" 
+              (click)="prevPage()" 
+              class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-slate-600" 
+              title="Previous Page"
+            >
+              <span class="material-icons text-base">chevron_left</span>
+            </button>
+
+            <button 
+              [disabled]="endIndex() >= sessionLeads().length" 
+              (click)="nextPage()" 
+              class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-slate-600" 
+              title="Next Page"
+            >
+              <span class="material-icons text-base">chevron_right</span>
+            </button>
+          </div>
         </div>
       </div>
       <!-- Modal: Change Target Exhibition & Stall -->
@@ -657,6 +695,45 @@ export class LeadFormComponent implements OnInit {
 
   sessionLeads = signal<LocalLead[]>([]);
   selectedLeadForView = signal<LocalLead | null>(null);
+
+  currentPage = signal<number>(1);
+  pageSizeSelect = 20;
+  pageSize = signal<number>(20);
+
+  paginatedSessionLeads = computed(() => {
+    const list = this.sessionLeads();
+    const size = this.pageSize();
+    const page = this.currentPage();
+    const start = (page - 1) * size;
+    return list.slice(start, start + size);
+  });
+
+  startIndex = computed(() => {
+    if (this.sessionLeads().length === 0) return 0;
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  });
+
+  endIndex = computed(() => {
+    const end = this.currentPage() * this.pageSize();
+    return Math.min(end, this.sessionLeads().length);
+  });
+
+  onPageSizeChange(): void {
+    this.pageSize.set(Number(this.pageSizeSelect));
+    this.currentPage.set(1);
+  }
+
+  prevPage(): void {
+    if (this.currentPage() > 1) {
+      this.currentPage.update((p) => p - 1);
+    }
+  }
+
+  nextPage(): void {
+    if (this.endIndex() < this.sessionLeads().length) {
+      this.currentPage.update((p) => p + 1);
+    }
+  }
   isTargetModalOpen = signal<boolean>(false);
   targetExhibitionId = signal<string>('');
   targetStallId = signal<string>('');
@@ -974,6 +1051,7 @@ export class LeadFormComponent implements OnInit {
     
     // Add saved lead to session preview grid immediately
     this.sessionLeads.update(list => [leadToSave, ...list.filter(l => l.id !== leadToSave.id)]);
+    this.currentPage.set(1);
 
     this.savedMessage.set(`Lead ${leadNumberToUse} ${actionText} successfully and added to preview grid below!`);
 
