@@ -1,6 +1,7 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, signal } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { WhisperSttService } from '../../core/services/whisper-stt.service';
 
 @Component({
   selector: 'app-voice-recorder',
@@ -17,13 +18,13 @@ import { FormsModule } from '@angular/forms';
             </div>
             <div>
               <h3 class="text-xs font-bold uppercase tracking-wider text-white">Voice Note Audio</h3>
-              <p class="text-[10px] text-blue-200/80 font-medium">Spoken Notes to Text</p>
+              <p class="text-[10px] text-blue-200/80 font-medium">Dual AI Speech (Web & Whisper WASM)</p>
             </div>
           </div>
           @if (isRecording()) {
             <div class="flex items-center gap-1.5 bg-rose-500/20 text-rose-200 border border-rose-400/30 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold animate-pulse">
               <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
-              REC {{ formatTime(recordingDuration()) }}
+              REC {{ formatTime(recordingDuration()) }} / 03:00
             </div>
           } @else {
             <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-400/20 text-rose-100 border border-rose-300/30">AI Speech</span>
@@ -37,6 +38,18 @@ import { FormsModule } from '@angular/forms';
             <div class="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-start gap-2">
               <span class="material-icons text-base text-rose-500 flex-shrink-0">error_outline</span>
               <span>{{ errorMessage() }}</span>
+            </div>
+          }
+
+          <!-- Whisper AI Loading / Progress Indicator -->
+          @if (whisperStt.isModelLoading() || whisperStt.isTranscribing()) {
+            <div class="p-3 bg-slate-900 text-white rounded-xl space-y-2 text-xs shadow-md border border-slate-800 animate-fadeIn">
+              <div class="flex items-center justify-between font-semibold">
+                <span class="flex items-center gap-2 text-blue-300">
+                  <span class="material-icons text-blue-400 animate-spin text-base">sync</span>
+                  {{ whisperStt.loadingMessage() }}
+                </span>
+              </div>
             </div>
           }
 
@@ -55,9 +68,20 @@ import { FormsModule } from '@angular/forms';
           <!-- STATE 2: Currently Recording -->
           @if (isRecording()) {
             <div class="space-y-2">
-              <div class="flex items-center justify-center gap-2 py-2.5 bg-red-50 rounded-lg border border-red-200 animate-pulse">
-                <span class="material-icons text-red-600 text-base animate-bounce">graphic_eq</span>
-                <span class="text-xs font-bold text-red-800">Listening & Transcribing Live...</span>
+              <div class="flex items-center justify-between py-1.5 px-2 bg-red-50 rounded-lg border border-red-200">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons text-red-600 text-base animate-bounce">graphic_eq</span>
+                  <span class="text-xs font-bold text-red-800">Listening & Transcribing Live...</span>
+                </div>
+                <span class="text-[10px] text-red-600 font-mono font-bold">Max 3m</span>
+              </div>
+
+              <!-- Audio Waveform Visualizer Canvas -->
+              <div class="relative w-full h-14 bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center p-1 shadow-inner">
+                <canvas #visualizerCanvas class="w-full h-full block rounded-lg"></canvas>
+                <div class="absolute top-1 right-2 text-[9px] font-mono text-slate-400 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800">
+                  MIC ACTIVE
+                </div>
               </div>
 
               @if (liveTranscript()) {
@@ -69,7 +93,7 @@ import { FormsModule } from '@angular/forms';
               <button 
                 type="button"
                 (click)="stopRecording()" 
-                class="w-full btn bg-slate-900 hover:bg-black text-white justify-center text-xs py-2.5 rounded-lg font-bold shadow-sm transition flex items-center gap-2"
+                class="w-full btn bg-slate-900 hover:bg-black text-white justify-center text-xs py-2.5 rounded-lg font-bold shadow-sm transition flex items-center gap-2 cursor-pointer"
               >
                 <span class="material-icons text-sm">stop</span>
                 Stop & Save Audio ({{ formatTime(recordingDuration()) }})
@@ -107,7 +131,7 @@ import { FormsModule } from '@angular/forms';
                     <button 
                       type="button" 
                       (click)="startDictationOnly()" 
-                      class="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 font-semibold"
+                      class="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 font-semibold cursor-pointer"
                       title="Click to dictate or transcribe more spoken text"
                     >
                       <span class="material-icons text-[12px]">mic</span> Dictate
@@ -135,7 +159,7 @@ import { FormsModule } from '@angular/forms';
                 <button 
                   type="button"
                   (click)="startRecording()" 
-                  class="flex-1 btn bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-1.5 rounded-md font-medium transition flex items-center justify-center gap-1"
+                  class="flex-1 btn bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-1.5 rounded-md font-medium transition flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <span class="material-icons text-xs">mic</span>
                   Re-record
@@ -143,7 +167,7 @@ import { FormsModule } from '@angular/forms';
                 <button 
                   type="button"
                   (click)="deleteRecording()" 
-                  class="btn bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs py-1.5 px-3 rounded-md font-medium transition flex items-center gap-1"
+                  class="btn bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs py-1.5 px-3 rounded-md font-medium transition flex items-center gap-1 cursor-pointer"
                   title="Delete Recording"
                 >
                   <span class="material-icons text-xs">delete_outline</span>
@@ -158,6 +182,8 @@ import { FormsModule } from '@angular/forms';
   `
 })
 export class VoiceRecorderComponent implements OnInit, OnDestroy {
+  @ViewChild('visualizerCanvas') visualizerCanvas?: ElementRef<HTMLCanvasElement>;
+
   @Input() set initialAudio(data: Blob | string | null | undefined) {
     if (data) {
       this.loadExistingAudio(data);
@@ -174,6 +200,8 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
   @Output() transcriptGenerated = new EventEmitter<string>();
   @Output() voiceCleared = new EventEmitter<void>();
 
+  whisperStt = inject(WhisperSttService);
+
   isRecording = signal(false);
   isDictating = signal(false);
   audioRecorded = signal(false);
@@ -189,6 +217,14 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
   private recordingInterval: any = null;
   private speechRecognition: any = null;
   private accumulatedSpeechText: string = '';
+
+  // Audio Visualizer & Real-Time PCM Buffer members
+  private audioCtx: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private scriptProcessor: ScriptProcessorNode | null = null;
+  private animFrameId: number | null = null;
+  private pcmBuffers: Float32Array[] = [];
+  private hardwareSampleRate: number = 44100;
 
   ngOnInit(): void {
     this.initSpeechRecognition();
@@ -270,7 +306,7 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
         }
       };
 
-      this.mediaRecorder.onstop = () => {
+      this.mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(this.audioChunks, {
           type: this.mediaRecorder?.mimeType || 'audio/webm',
         });
@@ -281,15 +317,50 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
         this.audioUrl.set(URL.createObjectURL(audioBlob));
         this.audioRecorded.set(true);
 
-        // Finalize transcript
-        let finalText = this.accumulatedSpeechText.trim();
-        if (!finalText) {
-          finalText = `Spoken Voice Note Discussion (${this.formatTime(this.recordingDuration())})`;
+        // Set live/accumulated Web Speech transcript first if available
+        let initialText = this.accumulatedSpeechText.trim();
+        if (initialText) {
+          this.transcriptText.set(initialText);
+          this.transcriptGenerated.emit(initialText);
+        } else {
+          this.transcriptText.set('Transcribing voice note with AI...');
         }
 
-        this.transcriptText.set(finalText);
         this.voiceRecorded.emit(audioBlob);
-        this.transcriptGenerated.emit(finalText);
+
+        // Capture resampled 16kHz PCM audio
+        const pcm16k = this.getCapturedPcm16k();
+
+        // Perform Whisper AI high-accuracy pass
+        try {
+          let whisperText = '';
+          if (pcm16k && pcm16k.length > 0) {
+            whisperText = await this.whisperStt.transcribePcm(pcm16k);
+          } else {
+            whisperText = await this.whisperStt.transcribe(audioBlob);
+          }
+
+          console.log('Whisper AI final transcript:', whisperText);
+
+          if (whisperText && whisperText.length > 0) {
+            this.transcriptText.set(whisperText);
+            this.transcriptGenerated.emit(whisperText);
+          } else if (initialText) {
+            this.transcriptText.set(initialText);
+            this.transcriptGenerated.emit(initialText);
+          } else {
+            this.transcriptText.set('');
+            this.errorMessage.set('No speech detected in audio. Please speak clearly into the microphone.');
+          }
+        } catch (e) {
+          console.warn('Whisper pass error:', e);
+          if (initialText) {
+            this.transcriptText.set(initialText);
+            this.transcriptGenerated.emit(initialText);
+          } else {
+            this.transcriptText.set('');
+          }
+        }
       };
 
       this.mediaRecorder.start(200);
@@ -297,11 +368,22 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
       this.audioRecorded.set(false);
       this.recordingDuration.set(0);
 
+      // Start Visualizer and native hardware PCM audio collection
+      this.startVisualizerAndPcmCapture(this.mediaStream);
+
+      // Start duration timer (max 3 minutes / 180s)
       this.recordingInterval = setInterval(() => {
-        this.recordingDuration.update((d) => d + 1);
+        this.recordingDuration.update((d) => {
+          const next = d + 1;
+          if (next >= 180) {
+            setTimeout(() => this.stopRecording(), 0);
+            this.errorMessage.set('Max recording limit reached (3 minutes). Audio saved.');
+          }
+          return next;
+        });
       }, 1000);
 
-      // Start Speech Recognition
+      // Start Speech Recognition live preview
       if (this.speechRecognition) {
         try {
           this.speechRecognition.start();
@@ -323,7 +405,14 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
   }
 
   stopRecording(): void {
+    this.stopVisualizer();
+
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      try {
+        this.mediaRecorder.requestData();
+      } catch (e) {
+        // ignore
+      }
       this.mediaRecorder.stop();
     }
 
@@ -412,4 +501,143 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
       URL.revokeObjectURL(this.audioUrl()!);
     }
   }
+
+  // Waveform Visualizer & Direct 16kHz PCM Audio Capture Methods
+  private startVisualizerAndPcmCapture(stream: MediaStream): void {
+    try {
+      this.stopVisualizer();
+      this.pcmBuffers = [];
+
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+
+      // Initialize at native hardware rate (e.g. 44100Hz or 48000Hz)
+      this.audioCtx = new AudioCtx();
+      this.hardwareSampleRate = this.audioCtx.sampleRate || 44100;
+
+      const source = this.audioCtx.createMediaStreamSource(stream);
+      this.analyser = this.audioCtx.createAnalyser();
+      this.analyser.fftSize = 64;
+      source.connect(this.analyser);
+
+      // Store on class instance to prevent V8 Garbage Collector from disconnecting audio processor
+      this.scriptProcessor = this.audioCtx.createScriptProcessor(4096, 1, 1);
+      this.scriptProcessor.onaudioprocess = (e) => {
+        if (this.isRecording()) {
+          const inputData = e.inputBuffer.getChannelData(0);
+          this.pcmBuffers.push(new Float32Array(inputData));
+        }
+      };
+      source.connect(this.scriptProcessor);
+      this.scriptProcessor.connect(this.audioCtx.destination);
+
+      requestAnimationFrame(() => this.drawWaveform());
+    } catch (e) {
+      console.warn('Visualizer & PCM capture error:', e);
+    }
+  }
+
+  private getCapturedPcm16k(): Float32Array {
+    let totalLength = 0;
+    for (const buf of this.pcmBuffers) {
+      totalLength += buf.length;
+    }
+    if (totalLength === 0) return new Float32Array(0);
+
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const buf of this.pcmBuffers) {
+      merged.set(buf, offset);
+      offset += buf.length;
+    }
+
+    // Resample from hardware rate (e.g., 44.1kHz or 48kHz) down to 16kHz for Whisper
+    return this.resampleTo16k(merged, this.hardwareSampleRate);
+  }
+
+  private resampleTo16k(samples: Float32Array, oldSampleRate: number): Float32Array {
+    const targetSampleRate = 16000;
+    if (oldSampleRate === targetSampleRate) return samples;
+
+    const ratio = oldSampleRate / targetSampleRate;
+    const newLength = Math.round(samples.length / ratio);
+    const result = new Float32Array(newLength);
+
+    for (let i = 0; i < newLength; i++) {
+      const originIndex = i * ratio;
+      const index1 = Math.floor(originIndex);
+      const index2 = Math.min(index1 + 1, samples.length - 1);
+      const weight = originIndex - index1;
+      result[i] = samples[index1] * (1 - weight) + samples[index2] * weight;
+    }
+    return result;
+  }
+
+  private drawWaveform(): void {
+    if (!this.analyser || !this.isRecording()) return;
+
+    const canvas = this.visualizerCanvas?.nativeElement;
+    if (!canvas) {
+      this.animFrameId = requestAnimationFrame(() => this.drawWaveform());
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+      canvas.width = canvas.clientWidth || 300;
+      canvas.height = canvas.clientHeight || 56;
+    }
+
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    this.analyser.getByteFrequencyData(dataArray);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const barWidth = (canvas.width / bufferLength) * 1.4;
+    let x = 0;
+
+    for (let i = 0; i < bufferLength; i++) {
+      const barHeight = (dataArray[i] / 255) * (canvas.height - 8);
+
+      const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+      gradient.addColorStop(0, '#3b82f6');
+      gradient.addColorStop(0.5, '#ec4899');
+      gradient.addColorStop(1, '#f43f5e');
+
+      ctx.fillStyle = gradient;
+      const y = canvas.height - Math.max(4, barHeight);
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(x, y, Math.max(2, barWidth - 2), Math.max(4, barHeight), [3, 3, 0, 0]);
+      } else {
+        ctx.rect(x, y, Math.max(2, barWidth - 2), Math.max(4, barHeight));
+      }
+      ctx.fill();
+
+      x += barWidth;
+    }
+
+    this.animFrameId = requestAnimationFrame(() => this.drawWaveform());
+  }
+
+  private stopVisualizer(): void {
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
+    if (this.scriptProcessor) {
+      this.scriptProcessor.onaudioprocess = null;
+      try { this.scriptProcessor.disconnect(); } catch (e) {}
+      this.scriptProcessor = null;
+    }
+    if (this.audioCtx && this.audioCtx.state !== 'closed') {
+      this.audioCtx.close().catch(() => {});
+      this.audioCtx = null;
+    }
+    this.analyser = null;
+  }
 }
+
