@@ -12,32 +12,38 @@ export { ExtractedCardData };
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="card-panel p-0 overflow-hidden h-full flex flex-col justify-between hover:shadow-md transition bg-white border border-slate-200 rounded-xl">
+    <div class="card-panel p-0 overflow-hidden h-full flex flex-col justify-between hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
       <div>
-        <!-- Header with Table Blue (#1a3a5c) theme -->
-        <div class="bg-[#1a3a5c] text-white p-3.5 px-4 flex items-center justify-between shadow-xs">
-          <div class="flex items-center gap-2">
-            <span class="material-icons text-blue-300 text-lg">credit_card</span>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-white">Business Card OCR</h3>
+        <!-- Header with Rich Navy Gradient (#1a3a5c) -->
+        <div class="bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] text-white p-3.5 px-4 flex items-center justify-between shadow-xs border-b border-white/10">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0 backdrop-blur-xs">
+              <span class="material-icons text-blue-200 text-lg">credit_card</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-white">Business Card OCR</h3>
+              <p class="text-[10px] text-blue-200/80 font-medium">Offline Card Scanner</p>
+            </div>
           </div>
+          <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-400/20 text-blue-100 border border-blue-300/30">AI OCR</span>
         </div>
 
-        <div class="p-4">
-          <p class="text-xs text-slate-500 mb-3">Snap or upload business card to detect corners, crop perspective, and extract info offline.</p>
+        <div class="p-4 space-y-3">
+          <p class="text-xs text-slate-500 leading-relaxed">Auto-extract visitor info from card photo.</p>
 
           <!-- Quick Action Buttons -->
-          <div class="grid grid-cols-1 gap-2 mb-2">
+          <div class="grid grid-cols-1 gap-2.5">
             <button 
               type="button"
               (click)="openCameraModal()" 
-              class="btn btn-primary w-full justify-center text-xs py-2.5 rounded-lg font-bold shadow-sm flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              class="w-full justify-center text-xs py-2.5 px-4 rounded-xl font-extrabold shadow-sm hover:shadow-md flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white active:scale-[0.98] transition-all cursor-pointer"
               [disabled]="isProcessing()"
             >
-              <span class="material-icons text-sm">photo_camera</span>
-              Scan via Camera (Auto-Snap Card)
+              <span class="material-icons text-base">photo_camera</span>
+              <span>Scan via Camera</span>
             </button>
 
-            <label class="cursor-pointer block border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-2.5 text-center bg-slate-50 hover:bg-blue-50/50 transition">
+            <label class="cursor-pointer block border border-dashed border-blue-200/80 hover:border-blue-500 rounded-xl p-3 text-center bg-blue-50/20 hover:bg-blue-50/70 transition-all duration-200 group shadow-2xs">
               <input 
                 type="file" 
                 accept="image/*" 
@@ -46,11 +52,10 @@ export { ExtractedCardData };
                 class="hidden"
                 [disabled]="isProcessing()"
               />
-              <div class="flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-600">
-                <span class="material-icons text-sm">add_a_photo</span>
-                <span>Upload Business Card Image</span>
+              <div class="flex items-center justify-center gap-2 text-xs font-bold text-blue-700 group-hover:text-blue-900">
+                <span class="material-icons text-base text-blue-600 group-hover:scale-110 transition-transform">add_a_photo</span>
+                <span>Upload Image</span>
               </div>
-              <span class="text-[10px] text-slate-400 block mt-0.5">JPG, PNG, WebP up to 10MB</span>
             </label>
           </div>
         </div>
