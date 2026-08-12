@@ -188,22 +188,11 @@ import { getApiUrl } from '../../core/config/api.config';
                 <!-- Row 4: Duration (Days) & Dates -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Duration (Days) *</label>
-                    <input 
-                      type="number" 
-                      [(ngModel)]="newStallData.durationDays" 
-                      name="durationDays" 
-                      required 
-                      class="form-control text-xs font-semibold" 
-                      placeholder="4" 
-                    />
-                  </div>
-
-                  <div>
                     <label class="form-label font-bold text-xs text-slate-700 mb-1">Start Date</label>
                     <input 
                       type="date" 
                       [(ngModel)]="newStallData.startDate" 
+                      (ngModelChange)="onDateChange()"
                       name="startDate" 
                       class="form-control text-xs font-semibold" 
                     />
@@ -214,8 +203,22 @@ import { getApiUrl } from '../../core/config/api.config';
                     <input 
                       type="date" 
                       [(ngModel)]="newStallData.endDate" 
+                      (ngModelChange)="onDateChange()"
                       name="endDate" 
                       class="form-control text-xs font-semibold" 
+                    />
+                  </div>
+
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Duration (Days) *</label>
+                    <input 
+                      type="number" 
+                      [(ngModel)]="newStallData.durationDays" 
+                      name="durationDays" 
+                      readonly
+                      tabindex="-1"
+                      class="form-control text-xs font-bold bg-slate-100 text-blue-900 cursor-not-allowed outline-none select-none" 
+                      placeholder="Auto-calculated" 
                     />
                   </div>
                 </div>
@@ -272,7 +275,7 @@ import { getApiUrl } from '../../core/config/api.config';
               <div class="flex justify-end gap-2 pt-3 border-t">
                 <button type="button" (click)="isCreateStallModalOpen.set(false)" class="btn btn-outline-pill text-xs">Cancel</button>
                 <button type="submit" class="btn btn-primary text-xs px-6 py-2 rounded-lg font-bold shadow-md">
-                  Save Stall Project
+                  Save
                 </button>
               </div>
             </form>
@@ -323,6 +326,18 @@ export class SalesDashboardComponent implements OnInit {
     const found = this.stallService.stalls().find((s) => s.id === stallId);
     if (found) {
       this.stallService.setActiveStall(found);
+    }
+  }
+
+  onDateChange(): void {
+    if (this.newStallData.startDate && this.newStallData.endDate) {
+      const start = new Date(this.newStallData.startDate);
+      const end = new Date(this.newStallData.endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        this.newStallData.durationDays = diffDays;
+      }
     }
   }
 

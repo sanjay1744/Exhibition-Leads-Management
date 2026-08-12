@@ -75,3 +75,9 @@ tmp/
 **/wwwroot/uploads/
 **/uploads/card_images/
 
+# ------------------------------------------
+# Agent Customizations & Skills
+# ------------------------------------------
+.agent/
+
+

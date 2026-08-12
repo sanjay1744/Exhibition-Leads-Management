@@ -2,12 +2,13 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { StallService } from '../../core/services/stall.service';
+import { ExhibitionService, ExhibitionDto } from '../../core/services/exhibition.service';
 import { ApplicationDatabase } from '../../core/services/db.service';
 import { getApiUrl } from '../../core/config/api.config';
-
+import { ToastService } from '../../core/services/toast.service';
 
 export interface StallMasterDto {
   id: string;
@@ -26,9 +27,8 @@ export interface StallMasterDto {
   status: string;
   createdAt: string;
   leadCount: number;
+  exhibitionId?: string;
 }
-
-import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-stall-master',
@@ -38,14 +38,9 @@ import { ToastService } from '../../core/services/toast.service';
     <div>
       <!-- Page Title Bar -->
       <div class="page-title-bar flex items-center justify-between mb-6">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md">
-            <span class="material-icons text-xl">storefront</span>
-          </div>
-          <div>
-            <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">STALL MASTER</h1>
-            <p class="text-xs text-slate-500">Exhibition Stall Projects, Event Details, Organizers & Hall Metadata</p>
-          </div>
+        <div>
+          <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">STALL MASTER</h1>
+          <p class="text-xs text-slate-500">Exhibition Stall Projects, Event Details, Organizers & Hall Metadata</p>
         </div>
 
         <div class="page-actions flex items-center gap-2">
@@ -274,6 +269,25 @@ import { ToastService } from '../../core/services/toast.service';
                   />
                 </div>
 
+                <!-- Row 2.5: Parent Exhibition Selection -->
+                <div>
+                  <label class="form-label font-bold text-xs text-slate-700 mb-1 flex items-center gap-1">
+                    <span class="material-icons text-blue-600 text-xs">event_available</span>
+                    Link to Master Exhibition *
+                  </label>
+                  <select 
+                    [(ngModel)]="formData.exhibitionId" 
+                    (change)="onExhibitionChange(formData.exhibitionId!)"
+                    name="exhibitionId" 
+                    class="form-control text-xs font-semibold"
+                  >
+                    <option value="">-- Direct Stall (No Parent Exhibition) --</option>
+                    @for (exh of exhibitions(); track exh.id) {
+                      <option [value]="exh.id">{{ exh.code }} - {{ exh.name }} ({{ exh.organizer }})</option>
+                    }
+                  </select>
+                </div>
+
                 <!-- Row 3: Exhibition Event Name & Conducting Organizer -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -302,22 +316,11 @@ import { ToastService } from '../../core/services/toast.service';
                 <!-- Row 4: Duration (Days) & Dates -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Duration (Days) *</label>
-                    <input 
-                      type="number" 
-                      [(ngModel)]="formData.durationDays" 
-                      name="durationDays" 
-                      required 
-                      class="form-control text-xs font-semibold" 
-                      placeholder="4" 
-                    />
-                  </div>
-
-                  <div>
                     <label class="form-label font-bold text-xs text-slate-700 mb-1">Start Date</label>
                     <input 
                       type="date" 
                       [(ngModel)]="formData.startDate" 
+                      (ngModelChange)="onDateChange()"
                       name="startDate" 
                       class="form-control text-xs font-semibold" 
                     />
@@ -328,8 +331,22 @@ import { ToastService } from '../../core/services/toast.service';
                     <input 
                       type="date" 
                       [(ngModel)]="formData.endDate" 
+                      (ngModelChange)="onDateChange()"
                       name="endDate" 
                       class="form-control text-xs font-semibold" 
+                    />
+                  </div>
+
+                  <div>
+                    <label class="form-label font-bold text-xs text-slate-700 mb-1">Duration (Days) *</label>
+                    <input 
+                      type="number" 
+                      [(ngModel)]="formData.durationDays" 
+                      name="durationDays" 
+                      readonly
+                      tabindex="-1"
+                      class="form-control text-xs font-bold bg-slate-100 text-blue-900 cursor-not-allowed outline-none select-none" 
+                      placeholder="Auto-calculated" 
                     />
                   </div>
                 </div>
@@ -386,7 +403,7 @@ import { ToastService } from '../../core/services/toast.service';
               <div class="flex justify-end gap-2 pt-3 border-t">
                 <button type="button" (click)="closeModal()" class="btn btn-outline-pill text-xs">Cancel</button>
                 <button type="submit" class="btn btn-primary text-xs px-6 py-2 rounded-lg font-bold shadow-md">
-                  {{ isEditMode() ? 'Update Stall Project' : 'Save Stall Project' }}
+                  {{ isEditMode() ? 'Update' : 'Save' }}
                 </button>
               </div>
             </form>
@@ -454,6 +471,8 @@ export class StallMasterComponent implements OnInit {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
   private stallService = inject(StallService);
+  private exhibitionService = inject(ExhibitionService);
+  private route = inject(ActivatedRoute);
   private router = inject(Router);
   private toast = inject(ToastService);
   private db = inject(ApplicationDatabase);
@@ -461,12 +480,27 @@ export class StallMasterComponent implements OnInit {
   private get apiUrl() { return `${getApiUrl()}/stalls`; }
 
   stalls = signal<StallMasterDto[]>([]);
+  exhibitions = this.exhibitionService.exhibitions;
   searchQuery = '';
   isModalOpen = signal(false);
   isEditMode = signal(false);
   editingStallId: string | null = null;
 
-  formData = {
+  formData: {
+    name: string;
+    code: string;
+    eventName: string;
+    organizer: string;
+    durationDays: number;
+    startDate: string;
+    endDate: string;
+    location: string;
+    hallNumber: string;
+    boothNumber: string;
+    ownerId: string;
+    ownerName: string;
+    exhibitionId?: string;
+  } = {
     name: '',
     code: '',
     eventName: '',
@@ -478,7 +512,8 @@ export class StallMasterComponent implements OnInit {
     hallNumber: 'Hall A',
     boothNumber: 'Booth 12',
     ownerId: '11111111-1111-1111-1111-111111111111',
-    ownerName: 'Thalaimalai'
+    ownerName: 'Thalaimalai',
+    exhibitionId: ''
   };
 
   currentUser = this.auth.currentUser();
@@ -489,7 +524,28 @@ export class StallMasterComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.exhibitionService.loadExhibitions();
     this.fetchStalls();
+
+    this.route.queryParams.subscribe((params) => {
+      if (params['exhibitionId']) {
+        this.openCreateModal(params['exhibitionId']);
+      }
+    });
+  }
+
+  onExhibitionChange(exhibitionId: string): void {
+    if (!exhibitionId) return;
+    const exh = this.exhibitions().find(e => e.id === exhibitionId);
+    if (exh) {
+      this.formData.exhibitionId = exh.id;
+      this.formData.eventName = exh.name;
+      this.formData.organizer = exh.organizer;
+      this.formData.location = exh.venue;
+      if (exh.startDate) this.formData.startDate = exh.startDate.split('T')[0];
+      if (exh.endDate) this.formData.endDate = exh.endDate.split('T')[0];
+      if (exh.durationDays) this.formData.durationDays = exh.durationDays;
+    }
   }
 
   async fetchStalls(): Promise<void> {
@@ -572,7 +628,7 @@ export class StallMasterComponent implements OnInit {
     this.currentPage.set(Math.max(1, totalPages));
   }
 
-  openCreateModal(): void {
+  openCreateModal(presetExhibitionId?: string): void {
     this.isEditMode.set(false);
     this.editingStallId = null;
     this.http.get<{ code: string }>(`${this.apiUrl}/next-code`).subscribe({
@@ -583,20 +639,25 @@ export class StallMasterComponent implements OnInit {
           code: nextCode,
           eventName: '',
           organizer: '',
-          durationDays: 4,
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
-          location: 'Codissia Trade Fair Complex, Coimbatore',
-          hallNumber: 'Hall A',
-          boothNumber: 'Booth 12',
+          durationDays: null as any,
+          startDate: '',
+          endDate: '',
+          location: '',
+          hallNumber: '',
+          boothNumber: '',
           ownerId: this.currentUser?.token || '11111111-1111-1111-1111-111111111111',
-          ownerName: this.currentUser?.fullName || 'Thalaimalai'
+          ownerName: this.currentUser?.fullName || 'Thalaimalai',
+          exhibitionId: presetExhibitionId || ''
         };
+        if (this.formData.exhibitionId) {
+          this.onExhibitionChange(this.formData.exhibitionId);
+        }
         this.isModalOpen.set(true);
       },
       error: () => {
         const fallbackCode = `STL-${new Date().getFullYear()}-002`;
         this.formData.code = fallbackCode;
+        if (presetExhibitionId) this.onExhibitionChange(presetExhibitionId);
         this.isModalOpen.set(true);
       }
     });
@@ -617,9 +678,23 @@ export class StallMasterComponent implements OnInit {
       hallNumber: stall.hallNumber || '',
       boothNumber: stall.boothNumber || '',
       ownerId: stall.ownerId || '11111111-1111-1111-1111-111111111111',
-      ownerName: stall.ownerName || 'Thalaimalai'
+      ownerName: stall.ownerName || 'Thalaimalai',
+      exhibitionId: stall.exhibitionId || ''
     };
+    this.onDateChange();
     this.isModalOpen.set(true);
+  }
+
+  onDateChange(): void {
+    if (this.formData.startDate && this.formData.endDate) {
+      const start = new Date(this.formData.startDate);
+      const end = new Date(this.formData.endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        this.formData.durationDays = diffDays;
+      }
+    }
   }
 
   closeModal(): void {

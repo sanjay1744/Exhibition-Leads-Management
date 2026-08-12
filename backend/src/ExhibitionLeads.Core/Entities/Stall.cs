@@ -7,6 +7,7 @@ public class Stall
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty; // e.g. "Stall 01 - SIMA TexFair"
     public string Code { get; set; } = string.Empty; // e.g. "STL-2026-001"
+    public Guid? ExhibitionId { get; set; }
     public string EventName { get; set; } = string.Empty; // e.g. "International TexFair 2026"
     public string Organizer { get; set; } = string.Empty; // Who is conducting, e.g. "SIMA Association"
     public int DurationDays { get; set; } = 3;
