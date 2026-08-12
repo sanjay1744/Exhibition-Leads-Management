@@ -267,32 +267,37 @@ import { getApiUrl } from '../../core/config/api.config';
             </div>
           </div>
 
-          <!-- Discussion Remarks & Quick Tags -->
-          <div class="mb-5">
-            <div class="flex justify-between items-center mb-2">
-              <label class="form-label font-bold text-xs text-slate-700 mb-0">Discussion Remarks & Requirements</label>
-              <span class="text-[11px] text-slate-400 font-medium">Click chips below to add quick notes</span>
+          <!-- Discussion Remarks & Transcription Notes (2 Columns) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+            <!-- Left: Discussion Remarks & Requirements -->
+            <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1.5 flex items-center gap-1.5">
+                <span class="material-icons text-xs text-blue-600">notes</span>
+                Discussion Remarks & Requirements
+              </label>
+              <textarea 
+                [(ngModel)]="remarks" 
+                name="remarks" 
+                rows="3" 
+                class="form-control text-xs font-medium rounded-xl p-3 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+                placeholder="Enter key discussion notes, budget, or required follow-ups..."
+              ></textarea>
             </div>
 
-            <div class="flex flex-wrap gap-1.5 mb-3">
-              @for (chip of quickChips; track chip) {
-                <button 
-                  type="button" 
-                  (click)="addQuickRemark(chip)" 
-                  class="text-[11px] bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-800 border border-slate-200/80 hover:border-blue-300 font-semibold px-3 py-1 rounded-lg transition-all active:scale-95 cursor-pointer shadow-2xs"
-                >
-                  + {{ chip }}
-                </button>
-              }
+            <!-- Right: Transcription Notes -->
+            <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1.5 flex items-center gap-1.5">
+                <span class="material-icons text-xs text-rose-600">record_voice_over</span>
+                Transcription Notes
+              </label>
+              <textarea 
+                [(ngModel)]="voiceNotesTranscript" 
+                name="voiceNotesTranscript" 
+                rows="3" 
+                class="form-control text-xs font-medium rounded-xl p-3 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+                placeholder="AI voice notes and speech transcript will auto-populate here..."
+              ></textarea>
             </div>
-
-            <textarea 
-              [(ngModel)]="remarks" 
-              name="remarks" 
-              rows="3" 
-              class="form-control text-xs font-medium rounded-xl p-3 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
-              placeholder="Enter key discussion notes, budget, or required follow-ups..."
-            ></textarea>
           </div>
 
           @if (savedMessage()) {
@@ -981,14 +986,6 @@ export class LeadFormComponent implements OnInit {
 
   onTranscriptGenerated(transcript: string): void {
     this.voiceNotesTranscript = transcript;
-    if (transcript) {
-      if (!this.remarks) {
-        this.remarks = transcript;
-      } else if (!this.remarks.includes(transcript)) {
-        // If remarks already has text, append transcript nicely
-        this.remarks = `${this.remarks.trim()}\n[Voice Note]: ${transcript}`;
-      }
-    }
   }
 
   onVoiceCleared(): void {
