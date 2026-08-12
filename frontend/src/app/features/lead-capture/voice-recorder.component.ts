@@ -18,16 +18,15 @@ import { WhisperSttService } from '../../core/services/whisper-stt.service';
             </div>
             <div>
               <h3 class="text-xs font-bold uppercase tracking-wider text-white">Voice Note Audio</h3>
-              <p class="text-[10px] text-blue-200/80 font-medium">Dual AI Speech (Web & Whisper WASM)</p>
             </div>
           </div>
           @if (isRecording()) {
-            <div class="flex items-center gap-1.5 bg-rose-500/20 text-rose-200 border border-rose-400/30 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold animate-pulse">
+            <div class="flex items-center gap-1.5 bg-rose-500/20 text-rose-200 border border-rose-400/30 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold animate-pulse whitespace-nowrap shrink-0">
               <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
-              REC {{ formatTime(recordingDuration()) }} / 03:00
+              REC {{ formatTime(recordingDuration()) }}
             </div>
           } @else {
-            <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-400/20 text-rose-100 border border-rose-300/30">AI Speech</span>
+            <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-400/20 text-rose-100 border border-rose-300/30 whitespace-nowrap shrink-0">AI Speech</span>
           }
         </div>
 
@@ -68,12 +67,9 @@ import { WhisperSttService } from '../../core/services/whisper-stt.service';
           <!-- STATE 2: Currently Recording -->
           @if (isRecording()) {
             <div class="space-y-2">
-              <div class="flex items-center justify-between py-1.5 px-2 bg-red-50 rounded-lg border border-red-200">
-                <div class="flex items-center gap-2">
-                  <span class="material-icons text-red-600 text-base animate-bounce">graphic_eq</span>
-                  <span class="text-xs font-bold text-red-800">Listening & Transcribing Live...</span>
-                </div>
-                <span class="text-[10px] text-red-600 font-mono font-bold">Max 3m</span>
+              <div class="flex items-center justify-center gap-2 py-1.5 px-2 bg-red-50 rounded-lg border border-red-200">
+                <span class="material-icons text-red-600 text-base animate-bounce">graphic_eq</span>
+                <span class="text-xs font-bold text-red-800">Listening & Transcribing Live...</span>
               </div>
 
               <!-- Audio Waveform Visualizer Canvas -->

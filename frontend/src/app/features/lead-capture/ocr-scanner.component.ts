@@ -22,7 +22,6 @@ export { ExtractedCardData };
             </div>
             <div>
               <h3 class="text-xs font-bold uppercase tracking-wider text-white">Business Card OCR</h3>
-              <p class="text-[10px] text-blue-200/80 font-medium">Offline Card Scanner</p>
             </div>
           </div>
           <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-400/20 text-blue-100 border border-blue-300/30">AI OCR</span>
