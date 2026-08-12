@@ -21,12 +21,17 @@ import { getApiUrl } from '../../core/config/api.config';
       <!-- Page Header -->
       <div class="page-title-bar flex items-center justify-between mb-6">
         <div>
-          <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">
-            {{ isEditMode() ? 'EDIT LEAD ENTRY' : 'NEW LEADS' }}
+          <div class="text-xs font-black text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <span class="material-icons text-sm text-slate-900">post_add</span>
+            <span>{{ isEditMode() ? 'EDIT LEAD ENTRY' : 'NEW LEADS' }}</span>
+          </div>
+          <h1 class="page-title text-2xl font-black text-slate-900 uppercase tracking-tight">
+            @if (isEditMode()) {
+              MODIFY VISITOR DETAILS (RECORD: {{ editingLeadId }})
+            } @else {
+              {{ activeStallSubtitle() }}
+            }
           </h1>
-          <p class="page-subtitle text-xs text-slate-500">
-            {{ isEditMode() ? 'Modify visitor details for record ID: ' + editingLeadId : 'Capture visitor details for project: ' + (stallService.activeStall()?.name || 'Main Exhibition') }}
-          </p>
         </div>
 
         <button 
@@ -718,6 +723,18 @@ export class LeadFormComponent implements OnInit {
 
   sessionLeads = signal<LocalLead[]>([]);
   selectedLeadForView = signal<LocalLead | null>(null);
+
+  activeStallSubtitle = computed(() => {
+    const stall = this.stallService.activeStall();
+    if (!stall) return 'Main Exhibition & Stall';
+    const exh = stall.exhibitionId
+      ? this.exhibitionService.exhibitions().find((e) => e.id === stall.exhibitionId)
+      : null;
+    if (exh) {
+      return `${exh.name} - ${stall.name} (${stall.code})`;
+    }
+    return `${stall.name} (${stall.code})`;
+  });
 
   currentPage = signal<number>(1);
   pageSizeSelect = 20;

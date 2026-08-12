@@ -17,10 +17,11 @@ import { ExhibitionService } from '../../core/services/exhibition.service';
       <!-- Page Title & Top Action Bar -->
       <div class="flex items-center justify-between mb-5">
         <div>
-          <div class="flex items-center gap-2.5">
-            <h1 class="text-xl font-black text-slate-900 uppercase tracking-tight">LEADS DIRECTORY</h1>
+          <div class="text-xs font-black text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <span class="material-icons text-sm text-slate-900">badge</span>
+            <span>LEADS DIRECTORY</span>
           </div>
-          <h2 class="text-xs text-slate-500 font-semibold uppercase tracking-wide mt-0.5">{{ headerSubtitle() }}</h2>
+          <h1 class="text-2xl font-black text-slate-900 uppercase tracking-tight">{{ headerSubtitle() }}</h1>
         </div>
 
         <div class="flex items-center gap-2.5">

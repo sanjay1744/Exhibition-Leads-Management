@@ -38,14 +38,9 @@ export interface StallMasterDto {
     <div>
       <!-- Page Title Bar -->
       <div class="page-title-bar flex items-center justify-between mb-6">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md">
-            <span class="material-icons text-xl">storefront</span>
-          </div>
-          <div>
-            <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">STALL MASTER</h1>
-            <p class="text-xs text-slate-500">Exhibition Stall Projects, Event Details, Organizers & Hall Metadata</p>
-          </div>
+        <div>
+          <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">STALL MASTER</h1>
+          <p class="text-xs text-slate-500">Exhibition Stall Projects, Event Details, Organizers & Hall Metadata</p>
         </div>
 
         <div class="page-actions flex items-center gap-2">
