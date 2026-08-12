@@ -13,6 +13,14 @@ export interface ParsedVoiceLeadData {
 
 @Injectable({ providedIn: 'root' })
 export class VoiceParserService {
+  private wordDigitMap: { [key: string]: string } = {
+    zero: '0', oh: '0',
+    one: '1', two: '2',
+    three: '3', four: '4', five: '5',
+    six: '6', seven: '7', eight: '8',
+    nine: '9'
+  };
+
   /**
    * Parse a spoken voice transcript string into structured Lead Form fields.
    */
@@ -24,11 +32,11 @@ export class VoiceParserService {
     const result: ParsedVoiceLeadData = {};
     const text = transcript.trim();
 
-    // 1. Extract Phone Number (Spoken digits or raw digits)
+    // 1. Extract Phone Number
     const phone = this.extractPhone(text);
     if (phone) result.phone = phone;
 
-    // 2. Extract Email Address (standard or "at ... dot ...")
+    // 2. Extract Email Address
     const email = this.extractEmail(text);
     if (email) result.email = email;
 
@@ -52,50 +60,57 @@ export class VoiceParserService {
   }
 
   private extractName(text: string): string | undefined {
-    // Patterns for natural speech introduction:
-    // "hi I am Sanjay", "I am Sanjay Kumar", "my name is Sanjay", "this is Sanjay", "name is Sanjay"
+    if (!text) return undefined;
+
+    // 1. Strip leading greetings
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/^(?:hi|hello|hey|good\s+(?:morning|afternoon|evening))\s+/gi, '');
+    cleaned = cleaned.replace(/^(?:hi|hello|hey|good\s+(?:morning|afternoon|evening))\s+/gi, '');
+
+    // 2. High-precision intro patterns: "this is Augustine", "my name is Augustine", "I am Augustine"
     const patterns = [
-      /(?:my name is|name is|name|this is|speaking with|visitor name is|met with)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
-      /(?:i am|i'm|im)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
-      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:here|from|working|representing)/i,
+      /(?:my name is|name is|this is|speaking with|visitor name is|met with)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/i,
+      /(?:i am|i'm|im)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/i,
+      /([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+(?:here|from|working|representing)/i,
     ];
 
     for (const pat of patterns) {
-      const match = text.match(pat);
+      const match = cleaned.match(pat);
       if (match && match[1]) {
-        const candidate = match[1].trim();
-        // Ignore common filler words if captured by mistake
-        if (!['here', 'from', 'with', 'this', 'that', 'there', 'user', 'client', 'visitor', 'lead'].includes(candidate.toLowerCase())) {
+        let candidate = match[1].trim();
+
+        // Strip trailing stop words like "from", "at", "with", "and", "here"
+        candidate = candidate.replace(/\s+(?:from|with|at|here|the|and|in|company|pvt|ltd)$/i, '').trim();
+
+        const lower = candidate.toLowerCase();
+        if (!['here', 'from', 'with', 'this', 'that', 'there', 'user', 'client', 'visitor', 'lead', 'hello', 'hi', 'hey', 'good'].includes(lower)) {
           return this.capitalizeWords(candidate);
         }
       }
-    }
-
-    // Fallback: If text starts with greetings e.g. "Hi Sanjay", "Hello Sanjay"
-    const greetingMatch = text.match(/(?:hi|hello|hey)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
-    if (greetingMatch && greetingMatch[1]) {
-      return this.capitalizeWords(greetingMatch[1].trim());
     }
 
     return undefined;
   }
 
   private extractCompany(text: string, extractedName?: string): string | undefined {
-    const patterns = [
-      /(?:from|working at|company is|representing|company|org|organization|firm)\s+([A-Z0-9][a-zA-Z0-9&.\s]{1,25})(?=\s*,|\s*phone|\s*mobile|\s*email|\s*designation|\s*$|\s*and)/i,
-      /(?:with)\s+([A-Z0-9][a-zA-Z0-9&.\s]{1,20})\s+(?:company|pvt|ltd|inc|corp|technologies|solutions|services)/i,
-    ];
+    if (!text) return undefined;
 
-    for (const pat of patterns) {
-      const match = text.match(pat);
-      if (match && match[1]) {
-        let comp = match[1].trim();
-        if (extractedName && comp.toLowerCase().includes(extractedName.toLowerCase())) {
-          continue;
-        }
-        if (comp.length > 2) {
-          return this.capitalizeWords(comp);
-        }
+    // Match "from <Company Name>" e.g. "from applied automation systems private limited"
+    const pattern = /(?:from|working at|company is|representing|company|org|organization|firm|with)\s+([A-Za-z0-9&.\s]{3,45}?)(?=\s+and\s+this|\s+and\s+my|\s*,|\s*phone|\s*mobile|\s*email|\s*contact|\s*designation|\s*$)/i;
+    
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      let comp = match[1].trim();
+
+      // Clean up trailing conjunctions or stop words if appended by mistake
+      comp = comp.replace(/\s+(?:and\s+this|and\s+my|and|my|phone|contact|mobile)$/i, '').trim();
+
+      if (extractedName && comp.toLowerCase().includes(extractedName.toLowerCase())) {
+        comp = comp.replace(new RegExp(extractedName, 'gi'), '').trim();
+      }
+
+      if (comp.length > 2 && !['this', 'that', 'here', 'there', 'my', 'the', 'a', 'an'].includes(comp.toLowerCase())) {
+        return this.capitalizeWords(comp);
       }
     }
 
@@ -103,6 +118,7 @@ export class VoiceParserService {
   }
 
   private extractDesignation(text: string): string | undefined {
+    if (!text) return undefined;
     const lowerText = text.toLowerCase();
 
     // Check predefined designations list first
@@ -121,7 +137,7 @@ export class VoiceParserService {
       }
     }
 
-    // Natural speech patterns: "I am a manager", "working as CEO"
+    // Natural speech patterns: "working as CEO", "designation is Manager"
     const match = text.match(/(?:designation is|working as|role is|position is|i am a|i am an)\s+([a-z\s]{3,20})/i);
     if (match && match[1]) {
       return this.capitalizeWords(match[1].trim());
@@ -131,45 +147,57 @@ export class VoiceParserService {
   }
 
   private extractPhone(text: string): string | undefined {
-    // 1. Raw digits 10-digit Indian phone pattern
-    const digitMatch = text.match(/(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b/);
-    if (digitMatch) {
-      return digitMatch[0].trim();
-    }
+    if (!text) return undefined;
 
-    // 2. Convert spoken word digits e.g. "nine eight seven six five four three two one zero"
-    const wordDigitMap: { [key: string]: string } = {
-      zero: '0', oh: '0',
-      one: '1', two: '2',
-      three: '3', four: '4', five: '5',
-      six: '6', seven: '7', eight: '8',
-      nine: '9'
-    };
-
-    const words = text.toLowerCase().split(/\s+/);
-    let collectedDigits = '';
-    for (const w of words) {
-      const cleanW = w.replace(/[^a-z]/g, '');
-      if (wordDigitMap[cleanW] !== undefined) {
-        collectedDigits += wordDigitMap[cleanW];
+    // 1. Look explicitly after keywords: "contact number", "mobile number", "phone number", "my number is", "contact", "call"
+    const keywordMatch = text.match(/(?:contact\s*number|mobile\s*number|phone\s*number|my\s*number|contact|mobile|phone|call)\D*([\d\s.-]{7,16})/i);
+    if (keywordMatch && keywordMatch[1]) {
+      const digits = keywordMatch[1].replace(/\D/g, '');
+      if (digits.length >= 7 && digits.length <= 13) {
+        return digits.length >= 10 ? digits.slice(-10) : digits;
       }
     }
 
-    if (collectedDigits.length >= 10) {
-      return collectedDigits.slice(0, 10);
+    // 2. Process word numbers e.g. "nine eight seven six five four three two one zero" or "double nine"
+    let processed = text.toLowerCase().replace(/double\s+([a-z0-9]+)/gi, (m, p1) => {
+      const d = this.wordDigitMap[p1] || p1;
+      return d + d;
+    });
+
+    for (const [w, d] of Object.entries(this.wordDigitMap)) {
+      processed = processed.replace(new RegExp(`\\b${w}\\b`, 'gi'), d);
+    }
+
+    // 3. Search for any sequence of 9 to 13 digits (even if separated by spaces like 35195 8023 or 98765 43210)
+    const digitSequences = processed.match(/(?:\+?91[\s.-]?)?(?:\d[\s.-]?){8,14}/g);
+    if (digitSequences) {
+      for (const seq of digitSequences) {
+        const cleanDigits = seq.replace(/\D/g, '');
+        if (cleanDigits.length >= 8 && cleanDigits.length <= 13) {
+          return cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+        }
+      }
+    }
+
+    // 4. Fallback: all digits in text if 8-13 total digits exist
+    const allDigits = processed.replace(/\D/g, '');
+    if (allDigits.length >= 8 && allDigits.length <= 13) {
+      return allDigits.length >= 10 ? allDigits.slice(-10) : allDigits;
     }
 
     return undefined;
   }
 
   private extractEmail(text: string): string | undefined {
+    if (!text) return undefined;
+
     // Standard email regex
     const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     if (emailMatch) {
       return emailMatch[0].toLowerCase();
     }
 
-    // Spoken email: "sanjay at techcorp dot com"
+    // Spoken email format: "sanjay at techcorp dot com"
     const spokenEmailMatch = text.match(/([a-zA-Z0-9._]+)\s+at\s+([a-zA-Z0-9.-]+)\s+dot\s+(com|in|org|net|co|io)/i);
     if (spokenEmailMatch) {
       const prefix = spokenEmailMatch[1].trim();
@@ -182,7 +210,9 @@ export class VoiceParserService {
   }
 
   private extractInterestLevel(text: string): 'Hot' | 'Warm' | 'Cold' | undefined {
+    if (!text) return undefined;
     const lower = text.toLowerCase();
+
     if (lower.includes('hot') || lower.includes('urgent') || lower.includes('high budget') || lower.includes('immediately') || lower.includes('ready to buy')) {
       return 'Hot';
     }

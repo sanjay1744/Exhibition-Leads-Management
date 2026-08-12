@@ -1004,9 +1004,15 @@ import { ExhibitionService } from '../../core/services/exhibition.service';
                       <span class="material-icons text-sm text-red-600">mic</span>
                       Voice Note Audio
                     </span>
-                    <span class="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      Attached
-                    </span>
+                    @if (getVoiceAudioUrl(selectedLeadForView())) {
+                      <button 
+                        (click)="downloadLeadAudio(selectedLeadForView())" 
+                        class="text-[10px] bg-red-50 hover:bg-red-100 text-red-700 font-bold px-2.5 py-0.5 rounded-lg border border-red-200 flex items-center gap-1 transition cursor-pointer"
+                      >
+                        <span class="material-icons text-[12px]">download</span>
+                        Download Audio
+                      </button>
+                    }
                   </div>
                   @if (getVoiceAudioUrl(selectedLeadForView())) {
                     <audio [src]="getVoiceAudioUrl(selectedLeadForView())" controls class="w-full h-8 rounded focus:outline-none"></audio>
@@ -1803,6 +1809,20 @@ export class LeadListComponent implements OnInit {
       return lead.voiceBlob;
     }
     return null;
+  }
+
+  downloadLeadAudio(lead: LocalLead | null): void {
+    if (!lead) return;
+    const url = this.getVoiceAudioUrl(lead);
+    if (!url) return;
+    const ext = url.startsWith('data:audio/mp4') || url.startsWith('data:audio/m4a') ? '.m4a' : '.webm';
+    const fileName = `${lead.leadNumber || 'lead'}_voice_note${ext}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   getCardImageUrl(lead: LocalLead | null): string | null {

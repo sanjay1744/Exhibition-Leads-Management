@@ -669,7 +669,7 @@ export class LeadFormComponent implements OnInit {
       this.phoneNumbers = [''];
       return;
     }
-    const phonePattern = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b|(?:\+?91[\s.-]?)?(?:0?\d{3,4}[\s.-]?)?[2-5]\d{6,7}/g;
+    const phonePattern = /(?:\+?91[\s.-]?)?[6-9]\d{4}[\s.-]?\d{5}|\b[6-9]\d{9}\b|(?:\+?91[\s.-]?)?(?:0?\d{3,4}[\s.-]?)?[2-5]\d{6,7}|\b\d{7,13}\b/g;
     const matches = val.match(phonePattern);
     if (matches && matches.length > 0) {
       const uniquePhones: string[] = [];
@@ -685,20 +685,12 @@ export class LeadFormComponent implements OnInit {
       }
       this.phoneNumbers = uniquePhones.slice(0, 3);
     } else {
-      const parts = val.split(/[,/]+|\s{2,}/).map(p => p.trim()).filter(p => p.length > 0);
-      const uniqueParts: string[] = [];
-      const digitsSet = new Set<string>();
-      for (const p of parts) {
-        const digits = p.replace(/\D/g, '');
-        const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
-        if (last10.length >= 7 && !digitsSet.has(last10)) {
-          digitsSet.add(last10);
-          uniqueParts.push(p);
-        } else if (last10.length < 7 && !uniqueParts.includes(p)) {
-          uniqueParts.push(p);
-        }
+      const cleanVal = val.trim();
+      if (cleanVal.length > 0) {
+        this.phoneNumbers = [cleanVal];
+      } else {
+        this.phoneNumbers = [''];
       }
-      this.phoneNumbers = uniqueParts.length > 0 ? uniqueParts.slice(0, 3) : [''];
     }
   }
 
@@ -990,14 +982,15 @@ export class LeadFormComponent implements OnInit {
     this.voiceNotesTranscript = transcript;
     if (transcript && transcript.trim().length > 0) {
       const parsed = this.voiceParser.parseVoiceTranscript(transcript);
+      console.log('Voice parser extracted entities:', parsed);
 
-      if (parsed.name && (!this.name || this.name.trim() === '')) {
+      if (parsed.name && parsed.name.toLowerCase() !== 'hello') {
         this.name = parsed.name;
       }
       if (parsed.company && (!this.company || this.company.trim() === '')) {
         this.company = parsed.company;
       }
-      if (parsed.phone && (!this.phone || this.phone === '-' || this.phone.trim() === '')) {
+      if (parsed.phone && parsed.phone.trim().length > 0) {
         this.phone = parsed.phone;
       }
       if (parsed.email && (!this.email || this.email.trim() === '')) {
@@ -1047,6 +1040,15 @@ export class LeadFormComponent implements OnInit {
     this.isAutoFilled.set(false);
   }
 
+  private convertBlobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
   private async saveImageToLocalDeviceFolder(dataUrl: string, leadNumber: string): Promise<void> {
     try {
       // Direct silent write to device folder via backend local endpoint
@@ -1068,6 +1070,28 @@ export class LeadFormComponent implements OnInit {
     }
   }
 
+  private async saveAudioToLocalDeviceFolder(dataUrl: string, leadNumber: string): Promise<string | null> {
+    try {
+      const apiUrl = `${getApiUrl()}/v1/leads/save-audio-local`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadNumber: leadNumber,
+          audioDataUrl: dataUrl
+        })
+      });
+      if (response.ok) {
+        const res = await response.json();
+        console.log(`[LeadForm] Audio written directly to device folder: ${res.savedDevicePath}`);
+        return res.webUrl || res.savedDevicePath;
+      }
+    } catch (e) {
+      console.warn('[LeadForm] Backend local folder audio save offline/unavailable:', e);
+    }
+    return null;
+  }
+
   async saveLead(): Promise<void> {
     if (!this.name || !this.phone) {
       alert('Full Name and Mobile Phone are required.');
@@ -1086,6 +1110,20 @@ export class LeadFormComponent implements OnInit {
       await this.saveImageToLocalDeviceFolder(this.scannedPhotoDataUrl, leadNumberToUse);
     }
 
+    // Save audio directly to device folder Music/Exhibition_Voice_Audio/S1L09698.webm & IndexedDB
+    let finalVoiceAudioUrl: string | undefined = undefined;
+    if (this.voiceBlob) {
+      if (this.voiceBlob instanceof Blob) {
+        finalVoiceAudioUrl = await this.convertBlobToDataUrl(this.voiceBlob);
+      } else if (typeof this.voiceBlob === 'string') {
+        finalVoiceAudioUrl = this.voiceBlob;
+      }
+
+      if (finalVoiceAudioUrl) {
+        await this.saveAudioToLocalDeviceFolder(finalVoiceAudioUrl, leadNumberToUse);
+      }
+    }
+
     const leadToSave: LocalLead = {
       id: this.editingLeadId || crypto.randomUUID(),
       leadNumber: leadNumberToUse,
@@ -1100,7 +1138,7 @@ export class LeadFormComponent implements OnInit {
       address: this.address,
       captureMethod: this.captureMethod,
       photoBlob: this.scannedPhotoDataUrl || undefined,
-      voiceBlob: this.voiceBlob || undefined,
+      voiceBlob: finalVoiceAudioUrl || (typeof this.voiceBlob === 'string' ? this.voiceBlob : undefined),
       voiceNotesTranscript: this.voiceNotesTranscript || undefined,
       interestLevel: this.interestLevel,
       productCategory: ['Enterprise'],
