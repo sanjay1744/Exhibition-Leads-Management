@@ -306,6 +306,11 @@ export class QrScannerComponent implements OnDestroy {
   showModal = signal(false);
   modalData: QrParsedContact = {};
 
+  reset(): void {
+    this.lastScannedData.set(null);
+    this.modalData = {};
+  }
+
   private html5QrCode: Html5Qrcode | null = null;
   private nativeBarcodeCheckInterval: any = null;
 

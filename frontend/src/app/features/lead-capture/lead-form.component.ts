@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
@@ -24,34 +24,32 @@ import { getApiUrl } from '../../core/config/api.config';
         <div>
           <div class="text-xs font-black text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
             <span class="material-icons text-sm text-slate-900">post_add</span>
-            <span>{{ isEditMode() ? 'EDIT LEAD ENTRY' : 'NEW LEADS' }}</span>
+            New Leads
           </div>
-          <h1 class="page-title text-2xl font-black text-slate-900 uppercase tracking-tight">
-            @if (isEditMode()) {
-              MODIFY VISITOR DETAILS (RECORD: {{ editingLeadId }})
-            } @else {
-              {{ activeStallSubtitle() }}
-            }
+          <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <span>{{ activeStallSubtitle() }}</span>
           </h1>
         </div>
 
-        <button 
-          type="button"
-          (click)="openTargetSelectionModal()" 
-          class="text-xs bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-400 text-blue-800 px-3 py-1.5 rounded-lg font-extrabold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer group"
-          title="Click to switch target Exhibition & Stall"
-        >
-          <span class="material-icons text-sm text-blue-600 group-hover:scale-110 transition-transform">storefront</span>
-          <span>{{ stallService.activeStall()?.code || 'STALL-01' }}</span>
-          <span class="material-icons text-xs text-blue-500">swap_horiz</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button 
+            type="button" 
+            (click)="openTargetSelectionModal()" 
+            class="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-900 border border-blue-200/80 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <span class="material-icons text-sm text-blue-600">store</span>
+            <span>{{ stallService.activeStall()?.code || 'Select Stall' }}</span>
+            <span class="material-icons text-xs text-blue-500">unfold_more</span>
+          </button>
+        </div>
       </div>
 
       <!-- Quick Acquisition Tools Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <app-ocr-scanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
-        <app-qr-scanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
+        <app-ocr-scanner #ocrScanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
+        <app-qr-scanner #qrScanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
         <app-voice-recorder 
+          #voiceRecorder
           [initialAudio]="voiceBlob" 
           [initialTranscript]="voiceNotesTranscript" 
           (voiceRecorded)="onVoiceRecorded($event)" 
@@ -648,6 +646,10 @@ export class LeadFormComponent implements OnInit {
   private voiceParser = inject(VoiceParserService);
   stallService = inject(StallService);
 
+  @ViewChild('ocrScanner') ocrScanner?: OcrScannerComponent;
+  @ViewChild('qrScanner') qrScanner?: QrScannerComponent;
+  @ViewChild('voiceRecorder') voiceRecorder?: VoiceRecorderComponent;
+
   readonly predefinedDesignations = PREDEFINED_DESIGNATIONS;
 
   editingLeadId: string | null = null;
@@ -1038,6 +1040,11 @@ export class LeadFormComponent implements OnInit {
     this.interestLevel = 'Warm';
     this.captureMethod = 'manual';
     this.isAutoFilled.set(false);
+
+    // Reset state in all 3 acquisition tool cards
+    this.ocrScanner?.reset();
+    this.qrScanner?.reset();
+    this.voiceRecorder?.reset();
   }
 
   private convertBlobToDataUrl(blob: Blob): Promise<string> {

@@ -600,6 +600,14 @@ export class OcrScannerComponent implements OnDestroy {
   showModal = signal(false);
   modalData: ExtractedCardData = {};
 
+  reset(): void {
+    this.extractedData.set(null);
+    this.previewDataUrl.set(null);
+    this.rawSelectedFile = null;
+    this.rawSourceDataUrl = null;
+    this.modalData = {};
+  }
+
   // Stage 1 Camera Modal State
   showCameraModal = signal(false);
   isStartingCamera = signal(false);
