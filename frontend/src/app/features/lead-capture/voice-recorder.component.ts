@@ -20,7 +20,12 @@ import { WhisperSttService } from '../../core/services/whisper-stt.service';
               <h3 class="text-xs font-bold uppercase tracking-wider text-white">Voice Note Audio</h3>
             </div>
           </div>
-          @if (isRecording()) {
+          @if (whisperStt.isModelLoading() || whisperStt.isTranscribing()) {
+            <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-400/20 text-blue-100 border border-blue-300/30 whitespace-nowrap shrink-0 flex items-center gap-1">
+              <span class="material-icons text-xs animate-spin text-blue-300">sync</span>
+              AI Processing
+            </span>
+          } @else if (isRecording()) {
             <div class="flex items-center gap-1.5 bg-rose-500/20 text-rose-200 border border-rose-400/30 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold animate-pulse whitespace-nowrap shrink-0">
               <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
               REC {{ formatTime(recordingDuration()) }}
@@ -40,18 +45,6 @@ import { WhisperSttService } from '../../core/services/whisper-stt.service';
             </div>
           }
 
-          <!-- Whisper AI Loading / Progress Indicator -->
-          @if (whisperStt.isModelLoading() || whisperStt.isTranscribing()) {
-            <div class="p-3 bg-slate-900 text-white rounded-xl space-y-2 text-xs shadow-md border border-slate-800 animate-fadeIn">
-              <div class="flex items-center justify-between font-semibold">
-                <span class="flex items-center gap-2 text-blue-300">
-                  <span class="material-icons text-blue-400 animate-spin text-base">sync</span>
-                  {{ whisperStt.loadingMessage() }}
-                </span>
-              </div>
-            </div>
-          }
-
           <!-- STATE 1: Ready to Record -->
           @if (!isRecording() && !audioRecorded()) {
             <button 
@@ -66,26 +59,34 @@ import { WhisperSttService } from '../../core/services/whisper-stt.service';
 
           <!-- STATE 2: Currently Recording -->
           @if (isRecording()) {
-            <div class="space-y-2">
-              <div class="flex items-center justify-center gap-2 py-1.5 px-2 bg-red-50 rounded-lg border border-red-200">
-                <span class="material-icons text-red-600 text-base animate-bounce">graphic_eq</span>
-                <span class="text-xs font-bold text-red-800">Listening & Transcribing Live...</span>
-              </div>
+            <div class="space-y-3">
+              <!-- Unified Rose Container: Status + Waveform -->
+              <div class="p-3 bg-rose-50/80 rounded-xl border border-rose-200/80 space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="material-icons text-rose-600 text-base animate-bounce">graphic_eq</span>
+                    <span class="text-xs font-extrabold text-rose-900">Listening & Transcribing Live...</span>
+                  </div>
+                  <span class="text-[9px] font-mono text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200 font-bold">MIC ACTIVE</span>
+                </div>
 
-              <!-- Audio Waveform Visualizer Canvas -->
-              <div class="relative w-full h-14 bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center p-1 shadow-inner">
-                <canvas #visualizerCanvas class="w-full h-full block rounded-lg"></canvas>
-                <div class="absolute top-1 right-2 text-[9px] font-mono text-slate-400 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800">
-                  MIC ACTIVE
+                <!-- Integrated Waveform Bars -->
+                <div class="w-full h-9 overflow-hidden">
+                  <canvas #visualizerCanvas class="w-full h-full block"></canvas>
                 </div>
               </div>
 
-              @if (liveTranscript()) {
-                <div class="p-2 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700 max-h-16 overflow-y-auto italic">
-                  "{{ liveTranscript() }}"
+              <!-- Live Transcript Container -->
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[56px] max-h-24 overflow-y-auto">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                  <span class="material-icons text-xs text-rose-500">subtitles</span> Live Preview
                 </div>
-              }
+                <p class="text-xs text-slate-700 italic font-medium">
+                  {{ liveTranscript() || 'Speak into microphone...' }}
+                </p>
+              </div>
 
+              <!-- Stop Button -->
               <button 
                 type="button"
                 (click)="stopRecording()" 
@@ -122,19 +123,10 @@ import { WhisperSttService } from '../../core/services/whisper-stt.service';
                   <span class="flex items-center gap-1 text-blue-700">
                     <span class="material-icons text-xs">subtitles</span>
                     Transcribed Discussion Notes:
+                    @if (whisperStt.isModelLoading() || whisperStt.isTranscribing()) {
+                      <span class="material-icons text-xs animate-spin text-blue-600 ml-1 font-bold">sync</span>
+                    }
                   </span>
-                  @if (!isDictating()) {
-                    <button 
-                      type="button" 
-                      (click)="startDictationOnly()" 
-                      class="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 font-semibold cursor-pointer"
-                      title="Click to dictate or transcribe more spoken text"
-                    >
-                      <span class="material-icons text-[12px]">mic</span> Dictate
-                    </button>
-                  } @else {
-                    <span class="text-[10px] text-red-600 font-bold animate-pulse">Listening...</span>
-                  }
                 </div>
                 
                 <textarea 
@@ -144,10 +136,7 @@ import { WhisperSttService } from '../../core/services/whisper-stt.service';
                   placeholder="Transcribed notes will appear here automatically..."
                   class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-600 transition"
                 ></textarea>
-
-                <p class="text-[10px] text-slate-400 italic">
-                  ✓ Auto-populates Visitor Discussion Remarks on form.
-                </p>
+  
               </div>
 
               <!-- Action Buttons -->
@@ -338,7 +327,7 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
 
           console.log('Whisper AI final transcript:', whisperText);
 
-          if (whisperText && whisperText.length > 0) {
+                  if (whisperText && whisperText.length > 0) {
             this.transcriptText.set(whisperText);
             this.transcriptGenerated.emit(whisperText);
           } else if (initialText) {
@@ -346,7 +335,6 @@ export class VoiceRecorderComponent implements OnInit, OnDestroy {
             this.transcriptGenerated.emit(initialText);
           } else {
             this.transcriptText.set('');
-            this.errorMessage.set('No speech detected in audio. Please speak clearly into the microphone.');
           }
         } catch (e) {
           console.warn('Whisper pass error:', e);
