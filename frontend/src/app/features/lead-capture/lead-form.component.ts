@@ -10,6 +10,7 @@ import { OcrScannerComponent, ExtractedCardData } from './ocr-scanner.component'
 import { QrScannerComponent, QrParsedContact } from './qr-scanner.component';
 import { VoiceRecorderComponent } from './voice-recorder.component';
 import { PREDEFINED_DESIGNATIONS } from '../../core/services/card-parser.service';
+import { VoiceParserService } from '../../core/services/voice-parser.service';
 import { getApiUrl } from '../../core/config/api.config';
 
 @Component({
@@ -644,6 +645,7 @@ export class LeadFormComponent implements OnInit {
   private db = inject(ApplicationDatabase);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private voiceParser = inject(VoiceParserService);
   stallService = inject(StallService);
 
   readonly predefinedDesignations = PREDEFINED_DESIGNATIONS;
@@ -986,6 +988,33 @@ export class LeadFormComponent implements OnInit {
 
   onTranscriptGenerated(transcript: string): void {
     this.voiceNotesTranscript = transcript;
+    if (transcript && transcript.trim().length > 0) {
+      const parsed = this.voiceParser.parseVoiceTranscript(transcript);
+
+      if (parsed.name && (!this.name || this.name.trim() === '')) {
+        this.name = parsed.name;
+      }
+      if (parsed.company && (!this.company || this.company.trim() === '')) {
+        this.company = parsed.company;
+      }
+      if (parsed.phone && (!this.phone || this.phone === '-' || this.phone.trim() === '')) {
+        this.phone = parsed.phone;
+      }
+      if (parsed.email && (!this.email || this.email.trim() === '')) {
+        this.email = parsed.email;
+      }
+      if (parsed.designation && (!this.designation || this.designation.trim() === '')) {
+        this.designation = parsed.designation;
+      }
+      if (parsed.interestLevel) {
+        this.interestLevel = parsed.interestLevel;
+      }
+      if (parsed.remarks && (!this.remarks || this.remarks.trim() === '')) {
+        this.remarks = parsed.remarks;
+      }
+
+      this.isAutoFilled.set(true);
+    }
   }
 
   onVoiceCleared(): void {
