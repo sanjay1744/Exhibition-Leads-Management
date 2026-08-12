@@ -105,7 +105,8 @@ import { getApiUrl } from '../../core/config/api.config';
                   [(ngModel)]="name" 
                   name="name" 
                   required 
-                  class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+                  class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl transition-all shadow-2xs" 
+                  [ngClass]="showValidationErrors() && (!name || !name.trim()) ? 'border-2 border-rose-500 ring-4 ring-rose-500/15 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10'"
                   placeholder="Visitor Name" 
                 />
               </div>
@@ -148,7 +149,8 @@ import { getApiUrl } from '../../core/config/api.config';
                         [(ngModel)]="phoneNumbers[$index]" 
                         [name]="'phone_' + $index" 
                         [required]="$index === 0" 
-                        class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+                        class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl transition-all shadow-2xs" 
+                        [ngClass]="$index === 0 && showValidationErrors() && (!phoneNumbers[0] || !phoneNumbers[0].trim() || phoneNumbers[0] === '-') ? 'border-2 border-rose-500 ring-4 ring-rose-500/15 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10'"
                         [placeholder]="$index === 0 ? '+91 98765 43210 (Primary)' : '+91 0422 2967078 (Alt Phone ' + ($index + 1) + ')'" 
                       />
                     </div>
@@ -234,33 +236,45 @@ import { getApiUrl } from '../../core/config/api.config';
 
             <!-- Interest Priority Segmented Switcher -->
             <div>
-              <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Interest Priority</label>
-              <div class="flex gap-2 pt-0.5">
+              <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Interest Priority *</label>
+              <div class="flex gap-2.5 pt-0.5 p-1 rounded-xl transition-all" [ngClass]="showValidationErrors() && !interestLevel ? 'border-2 border-rose-500 ring-4 ring-rose-500/15 bg-rose-50/40' : ''">
+                <!-- Hot -->
                 <button 
                   type="button" 
                   (click)="interestLevel = 'Hot'" 
-                  class="flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
-                  [ngClass]="interestLevel === 'Hot' ? 'bg-gradient-to-r from-rose-600 to-red-600 border-rose-600 text-white shadow-md shadow-rose-500/20 scale-[1.02]' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  [ngClass]="interestLevel === 'Hot' 
+                    ? 'bg-gradient-to-r from-rose-600 to-red-600 border-rose-600 text-white shadow-md shadow-rose-500/20 scale-[1.02]' 
+                    : 'bg-rose-50/70 hover:bg-rose-100/80 border-rose-200/90 text-rose-950'"
                 >
-                  <span>🔥</span> Hot
+                  <span class="text-sm">🔥</span>
+                  <span class="font-extrabold">Hot</span>
                 </button>
 
+                <!-- Warm -->
                 <button 
                   type="button" 
                   (click)="interestLevel = 'Warm'" 
-                  class="flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
-                  [ngClass]="interestLevel === 'Warm' ? 'bg-gradient-to-r from-amber-500 to-amber-600 border-amber-600 text-white shadow-md shadow-amber-500/20 scale-[1.02]' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  [ngClass]="interestLevel === 'Warm' 
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 border-amber-600 text-white shadow-md shadow-amber-500/20 scale-[1.02]' 
+                    : 'bg-amber-50/70 hover:bg-amber-100/80 border-amber-200/90 text-amber-950'"
                 >
-                  <span>☀️</span> Warm
+                  <span class="text-sm">⚡</span>
+                  <span class="font-extrabold">Warm</span>
                 </button>
 
+                <!-- Cold -->
                 <button 
                   type="button" 
                   (click)="interestLevel = 'Cold'" 
-                  class="flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
-                  [ngClass]="interestLevel === 'Cold' ? 'bg-gradient-to-r from-sky-600 to-blue-600 border-sky-600 text-white shadow-md shadow-sky-500/20 scale-[1.02]' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  [ngClass]="interestLevel === 'Cold' 
+                    ? 'bg-gradient-to-r from-sky-600 to-blue-600 border-sky-600 text-white shadow-md shadow-sky-500/20 scale-[1.02]' 
+                    : 'bg-blue-50/70 hover:bg-blue-100/80 border-blue-200/90 text-blue-950'"
                 >
-                  <span>❄️</span> Cold
+                  <span class="text-sm">❄️</span>
+                  <span class="font-extrabold">Cold</span>
                 </button>
               </div>
             </div>
@@ -636,6 +650,35 @@ import { getApiUrl } from '../../core/config/api.config';
           </div>
         </div>
       }
+
+      <!-- Validation Required Central Popup Modal -->
+      @if (showValidationModal()) {
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-rose-100 space-y-4 text-center">
+            <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 mx-auto flex items-center justify-center shadow-inner">
+              <span class="material-icons text-2xl">warning_amber</span>
+            </div>
+            
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-900 mb-1">Required Information Missing</h3>
+              <div class="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200/80 rounded-xl p-2.5 my-2">
+                Please fill all required columns
+              </div>
+              
+            </div>
+
+            <div class="pt-1">
+              <button 
+                type="button" 
+                (click)="showValidationModal.set(false)" 
+                class="w-full py-2.5 px-4 bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] hover:from-[#183656] hover:to-[#255280] text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md active:scale-95"
+              >
+                OK, Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `
 })
@@ -712,7 +755,7 @@ export class LeadFormComponent implements OnInit {
   designation = '';
   website = '';
   address = '';
-  interestLevel: 'Hot' | 'Warm' | 'Cold' = 'Warm';
+  interestLevel: 'Hot' | 'Warm' | 'Cold' | null = null;
   remarks = '';
   voiceBlob: Blob | string | null = null;
   voiceNotesTranscript: string = '';
@@ -822,6 +865,8 @@ export class LeadFormComponent implements OnInit {
     this.isTargetModalOpen.set(false);
   }
   savedMessage = signal<string | null>(null);
+  showValidationErrors = signal(false);
+  showValidationModal = signal(false);
 
   quickChips = [
     'Need Urgent Quotation',
@@ -1037,9 +1082,11 @@ export class LeadFormComponent implements OnInit {
     this.voiceBlob = null;
     this.voiceNotesTranscript = '';
     this.scannedPhotoDataUrl = null;
-    this.interestLevel = 'Warm';
+    this.interestLevel = null;
     this.captureMethod = 'manual';
     this.isAutoFilled.set(false);
+    this.showValidationErrors.set(false);
+    this.showValidationModal.set(false);
 
     // Reset state in all 3 acquisition tool cards
     this.ocrScanner?.reset();
@@ -1100,10 +1147,14 @@ export class LeadFormComponent implements OnInit {
   }
 
   async saveLead(): Promise<void> {
-    if (!this.name || !this.phone) {
-      alert('Full Name and Mobile Phone are required.');
+    if (!this.name || !this.name.trim() || !this.phone || !this.phone.trim() || this.phone === '-' || !this.interestLevel) {
+      this.showValidationErrors.set(true);
+      this.showValidationModal.set(true);
       return;
     }
+
+    this.showValidationErrors.set(false);
+    this.showValidationModal.set(false);
 
     const activeStallId = this.stallService.activeStall()?.id || '33333333-3333-3333-3333-333333333333';
 
@@ -1147,7 +1198,7 @@ export class LeadFormComponent implements OnInit {
       photoBlob: this.scannedPhotoDataUrl || undefined,
       voiceBlob: finalVoiceAudioUrl || (typeof this.voiceBlob === 'string' ? this.voiceBlob : undefined),
       voiceNotesTranscript: this.voiceNotesTranscript || undefined,
-      interestLevel: this.interestLevel,
+      interestLevel: this.interestLevel || 'Warm',
       productCategory: ['Enterprise'],
       priority: 'High',
       remarks: this.remarks,
