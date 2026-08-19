@@ -197,6 +197,65 @@ public class LeadsSyncController : ControllerBase
         }
     }
 
+    [HttpPost("save-audio-local")]
+    public IActionResult SaveAudioLocal([FromBody] SaveAudioLocalRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.LeadNumber) || string.IsNullOrWhiteSpace(request?.AudioDataUrl))
+        {
+            return BadRequest(new { message = "LeadNumber and AudioDataUrl are required." });
+        }
+
+        try
+        {
+            var base64Data = request.AudioDataUrl.Contains("base64,") ? request.AudioDataUrl.Split("base64,")[1] : request.AudioDataUrl;
+            var bytes = Convert.FromBase64String(base64Data);
+
+            var ext = ".webm";
+            if (request.AudioDataUrl.Contains("audio/mp4") || request.AudioDataUrl.Contains("audio/m4a")) ext = ".m4a";
+            else if (request.AudioDataUrl.Contains("audio/wav")) ext = ".wav";
+            else if (request.AudioDataUrl.Contains("audio/ogg")) ext = ".ogg";
+
+            var myMusic = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
+            if (string.IsNullOrWhiteSpace(myMusic)) myMusic = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            
+            var deviceFolder = !string.IsNullOrWhiteSpace(request.TargetFolder) 
+                ? request.TargetFolder 
+                : Path.Combine(myMusic, "Exhibition_Voice_Audio");
+
+            if (!Directory.Exists(deviceFolder))
+            {
+                Directory.CreateDirectory(deviceFolder);
+            }
+
+            var fileName = $"{request.LeadNumber}{ext}";
+            var filePath = Path.Combine(deviceFolder, fileName);
+            System.IO.File.WriteAllBytes(filePath, bytes);
+
+            var rootPath = _env.WebRootPath;
+            if (string.IsNullOrEmpty(rootPath))
+            {
+                rootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            }
+            var wwwrootFolder = Path.Combine(rootPath, "uploads", "voice_audio");
+            if (!Directory.Exists(wwwrootFolder))
+            {
+                Directory.CreateDirectory(wwwrootFolder);
+            }
+            System.IO.File.WriteAllBytes(Path.Combine(wwwrootFolder, fileName), bytes);
+
+            return Ok(new { 
+                success = true, 
+                leadNumber = request.LeadNumber, 
+                savedDevicePath = filePath,
+                webUrl = $"/uploads/voice_audio/{fileName}"
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Failed to write audio to device folder: {ex.Message}" });
+        }
+    }
+
     private string? SaveCardImageFromBase64(string? photoDataUrl, string leadNumber)
     {
         if (string.IsNullOrWhiteSpace(photoDataUrl) || !photoDataUrl.Contains("base64,"))
@@ -246,4 +305,10 @@ public record SaveImageLocalRequestDto(
     string LeadNumber,
     string PhotoDataUrl,
     string? TargetFolder
+);
+
+public record SaveAudioLocalRequestDto(
+    string LeadNumber,
+    string AudioDataUrl,
+    string? TargetFolder = null
 );

@@ -25,11 +25,11 @@ public class UsersController : ControllerBase
     public record CreateUserRequest(
         string FullName,
         string Username,
-        string Email,
-        string Password,
-        string UserGroup,
-        string Role,
-        string Status,
+        string? Email,
+        string? Password,
+        string? UserGroup,
+        string? Role,
+        string? Status,
         Guid? AssignedStallId
     );
 
@@ -45,11 +45,11 @@ public class UsersController : ControllerBase
         {
             FullName = request.FullName,
             Username = request.Username,
-            Email = request.Email ?? $"{request.Username.ToLower()}@ariyai.com",
+            Email = !string.IsNullOrWhiteSpace(request.Email) ? request.Email : $"{request.Username.ToLower()}@ariyai.com",
             PasswordHash = AuthController.HashPassword(string.IsNullOrEmpty(request.Password) ? "Admin@123" : request.Password),
-            UserGroup = request.UserGroup ?? "Naren-Marketing",
+            UserGroup = !string.IsNullOrWhiteSpace(request.UserGroup) ? request.UserGroup : "Naren-Marketing",
             Role = string.IsNullOrEmpty(request.Role) ? "Marketing" : request.Role,
-            Status = request.Status ?? "Active",
+            Status = string.IsNullOrEmpty(request.Status) ? "Active" : request.Status,
             AssignedStallId = request.AssignedStallId
         };
 
@@ -66,9 +66,9 @@ public class UsersController : ControllerBase
         if (user == null) return NotFound();
 
         user.FullName = request.FullName;
-        user.UserGroup = request.UserGroup;
+        if (!string.IsNullOrEmpty(request.UserGroup)) user.UserGroup = request.UserGroup;
         user.Role = string.IsNullOrEmpty(request.Role) ? user.Role : request.Role;
-        user.Status = request.Status;
+        if (!string.IsNullOrEmpty(request.Status)) user.Status = request.Status;
         if (request.AssignedStallId.HasValue) user.AssignedStallId = request.AssignedStallId;
 
         if (!string.IsNullOrWhiteSpace(request.Password))
