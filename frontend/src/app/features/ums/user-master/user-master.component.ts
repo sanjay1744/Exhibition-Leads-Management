@@ -10,7 +10,7 @@ export interface UserMasterItem {
   fullName: string;
   username: string;
   email: string;
-  userGroup: string;
+  userGroup?: string;
   role: 'Admin' | 'StallOwner' | 'Marketing' | string;
   status: 'Active' | 'Inactive';
 }
@@ -41,7 +41,6 @@ export class UserMasterComponent implements OnInit {
     fullName: '',
     username: '',
     email: '',
-    userGroup: 'Naren-Marketing',
     role: 'Marketing',
     status: 'Active' as 'Active' | 'Inactive',
     password: ''
@@ -76,7 +75,7 @@ export class UserMasterComponent implements OnInit {
       (u) =>
         u.fullName.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
-        u.userGroup.toLowerCase().includes(q) ||
+        (u.userGroup ? u.userGroup.toLowerCase().includes(q) : false) ||
         u.role.toLowerCase().includes(q)
     );
   });
@@ -112,7 +111,6 @@ export class UserMasterComponent implements OnInit {
       fullName: '',
       username: '',
       email: '',
-      userGroup: 'Naren-Marketing',
       role: 'Marketing',
       status: 'Active',
       password: ''
@@ -126,7 +124,6 @@ export class UserMasterComponent implements OnInit {
       fullName: user.fullName,
       username: user.username,
       email: user.email,
-      userGroup: user.userGroup,
       role: user.role,
       status: user.status as 'Active' | 'Inactive',
       password: ''
@@ -184,21 +181,33 @@ export class UserMasterComponent implements OnInit {
       return;
     }
 
+    const payload = {
+      ...this.formData,
+      email: this.formData.email || `${this.formData.username.toLowerCase().trim()}@ariyai.com`,
+      userGroup: 'Naren-Marketing'
+    };
+
     if (this.editingUser()) {
-      this.http.put(`${this.apiUrl}/${this.editingUser()!.id}`, this.formData).subscribe({
+      this.http.put(`${this.apiUrl}/${this.editingUser()!.id}`, payload).subscribe({
         next: () => {
           this.fetchUsers();
           this.closeModal();
         },
-        error: (err) => alert(err?.error?.message || 'Failed to update user.')
+        error: (err) => {
+          const msg = err?.error?.message || (typeof err?.error === 'string' ? err.error : 'Failed to update user.');
+          alert(msg);
+        }
       });
     } else {
-      this.http.post(this.apiUrl, this.formData).subscribe({
+      this.http.post(this.apiUrl, payload).subscribe({
         next: () => {
           this.fetchUsers();
           this.closeModal();
         },
-        error: (err) => alert(err?.error?.message || 'Failed to create user.')
+        error: (err) => {
+          const msg = err?.error?.message || (typeof err?.error === 'string' ? err.error : 'Failed to create user.');
+          alert(msg);
+        }
       });
     }
   }

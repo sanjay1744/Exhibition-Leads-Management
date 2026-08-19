@@ -44,7 +44,6 @@
             <th class="py-2.5 px-4 w-12 text-center border-r border-white/20">#</th>
             <th class="py-2.5 px-4 border-r border-white/20">Full Name</th>
             <th class="py-2.5 px-4 border-r border-white/20">Username</th>
-            <th class="py-2.5 px-4 border-r border-white/20">User Group</th>
             <th class="py-2.5 px-4 border-r border-white/20">Role</th>
             <th class="py-2.5 px-4 text-center border-r border-white/20">Status</th>
             <th class="py-2.5 px-4 text-center w-28">Actions</th>
@@ -64,8 +63,6 @@
               </td>
 
               <td class="py-2.5 px-4 font-semibold text-slate-800 border-r border-slate-200/60">{{ user.username }}</td>
-
-              <td class="py-2.5 px-4 text-slate-600 font-medium border-r border-slate-200/60">{{ user.userGroup }}</td>
 
               <td class="py-2.5 px-4 border-r border-slate-200/60">
                 <span 
@@ -110,7 +107,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="7" class="py-8 text-center text-slate-400">
+              <td colspan="6" class="py-8 text-center text-slate-400">
                 No users found matching your query.
               </td>
             </tr>
@@ -171,15 +168,6 @@
                 <option value="Admin">Admin (All Access)</option>
                 <option value="StallOwner">Stall Owner (Stall Admin, Cannot Delete Users)</option>
                 <option value="Marketing">Marketing Rep (Stall Lead Collector)</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="form-label">User Group</label>
-              <select [(ngModel)]="formData.userGroup" name="userGroup" class="form-control">
-                <option value="Naren Admin">Naren Admin</option>
-                <option value="Naren-Marketing">Naren-Marketing</option>
-                <option value="Naren-Store-Admin">Naren-Store-Admin</option>
               </select>
             </div>
 
