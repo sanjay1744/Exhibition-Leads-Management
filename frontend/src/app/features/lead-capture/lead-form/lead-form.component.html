@@ -1,0 +1,664 @@
+<div class="max-w-5xl mx-auto pb-16 md:pb-8">
+  <!-- Page Header -->
+  <div class="page-title-bar flex items-center justify-between mb-6">
+    <div>
+      <div class="text-xs font-black text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+        <span class="material-icons text-sm text-slate-900">post_add</span>
+        New Leads
+      </div>
+      <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <span>{{ activeStallSubtitle() }}</span>
+      </h1>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button 
+        type="button" 
+        (click)="openTargetSelectionModal()" 
+        class="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-900 border border-blue-200/80 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+      >
+        <span class="material-icons text-sm text-blue-600">store</span>
+        <span>{{ stallService.activeStall()?.code || 'Select Stall' }}</span>
+        <span class="material-icons text-xs text-blue-500">unfold_more</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Quick Acquisition Tools Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <app-ocr-scanner #ocrScanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
+    <app-qr-scanner #qrScanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
+    <app-voice-recorder 
+      #voiceRecorder
+      [initialAudio]="voiceBlob" 
+      [initialTranscript]="voiceNotesTranscript" 
+      (voiceRecorded)="onVoiceRecorded($event)" 
+      (transcriptGenerated)="onTranscriptGenerated($event)"
+      (voiceCleared)="onVoiceCleared()"
+    ></app-voice-recorder>
+  </div>
+
+  <!-- Visitor Information Form Card -->
+  <div class="card-panel bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all duration-300 p-0 overflow-hidden mb-8">
+    <!-- Premium Navy Gradient Header Banner -->
+    <div class="bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] text-white p-4 px-6 flex items-center justify-between shadow-xs border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 backdrop-blur-xs">
+          <span class="material-icons text-blue-200 text-xl">contact_page</span>
+        </div>
+        <div>
+          <h2 class="text-sm font-extrabold text-white uppercase tracking-wider">
+            {{ isEditMode() ? 'Edit Visitor Record & Requirements' : 'Visitor Information & Requirements' }}
+          </h2>
+          <p class="text-[11px] text-blue-200/80 font-medium">Enter contact info manually or review auto-extracted details</p>
+        </div>
+      </div>
+      <span class="text-[11px] font-extrabold px-3 py-1 rounded-full bg-white/10 text-blue-100 border border-white/15">Lead Entry</span>
+    </div>
+
+    <form (ngSubmit)="saveLead()" class="p-6">
+      @if (scannedPhotoDataUrl) {
+        <div class="flex items-center justify-between bg-blue-50/80 border border-blue-200 p-3 rounded-xl text-xs mb-6 shadow-2xs">
+          <div class="flex items-center gap-3">
+            <img [src]="scannedPhotoDataUrl" alt="Card Preview" class="h-12 w-20 rounded-lg border border-blue-300 object-cover shadow-2xs" />
+            <div>
+              <span class="font-extrabold text-blue-900 block flex items-center gap-1.5">
+                <span class="material-icons text-base text-emerald-600">check_circle</span>
+                Scanned Business Card Attached
+              </span>
+              <span class="text-[11px] text-slate-500">Saved to local storage & device folder as <strong>{{ existingLeadNumber || 'S1L...' }}.jpg</strong> upon saving</span>
+            </div>
+          </div>
+          <button type="button" (click)="scannedPhotoDataUrl = null" class="text-xs text-rose-600 font-extrabold hover:underline cursor-pointer">Remove Photo</button>
+        </div>
+      }
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        <!-- Full Name * (Mandatory) -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Full Name *</label>
+          <div class="relative flex items-center group">
+            <div class="absolute left-3 w-7 h-7 rounded-lg bg-slate-100 group-focus-within:bg-blue-50 text-slate-400 group-focus-within:text-blue-600 flex items-center justify-center transition-colors">
+              <span class="material-icons text-base">person</span>
+            </div>
+            <input 
+              [(ngModel)]="name" 
+              name="name" 
+              required 
+              class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl transition-all shadow-2xs" 
+              [ngClass]="showValidationErrors() && (!name || !name.trim()) ? 'border-2 border-rose-500 ring-4 ring-rose-500/15 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10'"
+              placeholder="Visitor Name" 
+            />
+          </div>
+        </div>
+
+        <!-- Company Name (Optional) -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Company Name</label>
+          <div class="relative flex items-center group">
+            <div class="absolute left-3 w-7 h-7 rounded-lg bg-slate-100 group-focus-within:bg-blue-50 text-slate-400 group-focus-within:text-blue-600 flex items-center justify-center transition-colors">
+              <span class="material-icons text-base">business</span>
+            </div>
+            <input 
+              [(ngModel)]="company" 
+              name="company" 
+              class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+              placeholder="Company Name" 
+            />
+          </div>
+        </div>
+
+        <!-- Mobile Phone * (Mandatory - Dynamic 1 to 3 fields) -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="form-label font-bold text-xs text-slate-700">Mobile Phone *</label>
+            @if (phoneNumbers.length < 3) {
+              <button type="button" (click)="addPhoneInput()" class="text-[11px] text-blue-600 hover:text-blue-800 font-extrabold flex items-center gap-0.5 px-2.5 py-0.5 rounded-lg bg-blue-50/60 hover:bg-blue-100/80 transition-colors cursor-pointer">
+                <span class="material-icons text-xs">add</span> Add Phone
+              </button>
+            }
+          </div>
+          <div class="space-y-2">
+            @for (ph of phoneNumbers; track $index) {
+              <div class="relative flex items-center gap-2">
+                <div class="relative flex-1 flex items-center group">
+                  <div class="absolute left-3 w-7 h-7 rounded-lg bg-slate-100 group-focus-within:bg-blue-50 text-slate-400 group-focus-within:text-blue-600 flex items-center justify-center transition-colors">
+                    <span class="material-icons text-base">call</span>
+                  </div>
+                  <input 
+                    [(ngModel)]="phoneNumbers[$index]" 
+                    [name]="'phone_' + $index" 
+                    [required]="$index === 0" 
+                    class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl transition-all shadow-2xs" 
+                    [ngClass]="$index === 0 && showValidationErrors() && (!phoneNumbers[0] || !phoneNumbers[0].trim() || phoneNumbers[0] === '-') ? 'border-2 border-rose-500 ring-4 ring-rose-500/15 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10'"
+                    [placeholder]="$index === 0 ? '+91 98765 43210 (Primary)' : '+91 0422 2967078 (Alt Phone ' + ($index + 1) + ')'" 
+                  />
+                </div>
+                @if ($index > 0) {
+                  <button type="button" (click)="removePhoneInput($index)" title="Remove phone" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
+                    <span class="material-icons text-base">delete_outline</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Email Address (Optional) -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Email Address</label>
+          <div class="relative flex items-center group">
+            <div class="absolute left-3 w-7 h-7 rounded-lg bg-slate-100 group-focus-within:bg-blue-50 text-slate-400 group-focus-within:text-blue-600 flex items-center justify-center transition-colors">
+              <span class="material-icons text-base">mail</span>
+            </div>
+            <input 
+              [(ngModel)]="email" 
+              name="email" 
+              class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+              placeholder="visitor@company.com" 
+            />
+          </div>
+        </div>
+
+        <!-- Designation (Optional) -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Designation / Role</label>
+          <div class="relative flex items-center group">
+            <div class="absolute left-3 w-7 h-7 rounded-lg bg-slate-100 group-focus-within:bg-blue-50 text-slate-400 group-focus-within:text-blue-600 flex items-center justify-center transition-colors">
+              <span class="material-icons text-base">work</span>
+            </div>
+            <input 
+              [(ngModel)]="designation" 
+              name="designation" 
+              list="lead-designations-list" 
+              class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+              placeholder="Business Development Head / Director" 
+            />
+            <datalist id="lead-designations-list">
+              @for (des of predefinedDesignations; track des) {
+                <option [value]="des"></option>
+              }
+            </datalist>
+          </div>
+        </div>
+
+        <!-- Website URL (Optional) -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Website URL</label>
+          <div class="relative flex items-center group">
+            <div class="absolute left-3 w-7 h-7 rounded-lg bg-slate-100 group-focus-within:bg-blue-50 text-slate-400 group-focus-within:text-blue-600 flex items-center justify-center transition-colors">
+              <span class="material-icons text-base">language</span>
+            </div>
+            <input 
+              [(ngModel)]="website" 
+              name="website" 
+              class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+              placeholder="www.company.com" 
+            />
+          </div>
+        </div>
+
+        <!-- Address / Location (Optional) -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Address / Location</label>
+          <div class="relative flex items-center group">
+            <div class="absolute left-3 w-7 h-7 rounded-lg bg-slate-100 group-focus-within:bg-blue-50 text-slate-400 group-focus-within:text-blue-600 flex items-center justify-center transition-colors">
+              <span class="material-icons text-base">location_on</span>
+            </div>
+            <input 
+              [(ngModel)]="address" 
+              name="address" 
+              class="form-control pl-12 py-2.5 text-xs font-semibold rounded-xl border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+              placeholder="City, State or Full Address" 
+            />
+          </div>
+        </div>
+
+        <!-- Interest Priority Segmented Switcher -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5">Interest Priority *</label>
+          <div class="flex gap-2.5 pt-0.5 p-1 rounded-xl transition-all" [ngClass]="showValidationErrors() && !interestLevel ? 'border-2 border-rose-500 ring-4 ring-rose-500/15 bg-rose-50/40' : ''">
+            <!-- Hot -->
+            <button 
+              type="button" 
+              (click)="interestLevel = 'Hot'" 
+              class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              [ngClass]="interestLevel === 'Hot' 
+                ? 'bg-gradient-to-r from-rose-600 to-red-600 border-rose-600 text-white shadow-md shadow-rose-500/20 scale-[1.02]' 
+                : 'bg-rose-50/70 hover:bg-rose-100/80 border-rose-200/90 text-rose-950'"
+            >
+              <span class="text-sm">🔥</span>
+              <span class="font-extrabold">Hot</span>
+            </button>
+
+            <!-- Warm -->
+            <button 
+              type="button" 
+              (click)="interestLevel = 'Warm'" 
+              class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              [ngClass]="interestLevel === 'Warm' 
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 border-amber-600 text-white shadow-md shadow-amber-500/20 scale-[1.02]' 
+                : 'bg-amber-50/70 hover:bg-amber-100/80 border-amber-200/90 text-amber-950'"
+            >
+              <span class="text-sm">⚡</span>
+              <span class="font-extrabold">Warm</span>
+            </button>
+
+            <!-- Cold -->
+            <button 
+              type="button" 
+              (click)="interestLevel = 'Cold'" 
+              class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              [ngClass]="interestLevel === 'Cold' 
+                ? 'bg-gradient-to-r from-sky-600 to-blue-600 border-sky-600 text-white shadow-md shadow-sky-500/20 scale-[1.02]' 
+                : 'bg-blue-50/70 hover:bg-blue-100/80 border-blue-200/90 text-blue-950'"
+            >
+              <span class="text-sm">❄️</span>
+              <span class="font-extrabold">Cold</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Discussion Remarks & Transcription Notes (2 Columns) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        <!-- Left: Discussion Remarks & Requirements -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <span class="material-icons text-xs text-blue-600">notes</span>
+            Discussion Remarks & Requirements
+          </label>
+          <textarea 
+            [(ngModel)]="remarks" 
+            name="remarks" 
+            rows="3" 
+            class="form-control text-xs font-medium rounded-xl p-3 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+            placeholder="Enter key discussion notes, budget, or required follow-ups..."
+          ></textarea>
+        </div>
+
+        <!-- Right: Transcription Notes -->
+        <div>
+          <label class="form-label font-bold text-xs text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <span class="material-icons text-xs text-rose-600">record_voice_over</span>
+            Transcription Notes
+          </label>
+          <textarea 
+            [(ngModel)]="voiceNotesTranscript" 
+            name="voiceNotesTranscript" 
+            rows="3" 
+            class="form-control text-xs font-medium rounded-xl p-3 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 shadow-2xs" 
+            placeholder="AI voice notes and speech transcript will auto-populate here..."
+          ></textarea>
+        </div>
+      </div>
+
+      @if (savedMessage()) {
+        <div class="mb-5 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-2xs">
+          <span class="material-icons text-base text-emerald-600">check_circle</span>
+          {{ savedMessage() }}
+        </div>
+      }
+
+      <div class="flex items-center justify-between border-t border-slate-100 pt-5">
+        <button type="button" (click)="resetForm()" class="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-100 text-slate-600 transition-all cursor-pointer flex items-center gap-1.5">
+          <span class="material-icons text-base">refresh</span> Reset Form
+        </button>
+
+        <button type="submit" class="px-8 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] hover:from-[#183656] hover:to-[#255280] text-white shadow-md hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2">
+          <span class="material-icons text-base">save</span>
+          <span>{{ isEditMode() ? 'Update Lead Record' : 'Save Lead' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Captured Leads Preview Grid (Bulk Lead Entry Mode) -->
+  <div class="mt-8 bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+    
+    <!-- Grid Top Header -->
+    <div class="p-4 px-6 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-[#1a3a5c] text-white flex items-center justify-center font-bold shadow-2xs">
+          <span class="material-icons text-lg">view_list</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+              RECENT LEADS
+            </h3>
+            <span class="px-2.5 py-0.5 bg-blue-50 text-blue-800 border border-blue-200/80 rounded-full text-[11px] font-extrabold">
+              {{ sessionLeads().length }} Saved
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium">Leads recorded during this active stall session</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a 
+          routerLink="/leads" 
+          class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-extrabold rounded-xl border border-slate-200 shadow-2xs flex items-center gap-1.5 transition cursor-pointer"
+        >
+          <span class="material-icons text-base text-blue-600">folder_shared</span>
+          <span>Go to All Leads Directory</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Preview Grid Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] text-white text-[11px] font-extrabold uppercase tracking-wider border-b border-white/10">
+            <th class="py-3.5 px-3 border-r border-white/10">LEAD NO.</th>
+            <th class="py-3.5 px-3 border-r border-white/10 whitespace-nowrap">TIME</th>
+            <th class="py-3.5 px-3 border-r border-white/10">VISITOR NAME</th>
+            <th class="py-3.5 px-3 border-r border-white/10">COMPANY</th>
+            <th class="py-3.5 px-3 border-r border-white/10">MOBILE</th>
+            <th class="py-3.5 px-3 border-r border-white/10">DESIGNATION</th>
+            <th class="py-3.5 px-2 border-r border-white/10 text-center w-24">INTEREST</th>
+            <th class="py-3.5 px-2 border-r border-white/10 text-center w-20">MEDIA</th>
+            <th class="py-3.5 px-2 border-r border-white/10 text-center w-12">VIEW</th>
+            <th class="py-3.5 px-2 text-center w-12">EDIT</th>
+          </tr>
+        </thead>
+        <tbody class="text-xs text-slate-700 font-normal">
+          @for (lead of paginatedSessionLeads(); track lead.id; let idx = $index) {
+            <tr 
+              class="border-b border-slate-100 transition hover:bg-blue-50/40"
+              [ngClass]="idx % 2 === 0 ? 'bg-[#f4f8fc]' : 'bg-white'"
+            >
+              <!-- Lead No -->
+              <td class="py-2 px-3 font-mono font-bold text-blue-700 border-r border-slate-200/60">
+                {{ lead.leadNumber }}
+              </td>
+
+              <!-- Time -->
+              <td class="py-2 px-3 font-mono text-[11px] text-slate-600 border-r border-slate-200/60 whitespace-nowrap">
+                {{ formatTimeDisplay(lead.createdAt) }}
+              </td>
+
+              <!-- Visitor Name -->
+              <td class="py-2 px-3 font-bold text-slate-900 border-r border-slate-200/60">
+                <div class="flex items-center justify-between gap-1">
+                  <span>{{ lead.name }}</span>
+                  @if (lead.voiceBlob || lead.voiceNotesTranscript) {
+                    <span class="material-icons text-xs text-red-600 bg-red-50 p-0.5 rounded" title="Voice Note Audio">mic</span>
+                  }
+                </div>
+              </td>
+
+              <!-- Company -->
+              <td class="py-2 px-3 font-medium text-slate-800 border-r border-slate-200/60">
+                {{ lead.company || '-' }}
+              </td>
+
+              <!-- Mobile (1 number per line, no commas, min-w 170px) -->
+              <td class="py-2 px-3 border-r border-slate-200/60 min-w-[170px] whitespace-nowrap">
+                @for (num of getPhoneNumbersList(lead.phone); track num) {
+                  <div class="whitespace-nowrap font-mono text-[11px] leading-snug">{{ num }}</div>
+                }
+              </td>
+
+              <!-- Designation -->
+              <td class="py-2 px-3 text-slate-600 border-r border-slate-200/60">
+                {{ lead.designation || '-' }}
+              </td>
+
+              <!-- Interest -->
+              <td class="py-2 px-2 text-center border-r border-slate-200/60">
+                <span 
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold inline-block"
+                  [ngClass]="{
+                    'bg-red-100 text-red-700 border border-red-200': lead.interestLevel === 'Hot',
+                    'bg-amber-100 text-amber-700 border border-amber-200': lead.interestLevel === 'Warm',
+                    'bg-blue-100 text-blue-700 border border-blue-200': lead.interestLevel === 'Cold'
+                  }"
+                >
+                  {{ lead.interestLevel }}
+                </span>
+              </td>
+
+              <!-- Media -->
+              <td class="py-2 px-2 text-center border-r border-slate-200/60">
+                <div class="flex items-center justify-center gap-1">
+                  @if (lead.photoBlob) {
+                    <span class="material-icons text-sm text-blue-600" title="Scanned Card Attached">credit_card</span>
+                  }
+                  @if (lead.voiceBlob || lead.voiceNotesTranscript) {
+                    <span class="material-icons text-sm text-red-600" title="Voice Note Attached">mic</span>
+                  }
+                  @if (!lead.photoBlob && !lead.voiceBlob && !lead.voiceNotesTranscript) {
+                    <span class="text-slate-300">-</span>
+                  }
+                </div>
+              </td>
+
+              <!-- View Action -->
+              <td class="py-2 px-2 text-center border-r border-slate-200/60">
+                <button (click)="selectedLeadForView.set(lead)" class="text-slate-500 hover:text-blue-600 p-0.5 transition" title="View Details">
+                  <span class="material-icons text-base">visibility</span>
+                </button>
+              </td>
+
+              <!-- Edit Action -->
+              <td class="py-2 px-2 text-center">
+                <button (click)="loadLeadForEditFromPreview(lead)" class="text-blue-600 hover:text-blue-800 p-0.5 transition" title="Edit Lead">
+                  <span class="material-icons text-base">edit</span>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="10" class="py-8 text-center text-slate-400 font-medium">
+                No leads captured in this session yet. Fill out the form above and click "Save Lead" to add entries here.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Table Pagination Footer Bar -->
+    <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-6 text-xs text-slate-600 font-medium select-none">
+      <div class="flex items-center gap-2">
+        <span>Items per page:</span>
+        <select [(ngModel)]="pageSizeSelect" (change)="onPageSizeChange()" class="border border-slate-300 rounded px-2.5 py-1 bg-white text-xs outline-none focus:border-blue-600 font-semibold cursor-pointer">
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+          <option [value]="50">50</option>
+          <option [value]="100">100</option>
+        </select>
+      </div>
+
+      <div>
+        {{ startIndex() }} - {{ endIndex() }} of {{ sessionLeads().length }}
+      </div>
+
+      <!-- Page Navigation Buttons -->
+      <div class="flex items-center gap-1">
+        <button 
+          [disabled]="currentPage() === 1" 
+          (click)="prevPage()" 
+          class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-slate-600" 
+          title="Previous Page"
+        >
+          <span class="material-icons text-base">chevron_left</span>
+        </button>
+
+        <button 
+          [disabled]="endIndex() >= sessionLeads().length" 
+          (click)="nextPage()" 
+          class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-slate-600" 
+          title="Next Page"
+        >
+          <span class="material-icons text-base">chevron_right</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Change Target Exhibition & Stall -->
+  @if (isTargetModalOpen()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 my-8 animate-in zoom-in-95 duration-150">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+              <span class="material-icons text-xl">storefront</span>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">SELECT TARGET EXHIBITION & STALL</h2>
+              <p class="text-xs text-slate-500 font-medium">Select event and stall destination to capture lead</p>
+            </div>
+          </div>
+          <button type="button" (click)="closeTargetSelectionModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition">
+            <span class="material-icons text-lg">close</span>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Dropdown 1: Select Exhibition -->
+          <div>
+            <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+              1. Select Exhibition *
+            </label>
+            <select 
+              [ngModel]="targetExhibitionId()" 
+              (ngModelChange)="selectTargetExhibition($event)"
+              class="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl outline-none focus:border-blue-600 bg-white shadow-2xs"
+            >
+              <option value="">-- Select Exhibition Event --</option>
+              @for (exh of exhibitionService.exhibitions(); track exh.id) {
+                <option [value]="exh.id">{{ exh.name }} ({{ exh.code }})</option>
+              }
+            </select>
+          </div>
+
+          <!-- Dropdown 2: Select Stall (Blocked/Disabled until Exhibition selected) -->
+          <div>
+            <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+              2. Select Stall *
+            </label>
+            <select 
+              [(ngModel)]="targetStallId" 
+              [disabled]="!targetExhibitionId()" 
+              class="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl outline-none focus:border-blue-600 bg-white shadow-2xs disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border-slate-200"
+            >
+              <option value="">
+                {{ !targetExhibitionId() ? '-- Select Exhibition First --' : '-- Select Stall Project --' }}
+              </option>
+              @for (stall of targetStalls(); track stall.id) {
+                <option [value]="stall.id">{{ stall.name }} ({{ stall.code }})</option>
+              }
+            </select>
+            @if (!targetExhibitionId()) {
+              <p class="text-[11px] text-amber-600 font-semibold mt-1 flex items-center gap-1">
+                <span class="material-icons text-xs text-amber-500">info</span>
+                Stall selection is blocked until an exhibition is selected.
+              </p>
+            }
+          </div>
+        </div>
+
+        <!-- Modal Action Footer -->
+        <div class="flex items-center justify-end gap-2.5 pt-4 mt-6 border-t border-slate-100">
+          <button 
+            type="button" 
+            (click)="closeTargetSelectionModal()" 
+            class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            Cancel
+          </button>
+          
+          <button 
+            type="button" 
+            (click)="confirmTargetStallSelection()" 
+            [disabled]="!targetExhibitionId() || !targetStallId()"
+            class="px-5 py-2.5 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
+          >
+            <span>Switch Target Stall</span>
+            <span class="material-icons text-sm">check_circle</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  }
+
+  <!-- Modal: View Captured Lead Preview Details -->
+  @if (selectedLeadForView()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 space-y-5 animate-in zoom-in-95 duration-150">
+        <div class="flex items-center justify-between border-b pb-3">
+          <div class="flex items-center gap-2">
+            <span class="material-icons text-blue-600">contact_page</span>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Lead Record Details</h3>
+              <span class="text-xs font-mono font-bold text-blue-600">{{ selectedLeadForView()?.leadNumber }}</span>
+            </div>
+          </div>
+          <button (click)="selectedLeadForView.set(null)" class="text-slate-400 hover:text-slate-600">
+            <span class="material-icons text-lg">close</span>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <div class="text-sm font-extrabold text-slate-900">{{ selectedLeadForView()?.name }}</div>
+            <div class="text-xs font-semibold text-slate-600">{{ selectedLeadForView()?.company }}</div>
+            <div class="text-xs text-slate-500 font-mono mt-1">{{ selectedLeadForView()?.phone }}</div>
+            @if (selectedLeadForView()?.email) {
+              <div class="text-xs text-slate-500">{{ selectedLeadForView()?.email }}</div>
+            }
+          </div>
+
+          @if (selectedLeadForView()?.remarks) {
+            <div>
+              <label class="text-xs font-bold text-slate-700 block mb-1">DISCUSSION REMARKS</label>
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700">
+                {{ selectedLeadForView()?.remarks }}
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t">
+          <button (click)="selectedLeadForView.set(null)" class="btn btn-outline-pill text-xs">Close</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Validation Required Central Popup Modal -->
+  @if (showValidationModal()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-rose-100 space-y-4 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 mx-auto flex items-center justify-center shadow-inner">
+          <span class="material-icons text-2xl">warning_amber</span>
+        </div>
+        
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-900 mb-1">Required Information Missing</h3>
+          <div class="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200/80 rounded-xl p-2.5 my-2">
+            Please fill all required columns
+          </div>
+          
+        </div>
+
+        <div class="pt-1">
+          <button 
+            type="button" 
+            (click)="showValidationModal.set(false)" 
+            class="w-full py-2.5 px-4 bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] hover:from-[#183656] hover:to-[#255280] text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md active:scale-95"
+          >
+            OK, Got It
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
