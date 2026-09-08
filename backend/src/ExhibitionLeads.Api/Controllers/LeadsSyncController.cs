@@ -53,13 +53,13 @@ public class LeadsSyncController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
     private readonly IWebHostEnvironment _env;
-    private readonly FirebaseCloudService _firebaseService;
+    private readonly SupabaseCloudService _supabaseService;
 
-    public LeadsSyncController(AppDbContext dbContext, IWebHostEnvironment env, FirebaseCloudService firebaseService)
+    public LeadsSyncController(AppDbContext dbContext, IWebHostEnvironment env, SupabaseCloudService supabaseService)
     {
         _dbContext = dbContext;
         _env = env;
-        _firebaseService = firebaseService;
+        _supabaseService = supabaseService;
     }
 
     [HttpPost("sync")]
@@ -147,12 +147,12 @@ public class LeadsSyncController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
-        // Mirror saved leads to Firebase cloud database
+        // Mirror saved leads to Supabase cloud database
         foreach (var lead in savedLeads)
         {
             try
             {
-                await _firebaseService.SyncLeadAsync(lead);
+                await _supabaseService.SyncLeadAsync(lead);
             }
             catch {}
         }

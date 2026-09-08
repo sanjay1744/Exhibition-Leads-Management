@@ -100,11 +100,12 @@ public class ExhibitionsController : ControllerBase
     }
 
     [HttpGet("next-code")]
-    public async Task<ActionResult<object>> GetNextExhibitionCode()
+    public async Task<ActionResult<object>> GetNextExhibitionCode([FromQuery] int stallNumber = 1)
     {
-        var year = DateTime.UtcNow.Year;
+        var yearShort = DateTime.UtcNow.ToString("yy");
         var count = await _context.Exhibitions.CountAsync() + 1;
-        var nextCode = $"EXH-{year}-{count:D3}";
+        var stallNum = stallNumber > 0 ? stallNumber : 1;
+        var nextCode = $"EXH-STL{stallNum}-{yearShort}-{count:D3}";
         return Ok(new { code = nextCode });
     }
 
@@ -172,16 +173,18 @@ public class ExhibitionsController : ControllerBase
         var code = request.Code;
         if (string.IsNullOrWhiteSpace(code))
         {
-            var year = DateTime.UtcNow.Year;
+            var yearShort = DateTime.UtcNow.ToString("yy");
             var count = await _context.Exhibitions.CountAsync() + 1;
-            code = $"EXH-{year}-{count:D3}";
+            var stallNum = (request.InitialStalls != null && request.InitialStalls.Any()) ? 1 : 1;
+            code = $"EXH-STL{stallNum}-{yearShort}-{count:D3}";
         }
 
         if (await _context.Exhibitions.AnyAsync(e => e.Code == code))
         {
-            var year = DateTime.UtcNow.Year;
+            var yearShort = DateTime.UtcNow.ToString("yy");
             var count = await _context.Exhibitions.CountAsync() + 1;
-            code = $"EXH-{year}-{count:D3}-{Guid.NewGuid().ToString()[..4]}";
+            var stallNum = 1;
+            code = $"EXH-STL{stallNum}-{yearShort}-{count:D3}-{Guid.NewGuid().ToString()[..4]}";
         }
 
         var duration = request.DurationDays.HasValue && request.DurationDays.Value > 0 ? request.DurationDays.Value : 3;
@@ -212,7 +215,7 @@ public class ExhibitionsController : ControllerBase
             {
                 if (string.IsNullOrWhiteSpace(stReq.Name)) continue;
 
-                Guid ownerGuid = Guid.Parse("11111111-1111-1111-1111-111111111111");
+                Guid ownerGuid = Guid.NewGuid();
                 if (stReq.OwnerId != null && Guid.TryParse(stReq.OwnerId.ToString(), out var parsedGuid))
                 {
                     ownerGuid = parsedGuid;
@@ -232,10 +235,10 @@ public class ExhibitionsController : ControllerBase
                     StartDate = exhibition.StartDate,
                     EndDate = exhibition.EndDate,
                     Location = exhibition.Venue,
-                    HallNumber = !string.IsNullOrWhiteSpace(stReq.HallNumber) ? stReq.HallNumber : "Hall A",
-                    BoothNumber = !string.IsNullOrWhiteSpace(stReq.BoothNumber) ? stReq.BoothNumber : "Booth 01",
+                    HallNumber = !string.IsNullOrWhiteSpace(stReq.HallNumber) ? stReq.HallNumber : "Hall 1",
+                    BoothNumber = !string.IsNullOrWhiteSpace(stReq.BoothNumber) ? stReq.BoothNumber : "Booth 1",
                     OwnerId = ownerGuid,
-                    OwnerName = !string.IsNullOrWhiteSpace(stReq.OwnerName) ? stReq.OwnerName : "Thalaimalai",
+                    OwnerName = !string.IsNullOrWhiteSpace(stReq.OwnerName) ? stReq.OwnerName : "Sales Representative",
                     Status = "Active"
                 };
 

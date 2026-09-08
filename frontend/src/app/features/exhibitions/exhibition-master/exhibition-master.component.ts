@@ -31,6 +31,7 @@ export class ExhibitionMasterComponent implements OnInit {
   editingId = signal<string | null>(null);
 
   formCode = signal('');
+  formStallNumber = 1;
   formName = '';
   formOrganizer = '';
   formVenue = '';
@@ -110,6 +111,16 @@ export class ExhibitionMasterComponent implements OnInit {
     return this.authService.currentUser()?.role === 'Admin';
   }
 
+  updateCodeForStall(stallNum: number): void {
+    const validNum = stallNum && stallNum > 0 ? stallNum : 1;
+    this.formStallNumber = validNum;
+    const year2Digits = new Date().getFullYear().toString().slice(-2);
+    this.exhibitionService.getNextCode(validNum).subscribe({
+      next: (res) => this.formCode.set(res.code),
+      error: () => this.formCode.set(`EXH-STL${validNum}-${year2Digits}-001`)
+    });
+  }
+
   openCreateModal(): void {
     this.isEditMode.set(false);
     this.editingId.set(null);
@@ -122,12 +133,9 @@ export class ExhibitionMasterComponent implements OnInit {
     this.formDescription = '';
     this.formStatus = 'Upcoming';
     this.inlineStalls = [];
+    this.formStallNumber = 1;
 
-    this.exhibitionService.getNextCode().subscribe({
-      next: (res) => this.formCode.set(res.code),
-      error: () => this.formCode.set(`EXH-${new Date().getFullYear()}-001`)
-    });
-
+    this.updateCodeForStall(1);
     this.isModalOpen.set(true);
   }
 
@@ -221,7 +229,7 @@ export class ExhibitionMasterComponent implements OnInit {
     this.selectedExhibitionForStalls.set(exhibition);
     this.exhibitionService.getExhibitionById(exhibition.id).subscribe({
       next: (res) => {
-        this.linkedStallsList.set(res.stalls || []);
+        this.linkedStallsList.set(res?.stalls || []);
       },
       error: () => {
         this.linkedStallsList.set([]);

@@ -214,11 +214,11 @@ import { ToastService } from './core/services/toast.service';
                 class="user-profile hover:bg-slate-100 p-1.5 rounded-lg transition cursor-pointer select-none"
               >
                 <div class="user-avatar">
-                  {{ (auth.currentUser()?.fullName || 'S')[0] }}
+                  {{ (auth.currentUser()?.fullName || auth.currentUser()?.username || 'U')[0].toUpperCase() }}
                 </div>
                 <div class="user-info">
-                  <span class="user-name">{{ auth.currentUser()?.fullName || 'Saravanan' }}</span>
-                  <span class="user-role">{{ auth.currentUser()?.userGroup || 'Naren-Marketing' }}</span>
+                  <span class="user-name">{{ auth.currentUser()?.fullName || auth.currentUser()?.username || 'User' }}</span>
+                  <span class="user-role">{{ auth.currentUser()?.userGroup || auth.currentUser()?.role || 'Sales Team' }}</span>
                 </div>
                 <span class="material-icons text-slate-500 text-base">keyboard_arrow_down</span>
               </div>
@@ -232,10 +232,10 @@ import { ToastService } from './core/services/toast.service';
                   <!-- Header Info -->
                   <div class="px-4 py-2 border-b border-slate-100">
                     <div class="font-bold text-slate-900 text-sm leading-tight">
-                      {{ auth.currentUser()?.fullName || 'Saravanan' }}
+                      {{ auth.currentUser()?.fullName || auth.currentUser()?.username || 'User' }}
                     </div>
                     <div class="text-xs text-slate-400 font-medium mt-0.5">
-                      {{ auth.currentUser()?.userGroup || 'Naren-Marketing' }}
+                      {{ auth.currentUser()?.userGroup || auth.currentUser()?.role || 'Sales Team' }}
                     </div>
                   </div>
 

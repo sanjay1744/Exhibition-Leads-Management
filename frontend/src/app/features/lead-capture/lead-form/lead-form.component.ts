@@ -163,9 +163,7 @@ export class LeadFormComponent implements OnInit {
   targetStalls = computed(() => {
     const exhId = this.targetExhibitionId();
     if (!exhId) return [];
-    return this.stallService.stalls().filter(
-      (s) => s.exhibitionId === exhId || (!s.exhibitionId && exhId === '44444444-4444-4444-4444-444444444444')
-    );
+    return this.stallService.stalls().filter((s) => s.exhibitionId === exhId);
   });
 
   openTargetSelectionModal(): void {
@@ -491,7 +489,7 @@ export class LeadFormComponent implements OnInit {
     this.showValidationErrors.set(false);
     this.showValidationModal.set(false);
 
-    const activeStallId = this.stallService.activeStall()?.id || '33333333-3333-3333-3333-333333333333';
+    const activeStallId = this.stallService.activeStall()?.id || '';
 
     let leadNumberToUse = this.existingLeadNumber;
     if (!leadNumberToUse) {

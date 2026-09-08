@@ -43,8 +43,8 @@ export class SalesDashboardComponent implements OnInit {
     location: 'Codissia Trade Fair Complex, Coimbatore',
     hallNumber: 'Hall A',
     boothNumber: 'Booth 12',
-    ownerId: '11111111-1111-1111-1111-111111111111',
-    ownerName: 'Thalaimalai'
+    ownerId: '',
+    ownerName: ''
   };
 
   currentUser = this.auth.currentUser();
@@ -95,9 +95,9 @@ export class SalesDashboardComponent implements OnInit {
   });
 
   openCreateStallModal(): void {
-    this.http.get<{ code: string }>(`${getApiUrl()}/stalls/next-code`).subscribe({
+    this.stallService.getNextCode().subscribe({
       next: (res) => {
-        const nextCode = res.code || `STL-${new Date().getFullYear()}-002`;
+        const nextCode = res.code || `STL-${new Date().getFullYear()}-001`;
         this.newStallData = {
           name: '',
           code: nextCode,
@@ -106,16 +106,12 @@ export class SalesDashboardComponent implements OnInit {
           durationDays: 4,
           startDate: new Date().toISOString().split('T')[0],
           endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
-          location: 'Codissia Trade Fair Complex, Coimbatore',
-          hallNumber: 'Hall A',
-          boothNumber: 'Booth 12',
-          ownerId: '11111111-1111-1111-1111-111111111111',
-          ownerName: 'Thalaimalai'
+          location: '',
+          hallNumber: '',
+          boothNumber: '',
+          ownerId: this.currentUser?.token || '',
+          ownerName: this.currentUser?.fullName || ''
         };
-        this.isCreateStallModalOpen.set(true);
-      },
-      error: () => {
-        this.newStallData.code = `STL-${new Date().getFullYear()}-002`;
         this.isCreateStallModalOpen.set(true);
       }
     });
@@ -127,14 +123,13 @@ export class SalesDashboardComponent implements OnInit {
       return;
     }
 
-    this.http.post<Stall>(`${getApiUrl()}/stalls`, this.newStallData).subscribe({
+    this.stallService.createStall(this.newStallData).subscribe({
       next: (created) => {
-        alert(`New Stall (Project) "${created.name}" created with Auto Code: ${created.code}!`);
-        this.stallService.loadStalls();
+        this.toastService.showSuccess(`New Stall "${created.name}" created with code: ${created.code}!`, 'Stall Created');
         this.isCreateStallModalOpen.set(false);
       },
-      error: (err) => {
-        alert(err?.error?.message || `Failed to create Stall.`);
+      error: () => {
+        this.toastService.showError('Failed to create Stall.', 'Error');
       }
     });
   }
@@ -145,7 +140,7 @@ export class SalesDashboardComponent implements OnInit {
       await this.syncService.syncPendingLeads();
       const list = await this.db.getAllLeads();
       this.allLeads.set(list);
-      this.toastService.showSuccess('All pending leads synchronized to Firebase Cloud Firestore!', 'Firebase Sync');
+      this.toastService.showSuccess('All pending leads synchronized to Supabase Cloud!', 'Supabase Sync');
     } catch (err) {
       this.toastService.showError('Could not complete sync. Please verify internet connection.', 'Sync Failed');
     } finally {

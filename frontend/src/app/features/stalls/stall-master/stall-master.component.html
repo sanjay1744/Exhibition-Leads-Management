@@ -354,10 +354,12 @@
             <!-- Row 7: Stall Owner Assignment -->
             <div>
               <label class="form-label font-bold text-xs text-slate-700 mb-1">Assigned Stall Owner *</label>
-              <select [(ngModel)]="formData.ownerName" name="ownerName" class="form-control text-xs font-semibold">
-                <option value="Thalaimalai">Thalaimalai (Stall Owner)</option>
-                <option value="Sanjay">Sanjay (Admin)</option>
-              </select>
+              <input 
+                [(ngModel)]="formData.ownerName" 
+                name="ownerName" 
+                placeholder="Enter Stall Owner Name"
+                class="form-control text-xs font-semibold"
+              />
             </div>
 
           </div>

@@ -1,19 +1,12 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
-import { getApiUrl } from '../../../core/config/api.config';
+import { UserService } from '../../../core/services/user.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { AppUser } from '../../../core/models/user.model';
 
-export interface UserMasterItem {
-  id: string;
-  fullName: string;
-  username: string;
-  email: string;
-  userGroup?: string;
-  role: 'Admin' | 'StallOwner' | 'Marketing' | string;
-  status: 'Active' | 'Inactive';
-}
+export type UserMasterItem = AppUser;
 
 @Component({
   selector: 'app-user-master',
@@ -23,9 +16,9 @@ export interface UserMasterItem {
   styleUrl: './user-master.component.css'
 })
 export class UserMasterComponent implements OnInit {
-  private http = inject(HttpClient);
+  private userService = inject(UserService);
   private auth = inject(AuthService);
-  private get apiUrl() { return `${getApiUrl()}/users`; }
+  private toast = inject(ToastService);
 
   users = signal<UserMasterItem[]>([]);
 
@@ -37,13 +30,22 @@ export class UserMasterComponent implements OnInit {
   isModalOpen = signal(false);
   editingUser = signal<UserMasterItem | null>(null);
 
-  formData = {
+  formData: {
+    fullName: string;
+    username: string;
+    email: string;
+    role: string;
+    status: 'Active' | 'Inactive';
+    password: string;
+    userGroup?: string;
+  } = {
     fullName: '',
     username: '',
     email: '',
     role: 'Marketing',
-    status: 'Active' as 'Active' | 'Inactive',
-    password: ''
+    status: 'Active',
+    password: '',
+    userGroup: 'Sales Team'
   };
 
   currentUser = this.auth.currentUser();
@@ -56,14 +58,14 @@ export class UserMasterComponent implements OnInit {
   }
 
   fetchUsers(): void {
-    this.http.get<UserMasterItem[]>(this.apiUrl).subscribe({
+    this.userService.getUsers().subscribe({
       next: (res) => {
         if (res) {
           this.users.set(res);
         }
       },
       error: (err) => {
-        console.error('Error fetching users from DB:', err);
+        console.error('Error fetching users from Supabase:', err);
       }
     });
   }
@@ -113,7 +115,8 @@ export class UserMasterComponent implements OnInit {
       email: '',
       role: 'Marketing',
       status: 'Active',
-      password: ''
+      password: '',
+      userGroup: 'Sales Team'
     };
     this.isModalOpen.set(true);
   }
@@ -126,7 +129,8 @@ export class UserMasterComponent implements OnInit {
       email: user.email,
       role: user.role,
       status: user.status as 'Active' | 'Inactive',
-      password: ''
+      password: user.password || '',
+      userGroup: user.userGroup || 'Sales Team'
     };
     this.isModalOpen.set(true);
   }
@@ -134,11 +138,9 @@ export class UserMasterComponent implements OnInit {
   openPasswordModal(user: UserMasterItem): void {
     const newPass = prompt(`Reset Password for ${user.username}:`, 'Admin@123');
     if (newPass) {
-      this.http.put(`${this.apiUrl}/${user.id}/reset-password`, JSON.stringify(newPass), {
-        headers: { 'Content-Type': 'application/json' }
-      }).subscribe({
-        next: () => alert(`Password for ${user.username} reset successfully!`),
-        error: () => alert('Failed to reset password.')
+      this.userService.resetPassword(user.id, newPass).subscribe({
+        next: () => this.toast.showSuccess(`Password for ${user.username} reset successfully in Supabase!`),
+        error: () => this.toast.showError('Reset Failed', 'Failed to reset password.')
       });
     }
   }
@@ -157,16 +159,15 @@ export class UserMasterComponent implements OnInit {
     const user = this.selectedUserForDelete();
     if (!user) return;
 
-    const headers = new HttpHeaders().set('X-User-Role', this.currentUser?.role || 'Admin');
-
-    this.http.delete(`${this.apiUrl}/${user.id}`, { headers }).subscribe({
+    this.userService.deleteUser(user.id).subscribe({
       next: () => {
         this.selectedUserForDelete.set(null);
+        this.toast.showSuccess(`User '${user.username}' deleted.`);
         this.fetchUsers();
       },
       error: (err) => {
         this.selectedUserForDelete.set(null);
-        alert(err?.error?.message || 'Delete operation failed.');
+        this.toast.showError('Delete Failed', err?.message || 'Delete operation failed.');
       }
     });
   }
@@ -177,36 +178,38 @@ export class UserMasterComponent implements OnInit {
 
   saveUser(): void {
     if (!this.formData.fullName || !this.formData.username) {
-      alert('Full Name and Username are required.');
+      this.toast.showError('Validation Error', 'Full Name and Username are required.');
       return;
     }
 
-    const payload = {
+    const payload: Partial<AppUser> = {
       ...this.formData,
-      email: this.formData.email || `${this.formData.username.toLowerCase().trim()}@ariyai.com`,
-      userGroup: 'Naren-Marketing'
+      email: this.formData.email || `${this.formData.username.toLowerCase().trim()}@company.com`,
+      userGroup: this.formData.userGroup || 'Sales Team'
     };
 
     if (this.editingUser()) {
-      this.http.put(`${this.apiUrl}/${this.editingUser()!.id}`, payload).subscribe({
+      this.userService.updateUser(this.editingUser()!.id, payload).subscribe({
         next: () => {
+          this.toast.showSuccess(`User '${payload.username}' updated successfully in Supabase!`);
           this.fetchUsers();
           this.closeModal();
         },
         error: (err) => {
-          const msg = err?.error?.message || (typeof err?.error === 'string' ? err.error : 'Failed to update user.');
-          alert(msg);
+          const msg = err?.message || 'Failed to update user in Supabase.';
+          this.toast.showError('Update Failed', msg);
         }
       });
     } else {
-      this.http.post(this.apiUrl, payload).subscribe({
+      this.userService.createUser(payload).subscribe({
         next: () => {
+          this.toast.showSuccess(`User '${payload.username}' created successfully in Supabase!`);
           this.fetchUsers();
           this.closeModal();
         },
         error: (err) => {
-          const msg = err?.error?.message || (typeof err?.error === 'string' ? err.error : 'Failed to create user.');
-          alert(msg);
+          const msg = err?.message || 'Failed to create user in Supabase.';
+          this.toast.showError('Create Failed', msg);
         }
       });
     }

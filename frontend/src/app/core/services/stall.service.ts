@@ -1,8 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
-import { getApiUrl } from '../config/api.config';
-import { FirebaseSyncService } from './firebase-sync.service';
+import { Observable, from, of } from 'rxjs';
+import { ApplicationDatabase } from './db.service';
+import { SupabaseSyncService } from './supabase-sync.service';
 
 export interface Stall {
   id: string;
@@ -13,15 +12,22 @@ export interface Stall {
   ownerName: string;
   createdAt: string;
   exhibitionId?: string;
+  hallNumber?: string;
+  boothNumber?: string;
+  eventName?: string;
+  organizer?: string;
+  durationDays?: number;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class StallService {
-  private http = inject(HttpClient);
-  private firebaseSync = inject(FirebaseSyncService);
-  private get apiUrl() { return `${getApiUrl()}/stalls`; }
+  private db = inject(ApplicationDatabase);
+  private supabaseSync = inject(SupabaseSyncService);
 
   stalls = signal<Stall[]>([]);
   activeStall = signal<Stall | null>(null);
@@ -30,70 +36,98 @@ export class StallService {
     this.loadStalls();
   }
 
-  loadStalls(): void {
-    this.http.get<Stall[]>(this.apiUrl).subscribe({
-      next: (list) => {
-        if (list && list.length > 0) {
-          this.stalls.set(list);
-          if (!this.activeStall()) {
-            this.activeStall.set(list[0]);
-          }
-          for (const item of list) {
-            this.firebaseSync.saveStallToFirestore(item);
-          }
-        } else {
-          this.loadFromFirestoreFallback();
-        }
-      },
-      error: async () => {
-        await this.loadFromFirestoreFallback();
-      }
-    });
-  }
-
-  private async loadFromFirestoreFallback(): Promise<void> {
+  async loadStalls(): Promise<void> {
+    // 1. Fetch live authoritative stalls from Supabase (Primary DB)
     try {
-      const fbList = (await this.firebaseSync.getStallsFromFirestore()) as Stall[];
-      if (fbList && fbList.length > 0) {
-        this.stalls.set(fbList);
-        if (!this.activeStall()) {
-          this.activeStall.set(fbList[0]);
+      const cloudStalls = (await this.supabaseSync.getStallsFromSupabase()) as Stall[];
+      if (cloudStalls !== undefined && cloudStalls !== null) {
+        this.stalls.set(cloudStalls);
+        this.activeStall.set(cloudStalls.length > 0 ? cloudStalls[0] : null);
+
+        // Prune stale local Dexie stalls not present in Supabase
+        const cloudIds = new Set(cloudStalls.map((s) => s.id));
+        const localStalls = await this.db.getAllStalls();
+        for (const ls of localStalls) {
+          if (!cloudIds.has(ls.id)) {
+            await this.db.deleteStall(ls.id);
+          }
+        }
+        for (const s of cloudStalls) {
+          await this.db.saveStall(s);
         }
         return;
       }
-    } catch (e) {
-      console.warn('[StallService] Firestore fetch fallback notice:', e);
+    } catch (cloudErr) {
+      console.warn('[StallService] Supabase stalls fetch notice, falling back to local:', cloudErr);
     }
 
-    // Fallback default Stall
-    const defaultStall: Stall = {
-      id: '33333333-3333-3333-3333-333333333333',
-      name: 'Stall 01 - Main Exhibition',
-      code: 'STALL-01',
-      location: 'Hall A, Booth 12',
-      ownerId: '11111111-1111-1111-1111-111111111111',
-      ownerName: 'Thalaimalai',
-      createdAt: new Date().toISOString(),
-      exhibitionId: '44444444-4444-4444-4444-444444444444'
-    };
-    this.stalls.set([defaultStall]);
-    this.activeStall.set(defaultStall);
-    this.firebaseSync.saveStallToFirestore(defaultStall);
+    // 2. Offline fallback only if cloud unreachable
+    try {
+      const cached = (await this.db.getAllStalls()) as Stall[];
+      if (cached && cached.length > 0) {
+        this.stalls.set(cached);
+        if (!this.activeStall()) {
+          this.activeStall.set(cached[0]);
+        }
+      }
+    } catch (dbErr) {
+      console.warn('[StallService] Error loading local cached stalls:', dbErr);
+    }
   }
 
   setActiveStall(stall: Stall): void {
     this.activeStall.set(stall);
   }
 
-  createStall(data: { name: string; code: string; location: string; ownerId: string; ownerName: string; exhibitionId?: string }): Observable<Stall> {
-    return this.http.post<Stall>(this.apiUrl, data).pipe(
-      tap((newStall) => {
-        this.stalls.update((list) => [newStall, ...list]);
-        this.setActiveStall(newStall);
-        if (newStall) {
-          this.firebaseSync.saveStallToFirestore(newStall);
-        }
-      })
-    );
+  getNextCode(): Observable<{ code: string }> {
+    const year = new Date().getFullYear();
+    const count = this.stalls().length + 1;
+    const code = `STL-${year}-${count.toString().padStart(3, '0')}`;
+    return of({ code });
+  }
+
+  createStall(data: Partial<Stall>): Observable<Stall> {
+    const year = new Date().getFullYear();
+    const count = this.stalls().length + 1;
+    const generatedCode = data.code || `STL-${year}-${count.toString().padStart(3, '0')}`;
+
+    const newStall: Stall = {
+      id: data.id || crypto.randomUUID(),
+      name: data.name || '',
+      code: generatedCode,
+      location: data.location || '',
+      ownerId: data.ownerId || '',
+      ownerName: data.ownerName || '',
+      exhibitionId: data.exhibitionId || '',
+      hallNumber: data.hallNumber || '',
+      boothNumber: data.boothNumber || '',
+      eventName: data.eventName || '',
+      organizer: data.organizer || '',
+      durationDays: data.durationDays || 3,
+      startDate: data.startDate || new Date().toISOString(),
+      endDate: data.endDate || new Date(Date.now() + 3 * 86400000).toISOString(),
+      status: data.status || 'Active',
+      createdAt: new Date().toISOString(),
+    };
+
+    return from(this.saveStallEverywhere(newStall));
+  }
+
+  private async saveStallEverywhere(stall: Stall): Promise<Stall> {
+    // Save to local IndexedDB
+    try {
+      await this.db.saveStall(stall);
+    } catch (localErr) {
+      console.warn('[StallService] Local Dexie save warning:', localErr);
+    }
+
+    // Save to Cloud Supabase
+    await this.supabaseSync.saveStallToSupabase(stall);
+
+    // Update in-memory reactive state
+    this.stalls.update((list) => [stall, ...list]);
+    this.setActiveStall(stall);
+
+    return stall;
   }
 }

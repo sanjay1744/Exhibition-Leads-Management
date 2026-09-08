@@ -31,7 +31,7 @@
       }
 
       <div class="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium border">
-        Owner: <strong>{{ stallService.activeStall()?.ownerName || 'Thalaimalai' }}</strong>
+        Owner: <strong>{{ stallService.activeStall()?.ownerName || 'Unassigned' }}</strong>
       </div>
     </div>
   </div>
@@ -48,10 +48,10 @@
         (click)="manualSync()" 
         [disabled]="isSyncing()" 
         class="btn bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-3.5 py-2 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-        title="Sync offline leads to Firebase Cloud Firestore"
+        title="Sync offline leads to Supabase Database and Storage"
       >
         <span class="material-icons text-base text-blue-600" [class.animate-spin]="isSyncing()">sync</span>
-        {{ isSyncing() ? 'Syncing...' : 'Sync to Firebase' }}
+        {{ isSyncing() ? 'Syncing...' : 'Sync to Supabase' }}
       </button>
 
       <a routerLink="/capture" class="btn btn-primary">
@@ -254,11 +254,12 @@
 
             <!-- Row 7: Stall Owner Assignment -->
             <div>
-              <label class="form-label font-bold text-xs text-slate-700 mb-1">Assigned Stall Owner *</label>
-              <select [(ngModel)]="newStallData.ownerName" name="ownerName" class="form-control text-xs font-semibold">
-                <option value="Thalaimalai">Thalaimalai (Stall Owner)</option>
-                <option value="Sanjay">Sanjay (Admin)</option>
-              </select>
+              <input 
+                [(ngModel)]="newStallData.ownerName" 
+                name="ownerName" 
+                placeholder="Enter Stall Owner Name" 
+                class="form-control text-xs font-semibold" 
+              />
             </div>
 
           </div>

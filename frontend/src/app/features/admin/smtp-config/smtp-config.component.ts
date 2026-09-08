@@ -27,30 +27,32 @@ export class SmtpConfigComponent implements OnInit {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
 
-  currentUsername = signal('Saravanan');
+  currentUsername = signal('');
   showPassword = signal(false);
   isSaving = signal(false);
   savedFeedback = signal<string | null>(null);
 
   config: SmtpConfigModel = {
-    userId: 'Saravanan',
+    userId: '',
     smtpHost: 'smtp.gmail.com',
     port: 587,
-    username: 'saravanan@ariyai.com',
+    username: '',
     password: '',
-    fromName: 'Saravanan',
-    fromEmail: 'saravanan@ariyai.com',
+    fromName: '',
+    fromEmail: '',
     enableSsl: true
   };
 
   ngOnInit(): void {
     const user = this.auth.currentUser();
-    if (user && user.fullName) {
-      this.currentUsername.set(user.fullName);
-      this.config.userId = user.fullName;
-      this.config.fromName = user.fullName;
-      this.config.username = `${user.username.toLowerCase()}@ariyai.com`;
-      this.config.fromEmail = `${user.username.toLowerCase()}@ariyai.com`;
+    if (user) {
+      const name = user.fullName || user.username || 'User';
+      const email = (user as any).email || `${user.username?.toLowerCase() || 'user'}@company.com`;
+      this.currentUsername.set(name);
+      this.config.userId = (user as any).id || name;
+      this.config.fromName = name;
+      this.config.username = email;
+      this.config.fromEmail = email;
     }
     this.loadUserSmtpSettings();
   }

@@ -635,7 +635,7 @@ export class ExhibitionMasterComponent implements OnInit {
 
     this.exhibitionService.getNextCode().subscribe({
       next: (res) => this.formCode.set(res.code),
-      error: () => this.formCode.set(`EXH-${new Date().getFullYear()}-001`)
+      error: () => this.formCode.set(`EXH-STL1-${new Date().getFullYear().toString().slice(-2)}-001`)
     });
 
     this.isModalOpen.set(true);
@@ -731,7 +731,7 @@ export class ExhibitionMasterComponent implements OnInit {
     this.selectedExhibitionForStalls.set(exhibition);
     this.exhibitionService.getExhibitionById(exhibition.id).subscribe({
       next: (res) => {
-        this.linkedStallsList.set(res.stalls || []);
+        this.linkedStallsList.set(res?.stalls || []);
       },
       error: () => {
         this.linkedStallsList.set([]);

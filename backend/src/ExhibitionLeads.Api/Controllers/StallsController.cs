@@ -126,7 +126,7 @@ public class StallsController : ControllerBase
             code = $"STL-{year}-{count:D3}-{Guid.NewGuid().ToString()[..4]}";
         }
 
-        Guid ownerGuid = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        Guid ownerGuid = Guid.NewGuid();
         if (request.OwnerId != null && Guid.TryParse(request.OwnerId.ToString(), out var parsedGuid))
         {
             ownerGuid = parsedGuid;
@@ -148,15 +148,15 @@ public class StallsController : ControllerBase
             Code = code,
             ExhibitionId = exh?.Id ?? request.ExhibitionId,
             EventName = exh != null ? exh.Name : (!string.IsNullOrWhiteSpace(request.EventName) ? request.EventName : request.Name),
-            Organizer = exh != null ? exh.Organizer : (!string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer : "Internal Exhibition Team"),
+            Organizer = exh != null ? exh.Organizer : (!string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer : "Exhibition Organizer"),
             DurationDays = duration,
             StartDate = exh != null ? exh.StartDate : (request.StartDate ?? DateTime.UtcNow.Date),
             EndDate = exh != null ? exh.EndDate : (request.EndDate ?? DateTime.UtcNow.Date.AddDays(duration)),
-            Location = exh != null ? exh.Venue : (!string.IsNullOrWhiteSpace(request.Location) ? request.Location : "Main Convention Center"),
-            HallNumber = !string.IsNullOrWhiteSpace(request.HallNumber) ? request.HallNumber : "Hall A",
-            BoothNumber = !string.IsNullOrWhiteSpace(request.BoothNumber) ? request.BoothNumber : "Booth 01",
+            Location = exh != null ? exh.Venue : (!string.IsNullOrWhiteSpace(request.Location) ? request.Location : "Venue"),
+            HallNumber = !string.IsNullOrWhiteSpace(request.HallNumber) ? request.HallNumber : "Hall 1",
+            BoothNumber = !string.IsNullOrWhiteSpace(request.BoothNumber) ? request.BoothNumber : "Booth 1",
             OwnerId = ownerGuid,
-            OwnerName = !string.IsNullOrWhiteSpace(request.OwnerName) ? request.OwnerName : "Thalaimalai",
+            OwnerName = !string.IsNullOrWhiteSpace(request.OwnerName) ? request.OwnerName : "Sales Representative",
             Status = "Active"
         };
 

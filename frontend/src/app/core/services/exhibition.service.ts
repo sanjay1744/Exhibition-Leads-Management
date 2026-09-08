@@ -1,8 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
-import { getApiUrl } from '../config/api.config';
-import { FirebaseSyncService } from './firebase-sync.service';
+import { Observable, from, of } from 'rxjs';
+import { ApplicationDatabase } from './db.service';
+import { SupabaseSyncService } from './supabase-sync.service';
 
 export interface ExhibitionDto {
   id: string;
@@ -50,9 +49,8 @@ export interface ExhibitionDetailDto {
   providedIn: 'root'
 })
 export class ExhibitionService {
-  private http = inject(HttpClient);
-  private firebaseSync = inject(FirebaseSyncService);
-  private get apiUrl() { return `${getApiUrl()}/exhibitions`; }
+  private db = inject(ApplicationDatabase);
+  private supabaseSync = inject(SupabaseSyncService);
 
   exhibitions = signal<ExhibitionDto[]>([]);
   activeExhibition = signal<ExhibitionDto | null>(null);
@@ -61,100 +59,135 @@ export class ExhibitionService {
     this.loadExhibitions();
   }
 
-  loadExhibitions(): void {
-    this.http.get<ExhibitionDto[]>(this.apiUrl).subscribe({
-      next: (list) => {
-        if (list && list.length > 0) {
-          this.exhibitions.set(list);
-          if (!this.activeExhibition()) {
-            this.activeExhibition.set(list[0]);
-          }
-          // Also mirror to Firestore in background
-          for (const item of list) {
-            this.firebaseSync.saveExhibitionToFirestore(item);
-          }
-        } else {
-          this.loadFromFirestoreFallback();
-        }
-      },
-      error: async () => {
-        await this.loadFromFirestoreFallback();
-      }
-    });
-  }
-
-  private async loadFromFirestoreFallback(): Promise<void> {
+  async loadExhibitions(): Promise<void> {
+    // 1. Fetch live authoritative exhibitions from Supabase (Primary DB)
     try {
-      const fbList = (await this.firebaseSync.getExhibitionsFromFirestore()) as ExhibitionDto[];
-      if (fbList && fbList.length > 0) {
-        this.exhibitions.set(fbList);
-        if (!this.activeExhibition()) {
-          this.activeExhibition.set(fbList[0]);
+      const cloudExhibitions = (await this.supabaseSync.getExhibitionsFromSupabase()) as ExhibitionDto[];
+      if (cloudExhibitions !== undefined && cloudExhibitions !== null) {
+        this.exhibitions.set(cloudExhibitions);
+        this.activeExhibition.set(cloudExhibitions.length > 0 ? cloudExhibitions[0] : null);
+
+        // Prune stale local Dexie exhibitions not present in Supabase
+        const cloudIds = new Set(cloudExhibitions.map((e) => e.id));
+        const localExhibitions = await this.db.getAllExhibitions();
+        for (const le of localExhibitions) {
+          if (!cloudIds.has(le.id)) {
+            await this.db.deleteExhibition(le.id);
+          }
+        }
+        for (const e of cloudExhibitions) {
+          await this.db.saveExhibition(e);
         }
         return;
       }
-    } catch (e) {
-      console.warn('[ExhibitionService] Firestore fetch fallback notice:', e);
+    } catch (cloudErr) {
+      console.warn('[ExhibitionService] Supabase exhibitions fetch notice, falling back to local:', cloudErr);
     }
 
-    // Default fallback Exhibition
-    const defaultExhibition: ExhibitionDto = {
-      id: '44444444-4444-4444-4444-444444444444',
-      code: 'EXH-2026-001',
-      name: 'International Industrial TexFair 2026',
-      organizer: 'SIMA Trade Association',
-      venue: 'Codissia Trade Fair Complex, Coimbatore',
-      startDate: new Date().toISOString(),
-      endDate: new Date(Date.now() + 4 * 86400000).toISOString(),
-      durationDays: 4,
-      description: 'Premier South India Industrial & Textile Machinery Expo 2026',
-      status: 'Active',
-      createdAt: new Date().toISOString(),
-      stallCount: 1,
-      leadCount: 0
-    };
-    this.exhibitions.set([defaultExhibition]);
-    this.activeExhibition.set(defaultExhibition);
-    this.firebaseSync.saveExhibitionToFirestore(defaultExhibition);
+    // 2. Offline fallback only if cloud unreachable
+    try {
+      const cached = (await this.db.getAllExhibitions()) as ExhibitionDto[];
+      if (cached && cached.length > 0) {
+        this.exhibitions.set(cached);
+        if (!this.activeExhibition()) {
+          this.activeExhibition.set(cached[0]);
+        }
+      }
+    } catch (dbErr) {
+      console.warn('[ExhibitionService] Error loading local cached exhibitions:', dbErr);
+    }
   }
 
   setActiveExhibition(exhibition: ExhibitionDto): void {
     this.activeExhibition.set(exhibition);
   }
 
-  getNextCode(): Observable<{ code: string }> {
-    return this.http.get<{ code: string }>(`${this.apiUrl}/next-code`);
+  getNextCode(stallNumber: number = 1): Observable<{ code: string }> {
+    const yearShort = new Date().getFullYear().toString().slice(-2);
+    const count = this.exhibitions().length + 1;
+    const stallNum = stallNumber > 0 ? stallNumber : 1;
+    const code = `EXH-STL${stallNum}-${yearShort}-${count.toString().padStart(3, '0')}`;
+    return of({ code });
   }
 
-  getExhibitionById(id: string): Observable<ExhibitionDetailDto> {
-    return this.http.get<ExhibitionDetailDto>(`${this.apiUrl}/${id}`);
+  getExhibitionById(id: string): Observable<ExhibitionDetailDto | null> {
+    const exh = this.exhibitions().find((e) => e.id === id) || null;
+    return of(exh ? { exhibition: exh, stalls: [] } : null);
   }
 
   createExhibition(data: CreateExhibitionRequest): Observable<ExhibitionDto> {
-    return this.http.post<ExhibitionDto>(this.apiUrl, data).pipe(
-      tap((newExh) => {
-        this.loadExhibitions();
-        if (newExh) {
-          this.firebaseSync.saveExhibitionToFirestore(newExh);
-        }
-      })
-    );
+    const yearShort = new Date().getFullYear().toString().slice(-2);
+    const count = this.exhibitions().length + 1;
+    const generatedCode = data.code || `EXH-STL1-${yearShort}-${count.toString().padStart(3, '0')}`;
+
+    const newExh: ExhibitionDto = {
+      id: crypto.randomUUID(),
+      code: generatedCode,
+      name: data.name.trim(),
+      organizer: data.organizer?.trim() || '',
+      venue: data.venue?.trim() || '',
+      startDate: data.startDate || new Date().toISOString(),
+      endDate: data.endDate || new Date(Date.now() + (data.durationDays || 3) * 86400000).toISOString(),
+      durationDays: data.durationDays || 3,
+      description: data.description?.trim() || '',
+      status: data.status || 'Active',
+      createdAt: new Date().toISOString(),
+      stallCount: data.initialStalls?.length || 0,
+      leadCount: 0,
+    };
+
+    return from(this.saveExhibitionEverywhere(newExh));
   }
 
   updateExhibition(id: string, data: CreateExhibitionRequest): Observable<ExhibitionDto> {
-    return this.http.put<ExhibitionDto>(`${this.apiUrl}/${id}`, data).pipe(
-      tap((updated) => {
-        this.loadExhibitions();
-        if (updated) {
-          this.firebaseSync.saveExhibitionToFirestore(updated);
-        }
-      })
-    );
+    const existing = this.exhibitions().find((e) => e.id === id);
+    const updated: ExhibitionDto = {
+      id: id,
+      code: data.code || existing?.code || `EXH-STL1-26-001`,
+      name: data.name.trim(),
+      organizer: data.organizer?.trim() || existing?.organizer || '',
+      venue: data.venue?.trim() || existing?.venue || '',
+      startDate: data.startDate || existing?.startDate || new Date().toISOString(),
+      endDate: data.endDate || existing?.endDate || new Date().toISOString(),
+      durationDays: data.durationDays || existing?.durationDays || 3,
+      description: data.description?.trim() || existing?.description || '',
+      status: data.status || existing?.status || 'Active',
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      stallCount: existing?.stallCount || 0,
+      leadCount: existing?.leadCount || 0,
+    };
+
+    return from(this.saveExhibitionEverywhere(updated));
   }
 
   deleteExhibition(id: string): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/${id}`).pipe(
-      tap(() => this.loadExhibitions())
-    );
+    this.exhibitions.update((list) => list.filter((e) => e.id !== id));
+    return of({ success: true });
+  }
+
+  private async saveExhibitionEverywhere(exhibition: ExhibitionDto): Promise<ExhibitionDto> {
+    // Save to local IndexedDB
+    try {
+      await this.db.saveExhibition(exhibition);
+    } catch (localErr) {
+      console.warn('[ExhibitionService] Local Dexie save warning:', localErr);
+    }
+
+    // Save to Cloud Supabase
+    await this.supabaseSync.saveExhibitionToSupabase(exhibition);
+
+    // Update in-memory reactive state
+    this.exhibitions.update((list) => {
+      const idx = list.findIndex((e) => e.id === exhibition.id);
+      if (idx >= 0) {
+        const copy = [...list];
+        copy[idx] = exhibition;
+        return copy;
+      }
+      return [exhibition, ...list];
+    });
+    this.setActiveExhibition(exhibition);
+
+    return exhibition;
   }
 }

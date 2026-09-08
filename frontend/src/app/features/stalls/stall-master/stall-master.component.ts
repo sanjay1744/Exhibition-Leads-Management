@@ -81,8 +81,8 @@ export class StallMasterComponent implements OnInit {
     location: 'Codissia Trade Fair Complex, Coimbatore',
     hallNumber: 'Hall A',
     boothNumber: 'Booth 12',
-    ownerId: '11111111-1111-1111-1111-111111111111',
-    ownerName: 'Thalaimalai',
+    ownerId: '',
+    ownerName: '',
     exhibitionId: ''
   };
 
@@ -125,9 +125,7 @@ export class StallMasterComponent implements OnInit {
         next: (res) => {
           if (res) {
             const updated = res.map((s) => {
-              const localCount = localLeads.filter(
-                (l) => l.exhibitionId === s.id || (!l.exhibitionId && s.id === '33333333-3333-3333-3333-333333333333')
-              ).length;
+              const localCount = localLeads.filter((l) => l.exhibitionId === s.id).length;
               const totalCount = Math.max(s.leadCount || 0, localCount);
               return { ...s, leadCount: totalCount };
             });
@@ -215,8 +213,8 @@ export class StallMasterComponent implements OnInit {
           location: '',
           hallNumber: '',
           boothNumber: '',
-          ownerId: this.currentUser?.token || '11111111-1111-1111-1111-111111111111',
-          ownerName: this.currentUser?.fullName || 'Thalaimalai',
+          ownerId: this.currentUser?.token || '',
+          ownerName: this.currentUser?.fullName || '',
           exhibitionId: presetExhibitionId || ''
         };
         if (this.formData.exhibitionId) {
@@ -247,8 +245,8 @@ export class StallMasterComponent implements OnInit {
       location: stall.location || '',
       hallNumber: stall.hallNumber || '',
       boothNumber: stall.boothNumber || '',
-      ownerId: stall.ownerId || '11111111-1111-1111-1111-111111111111',
-      ownerName: stall.ownerName || 'Thalaimalai',
+      ownerId: stall.ownerId || this.currentUser?.token || '',
+      ownerName: stall.ownerName || this.currentUser?.fullName || '',
       exhibitionId: stall.exhibitionId || ''
     };
     this.onDateChange();

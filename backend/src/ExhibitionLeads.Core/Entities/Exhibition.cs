@@ -5,7 +5,7 @@ namespace ExhibitionLeads.Core.Entities;
 public class Exhibition
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string Code { get; set; } = string.Empty; // e.g. "EXH-2026-001"
+    public string Code { get; set; } = string.Empty; // e.g. "EXH-STL1-26-001"
     public string Name { get; set; } = string.Empty; // e.g. "International TexFair 2026"
     public string Organizer { get; set; } = string.Empty; // e.g. "SIMA Association"
     public string Venue { get; set; } = string.Empty; // e.g. "Codissia Trade Fair Complex, Coimbatore"

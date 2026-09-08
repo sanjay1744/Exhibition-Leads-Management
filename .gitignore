@@ -35,9 +35,8 @@ package-lock.json
 **/appsettings.json
 **/appsettings.Development.json
 **/appsettings.*.json
-**/firebase.config.ts
+**/supabase.config.ts
 *.service-account.json
-*firebase-adminsdk*.json
 .env
 .env.local
 .env.development.local

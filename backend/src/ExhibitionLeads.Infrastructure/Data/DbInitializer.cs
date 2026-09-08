@@ -59,7 +59,7 @@ public static class DbInitializer
             var defaultExhibition = new Exhibition
             {
                 Id = defaultExhibitionId,
-                Code = "EXH-2026-001",
+                Code = "EXH-STL1-26-001",
                 Name = "International Industrial TexFair 2026",
                 Organizer = "SIMA Trade Association",
                 Venue = "Codissia Trade Fair Complex, Coimbatore",

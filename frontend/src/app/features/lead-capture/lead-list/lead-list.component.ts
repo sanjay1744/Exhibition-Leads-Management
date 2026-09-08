@@ -32,9 +32,7 @@ export class LeadListComponent implements OnInit {
   targetStalls = computed(() => {
     const exhId = this.targetExhibitionId();
     if (!exhId) return [];
-    return this.stallService.stalls().filter(
-      (s) => s.exhibitionId === exhId || (!s.exhibitionId && exhId === '44444444-4444-4444-4444-444444444444')
-    );
+    return this.stallService.stalls().filter((s) => s.exhibitionId === exhId);
   });
 
   openTargetSelectionModal(): void {
@@ -168,9 +166,7 @@ export class LeadListComponent implements OnInit {
     if (!exhId || exhId === 'ALL') {
       return this.stallService.stalls();
     }
-    return this.stallService.stalls().filter(
-      (s) => s.exhibitionId === exhId || (!s.exhibitionId && exhId === '44444444-4444-4444-4444-444444444444')
-    );
+    return this.stallService.stalls().filter((s) => s.exhibitionId === exhId);
   });
 
   openExhibitionDropdown(): void {
@@ -472,20 +468,17 @@ export class LeadListComponent implements OnInit {
           .filter((s) => s.exhibitionId === exhId)
           .map((s) => s.id)
       );
-      const defaultExhId = '44444444-4444-4444-4444-444444444444';
-      const defaultStallId = '33333333-3333-3333-3333-333333333333';
 
       list = list.filter((l) => {
         if (l.exhibitionId === exhId) return true;
         if (l.exhibitionId && stallsInExhibition.has(l.exhibitionId)) return true;
-        if (!l.exhibitionId && (exhId === defaultExhId || stallsInExhibition.has(defaultStallId))) return true;
         return false;
       });
     }
 
     const stallId = this.selectedStallId();
     if (stallId && stallId !== 'ALL') {
-      list = list.filter((l) => l.exhibitionId === stallId || (!l.exhibitionId && stallId === '33333333-3333-3333-3333-333333333333'));
+      list = list.filter((l) => l.exhibitionId === stallId);
     }
 
     const q = this.searchTerm().trim().toLowerCase();

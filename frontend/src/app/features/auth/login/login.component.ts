@@ -12,8 +12,8 @@ import { AuthService } from '../../../core/services/auth.service';
   styleUrl: './login.component.css'
 })
 export class LoginComponent {
-  username = 'Thalaimalai';
-  password = 'Admin@123';
+  username = '';
+  password = '';
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
 
@@ -35,22 +35,7 @@ export class LoginComponent {
       },
       error: (err) => {
         this.isLoading.set(false);
-        // Fallback for offline demo session
-        if (this.username === 'Thalaimalai') {
-          const mockSession = {
-            token: 'MOCK_JWT_BEARER_TOKEN_2026',
-            username: 'Thalaimalai',
-            fullName: 'Thalaimalai',
-            role: 'Admin',
-            userGroup: 'Naren-Marketing'
-          };
-          localStorage.setItem('ariyai_jwt_token', mockSession.token);
-          localStorage.setItem('ariyai_user_session', JSON.stringify(mockSession));
-          this.authService.currentUser.set(mockSession);
-          this.router.navigate(['/dashboard']);
-        } else {
-          this.errorMessage.set(err?.error?.message || 'Invalid username or password.');
-        }
+        this.errorMessage.set(err?.message || 'Invalid username or password. Please check your credentials.');
       }
     });
   }

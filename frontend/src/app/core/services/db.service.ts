@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 import { LocalLead, UserSession } from '../models/lead.model';
+import { AppUser } from '../models/user.model';
 
 export interface BrochureItem {
   id: string;
@@ -16,14 +17,24 @@ export class ApplicationDatabase extends Dexie {
   leads!: Table<LocalLead, string>;
   userSession!: Table<UserSession, string>;
   brochures!: Table<BrochureItem, string>;
+  stalls!: Table<any, string>;
+  exhibitions!: Table<any, string>;
+  users!: Table<AppUser, string>;
 
   constructor() {
     super('ExhibitionLeadCaptureDB');
 
-    this.version(2).stores({
+    this.version(4).stores({
       leads: 'id, &leadNumber, exhibitionId, repId, phone, email, syncStatus, createdAt',
       userSession: 'userId, expiresAt',
       brochures: 'id, title',
+      stalls: 'id, code, name, exhibitionId',
+      exhibitions: 'id, code, name, status',
+      users: 'id, username, email, role, status',
+    });
+
+    this.version(5).stores({
+      users: 'id, username, email, role, status',
     });
   }
 
@@ -71,5 +82,58 @@ export class ApplicationDatabase extends Dexie {
         await this.leads.update(id, { syncStatus: 'Synced', updatedAt: new Date().toISOString() });
       }
     });
+  }
+
+  /**
+   * Stalls Local Cache
+   */
+  async getAllStalls(): Promise<any[]> {
+    return await this.stalls.toArray();
+  }
+
+  async saveStall(stall: any): Promise<string> {
+    return await this.stalls.put(stall);
+  }
+
+  async deleteStall(id: string): Promise<void> {
+    await this.stalls.delete(id);
+  }
+
+  /**
+   * Exhibitions Local Cache
+   */
+  async getAllExhibitions(): Promise<any[]> {
+    return await this.exhibitions.toArray();
+  }
+
+  async saveExhibition(exhibition: any): Promise<string> {
+    return await this.exhibitions.put(exhibition);
+  }
+
+  async deleteExhibition(id: string): Promise<void> {
+    await this.exhibitions.delete(id);
+  }
+
+  /**
+   * Users Local Cache
+   */
+  async getAllUsers(): Promise<AppUser[]> {
+    return await this.users.toArray();
+  }
+
+  async getUserById(id: string): Promise<AppUser | undefined> {
+    return await this.users.get(id);
+  }
+
+  async getUserByUsername(username: string): Promise<AppUser | undefined> {
+    return await this.users.where('username').equalsIgnoreCase(username).first();
+  }
+
+  async saveUser(user: AppUser): Promise<string> {
+    return await this.users.put(user);
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await this.users.delete(id);
   }
 }
