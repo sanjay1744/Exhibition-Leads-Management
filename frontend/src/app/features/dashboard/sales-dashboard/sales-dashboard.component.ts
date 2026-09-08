@@ -8,6 +8,8 @@ import { LocalLead } from '../../../core/models/lead.model';
 import { NetworkService } from '../../../core/services/network.service';
 import { StallService, Stall } from '../../../core/services/stall.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { SyncService } from '../../../core/services/sync.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { getApiUrl } from '../../../core/config/api.config';
 
 @Component({
@@ -21,11 +23,14 @@ export class SalesDashboardComponent implements OnInit {
   private db = inject(ApplicationDatabase);
   private auth = inject(AuthService);
   private http = inject(HttpClient);
+  private syncService = inject(SyncService);
+  private toastService = inject(ToastService);
   stallService = inject(StallService);
   network = inject(NetworkService);
 
   allLeads = signal<LocalLead[]>([]);
   isCreateStallModalOpen = signal(false);
+  isSyncing = signal(false);
 
   newStallData = {
     name: '',
@@ -132,5 +137,19 @@ export class SalesDashboardComponent implements OnInit {
         alert(err?.error?.message || `Failed to create Stall.`);
       }
     });
+  }
+
+  async manualSync(): Promise<void> {
+    this.isSyncing.set(true);
+    try {
+      await this.syncService.syncPendingLeads();
+      const list = await this.db.getAllLeads();
+      this.allLeads.set(list);
+      this.toastService.showSuccess('All pending leads synchronized to Firebase Cloud Firestore!', 'Firebase Sync');
+    } catch (err) {
+      this.toastService.showError('Could not complete sync. Please verify internet connection.', 'Sync Failed');
+    } finally {
+      this.isSyncing.set(false);
+    }
   }
 }

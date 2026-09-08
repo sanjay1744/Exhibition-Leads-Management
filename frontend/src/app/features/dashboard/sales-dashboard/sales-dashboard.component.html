@@ -43,7 +43,17 @@
       <p class="page-subtitle">Exhibition Analytics for {{ stallService.activeStall()?.name || 'Current Stall' }}</p>
     </div>
 
-    <div class="page-actions">
+    <div class="page-actions flex items-center gap-2">
+      <button 
+        (click)="manualSync()" 
+        [disabled]="isSyncing()" 
+        class="btn bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-3.5 py-2 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+        title="Sync offline leads to Firebase Cloud Firestore"
+      >
+        <span class="material-icons text-base text-blue-600" [class.animate-spin]="isSyncing()">sync</span>
+        {{ isSyncing() ? 'Syncing...' : 'Sync to Firebase' }}
+      </button>
+
       <a routerLink="/capture" class="btn btn-primary">
         <span class="material-icons text-sm">add</span>
         New Lead

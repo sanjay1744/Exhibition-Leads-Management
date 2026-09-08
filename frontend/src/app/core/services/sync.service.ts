@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ApplicationDatabase } from './db.service';
 import { NetworkService } from './network.service';
+import { FirebaseSyncService } from './firebase-sync.service';
 import { getApiUrl } from '../config/api.config';
 
 @Injectable({
@@ -9,6 +10,7 @@ import { getApiUrl } from '../config/api.config';
 export class SyncService {
   private db = inject(ApplicationDatabase);
   private network = inject(NetworkService);
+  private firebaseSync = inject(FirebaseSyncService);
 
   constructor() {
     // Automatically trigger sync when network status changes to online
@@ -18,7 +20,7 @@ export class SyncService {
   }
 
   /**
-   * Batch uploads pending local leads to .NET Web API endpoint
+   * Batch uploads pending local leads to Firebase Cloud Firestore and/or .NET Web API
    */
   async syncPendingLeads(apiBaseUrl?: string): Promise<void> {
     const targetBaseUrl = apiBaseUrl || `${getApiUrl()}/v1`;
@@ -35,6 +37,9 @@ export class SyncService {
 
     console.log(`[SyncService] Uploading ${pendingLeads.length} pending lead(s)...`);
 
+    let syncSucceeded = false;
+
+    // 1. Primary: Sync securely via .NET Web API Backend
     try {
       const payload = {
         leads: pendingLeads.map((lead) => ({
@@ -72,13 +77,25 @@ export class SyncService {
         const result = await response.json();
         if (result.syncedIds && result.syncedIds.length > 0) {
           await this.db.markLeadsSynced(result.syncedIds);
-          console.log(`[SyncService] Successfully synced ${result.syncedIds.length} lead(s).`);
+          console.log(`[SyncService] Successfully synced ${result.syncedIds.length} lead(s) via .NET Web API.`);
+          syncSucceeded = true;
         }
-      } else {
-        console.error('[SyncService] Sync request failed:', response.statusText);
       }
-    } catch (error) {
-      console.error('[SyncService] Network error during batch sync:', error);
+    } catch (apiError) {
+      console.warn('[SyncService] .NET Web API endpoint unreachable, attempting direct fallback sync...');
+    }
+
+    // 2. Fallback: If Web API was unavailable, sync directly to Firebase Cloud Firestore
+    if (!syncSucceeded) {
+      try {
+        const fbSyncedIds = await this.firebaseSync.syncLeadsToFirestore(pendingLeads);
+        if (fbSyncedIds && fbSyncedIds.length > 0) {
+          await this.db.markLeadsSynced(fbSyncedIds);
+          console.log(`[SyncService] Fallback: Synced ${fbSyncedIds.length} lead(s) to Firebase Cloud Firestore.`);
+        }
+      } catch (fbErr) {
+        console.error('[SyncService] Fallback Firebase sync failed:', fbErr);
+      }
     }
   }
 }

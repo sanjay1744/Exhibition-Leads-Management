@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using ExhibitionLeads.Api.Services;
+
 namespace ExhibitionLeads.Api.Controllers;
 
 public record SyncLeadDto(
@@ -51,11 +53,13 @@ public class LeadsSyncController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
     private readonly IWebHostEnvironment _env;
+    private readonly FirebaseCloudService _firebaseService;
 
-    public LeadsSyncController(AppDbContext dbContext, IWebHostEnvironment env)
+    public LeadsSyncController(AppDbContext dbContext, IWebHostEnvironment env, FirebaseCloudService firebaseService)
     {
         _dbContext = dbContext;
         _env = env;
+        _firebaseService = firebaseService;
     }
 
     [HttpPost("sync")]
@@ -67,6 +71,7 @@ public class LeadsSyncController : ControllerBase
         }
 
         var syncedIds = new List<Guid>();
+        var savedLeads = new List<Lead>();
 
         foreach (var item in request.Leads)
         {
@@ -102,6 +107,7 @@ public class LeadsSyncController : ControllerBase
                     existingLead.PhotoUrl = savedPhotoUrl;
                 }
                 existingLead.UpdatedAt = DateTimeOffset.UtcNow;
+                savedLeads.Add(existingLead);
             }
             else
             {
@@ -133,12 +139,23 @@ public class LeadsSyncController : ControllerBase
                 };
 
                 await _dbContext.Leads.AddAsync(newLead);
+                savedLeads.Add(newLead);
             }
 
             syncedIds.Add(item.Id);
         }
 
         await _dbContext.SaveChangesAsync();
+
+        // Mirror saved leads to Firebase cloud database
+        foreach (var lead in savedLeads)
+        {
+            try
+            {
+                await _firebaseService.SyncLeadAsync(lead);
+            }
+            catch {}
+        }
 
         return Ok(new SyncBatchResponseDto(
             Success: true,

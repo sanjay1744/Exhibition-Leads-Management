@@ -19,6 +19,8 @@ foreach (var source in builder.Configuration.Sources.OfType<Microsoft.Extensions
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<ExhibitionLeads.Api.Services.FirebaseCloudService>();
 
 // Configure CORS for Angular PWA & Hosted Clients
 builder.Services.AddCors(options =>
