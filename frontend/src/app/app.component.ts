@@ -1,4 +1,4 @@
-import { Component, inject, signal, HostListener } from '@angular/core';
+import { Component, inject, signal, HostListener, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { NetworkService } from './core/services/network.service';
@@ -56,15 +56,22 @@ import { ToastService } from './core/services/toast.service';
 
         <!-- Exact AriyAI Sidebar -->
         <aside class="sidebar" [class.collapsed]="isSidebarCollapsed()">
-          <!-- Logo Box (Clickable -> Dashboard) -->
-          <div class="sidebar-logo">
+          <!-- Fixed Sidebar Header / Logo Box (Does not scroll, separation line beneath) -->
+          <div class="sidebar-logo shrink-0">
             <a routerLink="/dashboard" (click)="closeSidebarOnMobile()" class="logo-box cursor-pointer hover:opacity-90 transition block">
               <img src="ariyai-logo.png" alt="AriyAI" style="height: 28px; width: auto;" />
             </a>
           </div>
 
-          <!-- Sidebar Navigation Menu -->
-          <nav class="sidebar-nav">
+          <!-- Scrollable Menu Section with Confined Scrollbar -->
+          <div class="sidebar-body-wrapper">
+            <div 
+              #sidebarScrollContainer
+              class="sidebar-scrollable" 
+              (scroll)="onSidebarScroll()"
+            >
+              <!-- Sidebar Navigation Menu -->
+              <nav class="sidebar-nav">
             <!-- 1. Dashboard -->
             <a routerLink="/dashboard" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link">
               <span class="material-icons nav-chevron">chevron_right</span>
@@ -180,7 +187,51 @@ import { ToastService } from './core/services/toast.service';
               <span class="nav-text">vCard Exchange</span>
             </a>
           </nav>
-        </aside>
+        </div>
+
+          <!-- AriyAI Auto-Hiding Scrollbar Indicator with Top & Bottom Stepper Arrows -->
+          @if (hasSidebarScroll()) {
+            <div 
+              class="sidebar-scrollbar-track" 
+              [class.visible]="isSidebarScrolling()"
+            >
+              <!-- Top Stepper Arrow -->
+              <button 
+                type="button" 
+                class="sidebar-scroll-btn top" 
+                (click)="scrollSidebarStep('up', $event)"
+                title="Scroll Up"
+              >
+                <svg viewBox="0 0 8 5" class="sidebar-arrow-svg">
+                  <polygon points="4,0 0,5 8,5" />
+                </svg>
+              </button>
+
+              <!-- Track Rail where thumb slides -->
+              <div class="sidebar-thumb-rail">
+                <div 
+                  class="sidebar-scrollbar-thumb"
+                  [style.height.px]="sidebarThumbHeight()"
+                  [style.transform]="'translateY(' + sidebarThumbTop() + 'px)'"
+                  (mousedown)="onThumbMouseDown($event)"
+                ></div>
+              </div>
+
+              <!-- Bottom Stepper Arrow -->
+              <button 
+                type="button" 
+                class="sidebar-scroll-btn bottom" 
+                (click)="scrollSidebarStep('down', $event)"
+                title="Scroll Down"
+              >
+                <svg viewBox="0 0 8 5" class="sidebar-arrow-svg">
+                  <polygon points="4,5 0,0 8,0" />
+                </svg>
+              </button>
+            </div>
+          }
+        </div>
+      </aside>
 
         <!-- Main App Content Area -->
         <div class="main-content">
@@ -284,24 +335,26 @@ import { ToastService } from './core/services/toast.service';
             </div>
           </header>
 
-          <!-- Main Body Page Outlet -->
+          <!-- Dynamic Routed Feature Views Container -->
           <main class="content-body">
             <router-outlet></router-outlet>
           </main>
         </div>
       </div>
     } @else {
-      <!-- Login View when unauthenticated -->
+      <!-- Unauthenticated View (Login Form) -->
       <router-outlet></router-outlet>
     }
   `
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit {
   network = inject(NetworkService);
   auth = inject(AuthService);
   toastService = inject(ToastService);
   private sync = inject(SyncService);
   private router = inject(Router);
+
+  @ViewChild('sidebarScrollContainer') sidebarScrollContainer?: ElementRef<HTMLDivElement>;
 
   isSidebarCollapsed = signal(false);
   isLeadExpanded = signal(false);
@@ -309,10 +362,24 @@ export class AppComponent {
   isAdminExpanded = signal(false);
   isProfileMenuOpen = signal(false);
 
+  // Custom Auto-Hiding Scrollbar state
+  hasSidebarScroll = signal(false);
+  isSidebarScrolling = signal(false);
+  sidebarThumbHeight = signal(40);
+  sidebarThumbTop = signal(0);
+  private sidebarScrollTimeout: any = null;
+  private isDraggingThumb = false;
+  private dragStartY = 0;
+  private dragStartScrollTop = 0;
+
   constructor() {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       this.isSidebarCollapsed.set(true);
     }
+  }
+
+  ngAfterViewInit(): void {
+    setTimeout(() => this.updateSidebarMetrics(), 150);
   }
 
   @HostListener('window:resize')
@@ -320,10 +387,12 @@ export class AppComponent {
     if (window.innerWidth < 768) {
       this.isSidebarCollapsed.set(true);
     }
+    setTimeout(() => this.updateSidebarMetrics(), 100);
   }
 
   toggleSidebar(): void {
     this.isSidebarCollapsed.update((val) => !val);
+    setTimeout(() => this.updateSidebarMetrics(), 150);
   }
 
   closeSidebarOnMobile(): void {
@@ -334,14 +403,119 @@ export class AppComponent {
 
   toggleLeadMenu(): void {
     this.isLeadExpanded.update((val) => !val);
+    setTimeout(() => this.updateSidebarMetrics(), 100);
   }
 
   toggleMasterMenu(): void {
     this.isMasterExpanded.update((val) => !val);
+    setTimeout(() => this.updateSidebarMetrics(), 100);
   }
 
   toggleAdminMenu(): void {
     this.isAdminExpanded.update((val) => !val);
+    setTimeout(() => this.updateSidebarMetrics(), 100);
+  }
+
+  onSidebarScroll(): void {
+    this.updateSidebarMetrics();
+    this.isSidebarScrolling.set(true);
+
+    if (this.sidebarScrollTimeout) {
+      clearTimeout(this.sidebarScrollTimeout);
+    }
+
+    // Wait for 1 sec, then slowly disappear
+    this.sidebarScrollTimeout = setTimeout(() => {
+      if (!this.isDraggingThumb) {
+        this.isSidebarScrolling.set(false);
+      }
+    }, 1000);
+  }
+
+  scrollSidebarStep(direction: 'up' | 'down', event?: MouseEvent): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const el = this.sidebarScrollContainer?.nativeElement;
+    if (!el) return;
+    const delta = direction === 'up' ? -80 : 80;
+    el.scrollBy({ top: delta, behavior: 'smooth' });
+    this.isSidebarScrolling.set(true);
+
+    if (this.sidebarScrollTimeout) {
+      clearTimeout(this.sidebarScrollTimeout);
+    }
+    this.sidebarScrollTimeout = setTimeout(() => {
+      if (!this.isDraggingThumb) {
+        this.isSidebarScrolling.set(false);
+      }
+    }, 1000);
+  }
+
+  updateSidebarMetrics(): void {
+    const el = this.sidebarScrollContainer?.nativeElement;
+    if (!el) return;
+
+    const clientH = el.clientHeight;
+    const scrollH = el.scrollHeight;
+    const scrollT = el.scrollTop;
+
+    const canScroll = scrollH > clientH;
+    this.hasSidebarScroll.set(canScroll);
+
+    if (canScroll) {
+      const railH = Math.max(40, clientH - 24);
+      const ratio = clientH / scrollH;
+      const thumbH = Math.max(24, Math.round(ratio * railH));
+      const maxScroll = scrollH - clientH;
+      const maxThumb = railH - thumbH;
+      const thumbT = maxScroll > 0 ? (scrollT / maxScroll) * maxThumb : 0;
+
+      this.sidebarThumbHeight.set(thumbH);
+      this.sidebarThumbTop.set(thumbT);
+    }
+  }
+
+  onThumbMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingThumb = true;
+    this.dragStartY = event.clientY;
+    const el = this.sidebarScrollContainer?.nativeElement;
+    this.dragStartScrollTop = el ? el.scrollTop : 0;
+    this.isSidebarScrolling.set(true);
+    if (this.sidebarScrollTimeout) {
+      clearTimeout(this.sidebarScrollTimeout);
+    }
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (!this.isDraggingThumb || !this.sidebarScrollContainer) return;
+      const containerEl = this.sidebarScrollContainer.nativeElement;
+      const clientH = containerEl.clientHeight;
+      const scrollH = containerEl.scrollHeight;
+      const railH = Math.max(40, clientH - 24);
+      const thumbH = this.sidebarThumbHeight();
+      const maxThumb = railH - thumbH;
+      const maxScroll = scrollH - clientH;
+
+      const deltaY = moveEvent.clientY - this.dragStartY;
+      if (maxThumb > 0) {
+        containerEl.scrollTop = this.dragStartScrollTop + (deltaY / maxThumb) * maxScroll;
+      }
+    };
+
+    const onMouseUp = () => {
+      this.isDraggingThumb = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      this.sidebarScrollTimeout = setTimeout(() => {
+        this.isSidebarScrolling.set(false);
+      }, 1000);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   }
 
   toggleProfileMenu(event: MouseEvent): void {

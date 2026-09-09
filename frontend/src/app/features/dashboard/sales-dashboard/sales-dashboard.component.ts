@@ -78,6 +78,10 @@ export class SalesDashboardComponent implements OnInit {
     }
   }
 
+  onNewStallDateChange(): void {
+    this.onDateChange();
+  }
+
   filteredStallLeads = computed(() => {
     const activeStallId = this.stallService.activeStall()?.id;
     if (!activeStallId) return this.allLeads();

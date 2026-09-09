@@ -110,20 +110,22 @@
 
   <!-- Exact Rich Create Stall (Project) Modal -->
   @if (isCreateStallModalOpen()) {
-    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 my-8">
-        <div class="flex items-center justify-between border-b pb-3 mb-5">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        <!-- Fixed Header -->
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div class="flex items-center gap-2">
             <span class="material-icons text-blue-600 text-xl">storefront</span>
             <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">CREATE NEW STALL</h2>
           </div>
-          <button (click)="isCreateStallModalOpen.set(false)" class="text-slate-400 hover:text-slate-600">
+          <button (click)="isCreateStallModalOpen.set(false)" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/60 transition">
             <span class="material-icons text-lg">close</span>
           </button>
         </div>
 
-        <form (ngSubmit)="saveNewStall()">
-          <div class="space-y-4 mb-6">
+        <form (ngSubmit)="saveNewStall()" class="flex flex-col flex-1 overflow-hidden min-h-0">
+          <!-- Scrollable Body with standard scrollbar -->
+          <div class="p-6 overflow-y-auto flex-1 space-y-4">
 
             <!-- Row 1: Auto-Generated Stall Code (Read-Only) -->
             <div>
@@ -177,14 +179,14 @@
               </div>
             </div>
 
-            <!-- Row 4: Duration (Days) & Dates -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Row 4: Start Date, End Date & Duration -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label class="form-label font-bold text-xs text-slate-700 mb-1">Start Date</label>
                 <input 
                   type="date" 
                   [(ngModel)]="newStallData.startDate" 
-                  (ngModelChange)="onDateChange()"
+                  (ngModelChange)="onNewStallDateChange()"
                   name="startDate" 
                   class="form-control text-xs font-semibold" 
                 />
@@ -195,7 +197,7 @@
                 <input 
                   type="date" 
                   [(ngModel)]="newStallData.endDate" 
-                  (ngModelChange)="onDateChange()"
+                  (ngModelChange)="onNewStallDateChange()"
                   name="endDate" 
                   class="form-control text-xs font-semibold" 
                 />
@@ -254,6 +256,7 @@
 
             <!-- Row 7: Stall Owner Assignment -->
             <div>
+              <label class="form-label font-bold text-xs text-slate-700 mb-1">Assigned Stall Owner *</label>
               <input 
                 [(ngModel)]="newStallData.ownerName" 
                 name="ownerName" 
@@ -264,9 +267,9 @@
 
           </div>
 
-          <!-- Action Bar -->
-          <div class="flex justify-end gap-2 pt-3 border-t">
-            <button type="button" (click)="isCreateStallModalOpen.set(false)" class="btn btn-outline-pill text-xs">Cancel</button>
+          <!-- Fixed Action Bar -->
+          <div class="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex justify-end gap-2 shrink-0">
+            <button type="button" (click)="isCreateStallModalOpen.set(false)" class="btn btn-outline-pill text-xs px-4 py-2">Cancel</button>
             <button type="submit" class="btn btn-primary text-xs px-6 py-2 rounded-lg font-bold shadow-md">
               Save
             </button>

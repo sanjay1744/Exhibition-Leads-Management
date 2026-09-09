@@ -103,8 +103,8 @@
 
 <!-- Live Camera Scanner Modal -->
 @if (showCameraModal()) {
-  <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn relative">
+  <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200 animate-fadeIn relative">
       <div class="flex items-center justify-between border-b pb-3 mb-4">
         <div class="flex items-center gap-2">
           <span class="material-icons text-blue-600">qr_code_scanner</span>
@@ -129,11 +129,11 @@
             <div class="absolute -top-1 -left-1 w-7 h-7 border-t-4 border-l-4 border-blue-400 rounded-tl-lg"></div>
             <div class="absolute -top-1 -right-1 w-7 h-7 border-t-4 border-r-4 border-blue-400 rounded-tr-lg"></div>
             <!-- Bottom Corner Brackets -->
-            <div class="absolute -bottom-1 -left-1 w-7 h-7 border-b-4 border-l-4 border-blue-400 rounded-bl-lg"></div>
-            <div class="absolute -bottom-1 -right-1 w-7 h-7 border-b-4 border-r-4 border-blue-400 rounded-br-lg"></div>
+            <div class="absolute -bottom-1 -left-1 w-7 h-7 border-t-0 border-b-4 border-l-4 border-blue-400 rounded-bl-lg"></div>
+            <div class="absolute -bottom-1 -right-1 w-7 h-7 border-t-0 border-b-4 border-r-4 border-blue-400 rounded-br-lg"></div>
 
-            <!-- Animated Scan Laser -->
-            <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse shadow-[0_0_12px_#38bdf8]"></div>
+            <!-- Scanning Line -->
+            <div class="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#38bdf8] animate-[scanLaser_2s_ease-in-out_infinite]"></div>
           </div>
         </div>
 
@@ -158,10 +158,9 @@
         }
       </div>
 
-      <div class="mt-4 flex items-center justify-between text-xs text-slate-600">
+      <div class="flex items-center justify-between mt-4">
         <div class="flex items-center gap-2">
           @if (availableCameras().length > 1) {
-            <span class="text-[11px] font-bold text-slate-500">Camera:</span>
             <select 
               [ngModel]="selectedCameraId()" 
               (ngModelChange)="onCameraSelectChange($event)"
@@ -192,19 +191,21 @@
 
 <!-- Review & Edit Scanned Data Modal -->
 @if (showModal()) {
-  <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
-      <div class="flex items-center justify-between border-b pb-3 mb-4">
+  <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200 animate-fadeIn">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/70">
         <div class="flex items-center gap-2">
           <span class="material-icons text-blue-600">verified</span>
-          <h3 class="text-base font-bold text-slate-900">Review Scanned Details</h3>
+          <h3 class="text-sm font-bold text-slate-900">Review Scanned Details</h3>
         </div>
-        <button (click)="closeEditModal()" class="text-slate-400 hover:text-slate-600">
-          <span class="material-icons">close</span>
+        <button (click)="closeEditModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/60 transition">
+          <span class="material-icons text-base">close</span>
         </button>
       </div>
 
-      <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+      <!-- Scrollable Body -->
+      <div class="p-6 overflow-y-auto flex-1 space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
           <input type="text" [(ngModel)]="modalData.name" class="w-full text-xs p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. Sarah Connor" />
@@ -229,6 +230,7 @@
               </button>
             }
           </div>
+
           <div class="space-y-1.5">
             @for (ph of modalPhoneNumbers; track $index) {
               <div class="flex items-center gap-1.5">
@@ -264,7 +266,8 @@
         </div>
       </div>
 
-      <div class="mt-6 flex items-center justify-end gap-2 border-t pt-4">
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-100 bg-slate-50 shrink-0">
         <button type="button" (click)="closeEditModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
         <button type="button" (click)="saveAndApplyModal()" class="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md flex items-center gap-1">
           <span class="material-icons text-xs">check</span> Confirm & Auto-Fill Form

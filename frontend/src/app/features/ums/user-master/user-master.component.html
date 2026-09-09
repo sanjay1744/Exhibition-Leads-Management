@@ -144,18 +144,28 @@
 
   <!-- Add / Edit User Modal -->
   @if (isModalOpen()) {
-    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-xl shadow-2xl border w-full max-w-md p-6">
-        <h2 class="text-base font-bold text-slate-900 mb-4 border-b pb-2">
-          {{ editingUser() ? 'Edit User' : 'Add New User' }}
-        </h2>
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        <!-- Modal Header (Fixed) -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/70">
+          <div class="flex items-center gap-2">
+            <span class="material-icons text-blue-600 text-lg">person</span>
+            <h2 class="text-base font-bold text-slate-900">
+              {{ editingUser() ? 'Edit User' : 'Add New User' }}
+            </h2>
+          </div>
+          <button (click)="closeModal()" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/60 transition">
+            <span class="material-icons text-base">close</span>
+          </button>
+        </div>
 
-        <form (ngSubmit)="saveUser()" autocomplete="off">
+        <form (ngSubmit)="saveUser()" autocomplete="off" class="flex flex-col flex-1 overflow-hidden min-h-0">
           <!-- Hidden inputs to divert browser autofill from pre-entering saved credentials -->
           <input type="text" style="display:none" aria-hidden="true" autocomplete="off" />
           <input type="password" style="display:none" aria-hidden="true" autocomplete="off" />
 
-          <div class="space-y-3 mb-5">
+          <!-- Scrollable Body -->
+          <div class="p-6 overflow-y-auto flex-1 space-y-3.5">
             <div>
               <label class="form-label">Full Name *</label>
               <input 
@@ -219,9 +229,10 @@
             }
           </div>
 
-          <div class="flex justify-end gap-2 pt-2 border-t">
-            <button type="button" (click)="closeModal()" class="btn btn-outline-pill text-xs">Cancel</button>
-            <button type="submit" class="btn btn-primary text-xs px-4">Save User</button>
+          <!-- Fixed Action Bar -->
+          <div class="flex justify-end gap-2 px-6 py-3.5 bg-slate-50 border-t border-slate-200 shrink-0">
+            <button type="button" (click)="closeModal()" class="btn btn-outline-pill text-xs px-4 py-2">Cancel</button>
+            <button type="submit" class="btn btn-primary text-xs px-5 py-2">Save User</button>
           </div>
         </form>
       </div>
@@ -231,7 +242,7 @@
   <!-- Custom Delete User Confirmation Modal -->
   @if (selectedUserForDelete()) {
     <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div class="bg-white rounded-2xl shadow-2xl border border-red-100 max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-150 relative">
+      <div class="bg-white rounded-2xl shadow-2xl border border-red-100 max-w-md w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 animate-in zoom-in-95 duration-150 relative">
         
         <div class="flex items-center gap-3.5">
           <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 ring-8 ring-red-50">

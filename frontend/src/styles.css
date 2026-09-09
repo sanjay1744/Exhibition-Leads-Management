@@ -62,8 +62,8 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  position: relative;
+  overflow: hidden;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
   margin-left: 0;
@@ -76,10 +76,124 @@ body {
   pointer-events: none;
 }
 
+/* Fixed Sidebar Header with Separation Line */
 .sidebar-logo {
-  padding: 20px 24px;
+  height: 60px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* Sidebar Menu Body Wrapper */
+.sidebar-body-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sidebar Scrollable Area (Hides native scrollbar completely) */
+.sidebar-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-scrollable::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Custom AriyAI Auto-Hiding Scrollbar: strictly below separation line */
+.sidebar-scrollbar-track {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  bottom: 4px;
+  width: 8px;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-scrollbar-track.visible {
+  opacity: 1;
+  transition: opacity 0.15s ease-out;
+}
+
+/* Stepper Arrow Buttons (Top ▲ and Bottom ▼) */
+.sidebar-scroll-btn {
+  width: 8px;
+  height: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  pointer-events: auto;
+  color: rgba(255, 255, 255, 0.45);
+  transition: color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-scroll-btn:hover {
+  color: rgba(255, 255, 255, 0.95);
+  transform: scale(1.2);
+}
+
+.sidebar-scroll-btn:active {
+  transform: scale(0.9);
+}
+
+.sidebar-arrow-svg {
+  width: 7px;
+  height: 5px;
+  fill: currentColor;
+  display: block;
+}
+
+/* Thumb Rail (confined between top and bottom stepper arrows) */
+.sidebar-thumb-rail {
+  flex: 1;
+  width: 100%;
+  position: relative;
+  min-height: 0;
+  margin: 2px 0;
+}
+
+.sidebar-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 1px;
+  width: 5px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 9999px;
+  cursor: pointer;
+  pointer-events: auto;
+  will-change: transform, height;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .logo-box {
@@ -640,3 +754,29 @@ body {
     display: none !important; /* Hide search bar on extra small screens */
   }
 }
+
+/* ===== Custom Sleek Scrollbars ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+

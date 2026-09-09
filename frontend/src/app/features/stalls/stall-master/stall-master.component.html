@@ -188,22 +188,24 @@
 
   <!-- Create/Edit Stall Modal -->
   @if (isModalOpen()) {
-    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 my-8">
-        <div class="flex items-center justify-between border-b pb-3 mb-5">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        <!-- Modal Header (Fixed at top) -->
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div class="flex items-center gap-2">
             <span class="material-icons text-blue-600 text-xl">storefront</span>
             <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">
               {{ isEditMode() ? 'Edit Stall Project' : 'Create New Stall' }}
             </h2>
           </div>
-          <button (click)="closeModal()" class="text-slate-400 hover:text-slate-600">
+          <button (click)="closeModal()" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/60 transition">
             <span class="material-icons text-lg">close</span>
           </button>
         </div>
 
-        <form (ngSubmit)="saveStall()">
-          <div class="space-y-4 mb-6">
+        <form (ngSubmit)="saveStall()" class="flex flex-col flex-1 overflow-hidden min-h-0">
+          <!-- Scrollable Form Body with standard scrollbar -->
+          <div class="p-6 overflow-y-auto flex-1 space-y-4">
 
             <!-- Row 1: Auto-Generated Stall Code (Read-Only) -->
             <div>
@@ -298,8 +300,8 @@
               </div>
             </div>
 
-            <!-- Row 4: Duration (Days) & Dates -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Row 4: Start Date, End Date & Duration -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label class="form-label font-bold text-xs text-slate-700 mb-1">Start Date</label>
                 <input 
@@ -373,7 +375,7 @@
               </div>
             </div>
 
-            <!-- Row 7: Stall Owner Assignment Dropdown -->
+            <!-- Row 7: Stall Owner Assignment from UMS Users -->
             <div>
               <label class="form-label font-bold text-xs text-slate-700 mb-1 flex items-center gap-1">
                 <span class="material-icons text-blue-600 text-xs">person</span>
@@ -399,9 +401,9 @@
 
           </div>
 
-          <!-- Action Bar -->
-          <div class="flex justify-end gap-2 pt-3 border-t">
-            <button type="button" (click)="closeModal()" class="btn btn-outline-pill text-xs">Cancel</button>
+          <!-- Action Bar (Fixed at bottom) -->
+          <div class="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex justify-end gap-2 shrink-0">
+            <button type="button" (click)="closeModal()" class="btn btn-outline-pill text-xs px-4 py-2">Cancel</button>
             <button 
               type="submit" 
               [disabled]="formData.exhibitionId ? isExhibitionLimitReached(formData.exhibitionId) : false"
@@ -418,7 +420,7 @@
   <!-- Custom Delete Stall Project Confirmation Modal -->
   @if (selectedStallForDelete()) {
     <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div class="bg-white rounded-2xl shadow-2xl border border-red-100 max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-150 relative">
+      <div class="bg-white rounded-2xl shadow-2xl border border-red-100 max-w-md w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 animate-in zoom-in-95 duration-150 relative">
         
         <div class="flex items-center gap-3.5">
           <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 ring-8 ring-red-50">
