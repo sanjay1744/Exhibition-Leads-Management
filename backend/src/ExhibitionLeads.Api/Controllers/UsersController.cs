@@ -45,9 +45,9 @@ public class UsersController : ControllerBase
         {
             FullName = request.FullName,
             Username = request.Username,
-            Email = !string.IsNullOrWhiteSpace(request.Email) ? request.Email : $"{request.Username.ToLower()}@ariyai.com",
+            Email = !string.IsNullOrWhiteSpace(request.Email) ? request.Email.Trim() : string.Empty,
             PasswordHash = AuthController.HashPassword(string.IsNullOrEmpty(request.Password) ? "Admin@123" : request.Password),
-            UserGroup = !string.IsNullOrWhiteSpace(request.UserGroup) ? request.UserGroup : "Naren-Marketing",
+            UserGroup = !string.IsNullOrWhiteSpace(request.UserGroup) ? request.UserGroup.Trim() : "Sales Team",
             Role = string.IsNullOrEmpty(request.Role) ? "Marketing" : request.Role,
             Status = string.IsNullOrEmpty(request.Status) ? "Active" : request.Status,
             AssignedStallId = request.AssignedStallId

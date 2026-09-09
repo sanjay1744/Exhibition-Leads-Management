@@ -7,7 +7,7 @@ namespace ExhibitionLeads.Infrastructure.Data;
 
 public static class DbInitializer
 {
-    public static void Initialize(AppDbContext dbContext, Func<string, string> passwordHasher)
+    public static void Initialize(AppDbContext dbContext, Func<string, string>? passwordHasher = null)
     {
         // 1. Ensure Database exists
         dbContext.Database.EnsureCreated();
@@ -17,114 +17,6 @@ public static class DbInitializer
         if (provider != null && provider.Contains("SqlServer"))
         {
             EnsureSqlServerSchema(dbContext);
-        }
-
-        // 3. Seed Users if none exist
-        var defaultPasswordHash = passwordHasher("Admin@123");
-
-        if (!dbContext.Users.Any())
-        {
-            var thalaimalaiUser = new User
-            {
-                Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                FullName = "Thalaimalai",
-                Username = "Thalaimalai",
-                Email = "thalaimalai@ariyai.com",
-                UserGroup = "Naren-Marketing",
-                Role = "StallOwner",
-                Status = "Active",
-                PasswordHash = defaultPasswordHash
-            };
-
-            var sanjayUser = new User
-            {
-                Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                FullName = "Sanjay",
-                Username = "sanjay",
-                Email = "sanjay@ariyai.com",
-                UserGroup = "Naren Admin",
-                Role = "Admin",
-                Status = "Active",
-                PasswordHash = defaultPasswordHash
-            };
-
-            dbContext.Users.AddRange(thalaimalaiUser, sanjayUser);
-            dbContext.SaveChanges();
-        }
-
-        // 4. Seed Exhibition if none exist
-        Guid defaultExhibitionId = Guid.Parse("44444444-4444-4444-4444-444444444444");
-        if (!dbContext.Exhibitions.Any())
-        {
-            var defaultExhibition = new Exhibition
-            {
-                Id = defaultExhibitionId,
-                Code = "EXH-STL1-26-001",
-                Name = "International Industrial TexFair 2026",
-                Organizer = "SIMA Trade Association",
-                Venue = "Codissia Trade Fair Complex, Coimbatore",
-                StartDate = DateTime.UtcNow.Date,
-                EndDate = DateTime.UtcNow.Date.AddDays(4),
-                DurationDays = 4,
-                Description = "Premier South India Industrial & Textile Machinery Expo 2026",
-                Status = "Active"
-            };
-            dbContext.Exhibitions.Add(defaultExhibition);
-            dbContext.SaveChanges();
-        }
-
-        // 5. Seed Stall if none exist
-        var thalaimalaiId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-        var thalaimalaiUserObj = dbContext.Users.FirstOrDefault(u => u.Id == thalaimalaiId);
-
-        if (!dbContext.Stalls.Any())
-        {
-            var defaultStall = new Stall
-            {
-                Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-                Name = "Stall 01 - Main Exhibition",
-                Code = "STL-2026-001",
-                ExhibitionId = defaultExhibitionId,
-                EventName = "International Industrial TexFair 2026",
-                Organizer = "SIMA Trade Association",
-                DurationDays = 4,
-                StartDate = DateTime.UtcNow.Date,
-                EndDate = DateTime.UtcNow.Date.AddDays(4),
-                Location = "Codissia Trade Fair Complex, Coimbatore",
-                HallNumber = "Hall A",
-                BoothNumber = "Booth 12",
-                OwnerId = thalaimalaiId,
-                OwnerName = thalaimalaiUserObj?.FullName ?? "Thalaimalai",
-                Status = "Active"
-            };
-            dbContext.Stalls.Add(defaultStall);
-            if (thalaimalaiUserObj != null)
-            {
-                thalaimalaiUserObj.AssignedStallId = defaultStall.Id;
-            }
-            dbContext.SaveChanges();
-        }
-
-        // 6. Update any existing Stalls that have null ExhibitionId
-        var unlinkedStalls = dbContext.Stalls.Where(s => s.ExhibitionId == null).ToList();
-        if (unlinkedStalls.Any())
-        {
-            foreach (var s in unlinkedStalls)
-            {
-                s.ExhibitionId = defaultExhibitionId;
-            }
-            dbContext.SaveChanges();
-        }
-
-        // 7. Update any existing Leads that have empty ExhibitionId
-        var unlinkedLeads = dbContext.Leads.Where(l => l.ExhibitionId == Guid.Empty).ToList();
-        if (unlinkedLeads.Any())
-        {
-            foreach (var l in unlinkedLeads)
-            {
-                l.ExhibitionId = defaultExhibitionId;
-            }
-            dbContext.SaveChanges();
         }
     }
 
@@ -247,7 +139,7 @@ public static class DbInitializer
                     [Username] NVARCHAR(450) NOT NULL DEFAULT '',
                     [Email] NVARCHAR(450) NOT NULL DEFAULT '',
                     [PasswordHash] NVARCHAR(MAX) NOT NULL DEFAULT '',
-                    [UserGroup] NVARCHAR(MAX) NOT NULL DEFAULT 'Naren-Marketing',
+                    [UserGroup] NVARCHAR(MAX) NOT NULL DEFAULT 'Sales Team',
                     [Role] NVARCHAR(MAX) NOT NULL DEFAULT 'Marketing',
                     [AssignedStallId] UNIQUEIDENTIFIER NULL,
                     [Status] NVARCHAR(MAX) NOT NULL DEFAULT 'Active',

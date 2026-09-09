@@ -26,6 +26,7 @@ public class SupabaseCloudService
             ?? _config["Supabase:PublishableKey"] 
             ?? Environment.GetEnvironmentVariable("SUPABASE_SECRET_KEY") 
             ?? Environment.GetEnvironmentVariable("SUPABASE_PUBLISHABLE_KEY");
+    }
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_supabaseUrl) && !string.IsNullOrWhiteSpace(_supabaseKey);
 

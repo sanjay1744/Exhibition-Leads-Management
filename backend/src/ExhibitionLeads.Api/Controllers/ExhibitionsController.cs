@@ -80,21 +80,26 @@ public class ExhibitionsController : ControllerBase
             .Select(g => new { ExhibitionId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.ExhibitionId, x => x.Count);
 
-        var dtos = exhibitions.Select(e => new ExhibitionDto(
-            e.Id,
-            e.Code,
-            e.Name,
-            e.Organizer,
-            e.Venue,
-            e.StartDate,
-            e.EndDate,
-            e.DurationDays,
-            e.Description,
-            e.Status,
-            e.CreatedAt,
-            stallCounts.TryGetValue(e.Id, out var sCount) ? sCount : 0,
-            leadCounts.TryGetValue(e.Id, out var lCount) ? lCount : 0
-        ));
+        var dtos = exhibitions.Select(e =>
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(e.Code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            int quota = match.Success && int.TryParse(match.Groups[1].Value, out var parsedQuota) ? parsedQuota : 1;
+            return new ExhibitionDto(
+                e.Id,
+                e.Code,
+                e.Name,
+                e.Organizer,
+                e.Venue,
+                e.StartDate,
+                e.EndDate,
+                e.DurationDays,
+                e.Description,
+                e.Status,
+                e.CreatedAt,
+                quota,
+                leadCounts.TryGetValue(e.Id, out var lCount) ? lCount : 0
+            );
+        });
 
         return Ok(dtos);
     }
@@ -143,6 +148,9 @@ public class ExhibitionsController : ControllerBase
 
         var totalLeads = await _context.Leads.CountAsync(l => l.ExhibitionId == id);
 
+        var match = System.Text.RegularExpressions.Regex.Match(exhibition.Code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        int quota = match.Success && int.TryParse(match.Groups[1].Value, out var parsedQuota) ? parsedQuota : 1;
+
         var exhDto = new ExhibitionDto(
             exhibition.Id,
             exhibition.Code,
@@ -155,7 +163,7 @@ public class ExhibitionsController : ControllerBase
             exhibition.Description,
             exhibition.Status,
             exhibition.CreatedAt,
-            stallDtos.Count,
+            quota,
             totalLeads
         );
 
@@ -183,8 +191,18 @@ public class ExhibitionsController : ControllerBase
         {
             var yearShort = DateTime.UtcNow.ToString("yy");
             var count = await _context.Exhibitions.CountAsync() + 1;
-            var stallNum = 1;
+            var match = System.Text.RegularExpressions.Regex.Match(code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var stallNum = match.Success ? match.Groups[1].Value : "1";
             code = $"EXH-STL{stallNum}-{yearShort}-{count:D3}-{Guid.NewGuid().ToString()[..4]}";
+        }
+
+        var quotaMatch = System.Text.RegularExpressions.Regex.Match(code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        int maxAllowed = quotaMatch.Success && int.TryParse(quotaMatch.Groups[1].Value, out var parsedLimit) ? parsedLimit : 1;
+        if (request.InitialStalls != null && request.InitialStalls.Count > maxAllowed)
+        {
+            return BadRequest(new { 
+                message = $"Initial stalls ({request.InitialStalls.Count}) exceed the allowed quota of {maxAllowed} stall(s)." 
+            });
         }
 
         var duration = request.DurationDays.HasValue && request.DurationDays.Value > 0 ? request.DurationDays.Value : 3;
@@ -193,8 +211,8 @@ public class ExhibitionsController : ControllerBase
         {
             Code = code,
             Name = request.Name.Trim(),
-            Organizer = !string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer.Trim() : "Standard Event Organizer",
-            Venue = !string.IsNullOrWhiteSpace(request.Venue) ? request.Venue.Trim() : "Trade Center Complex",
+            Organizer = !string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer.Trim() : string.Empty,
+            Venue = !string.IsNullOrWhiteSpace(request.Venue) ? request.Venue.Trim() : string.Empty,
             StartDate = request.StartDate ?? DateTime.UtcNow.Date,
             EndDate = request.EndDate ?? DateTime.UtcNow.Date.AddDays(duration),
             DurationDays = duration,
@@ -235,10 +253,10 @@ public class ExhibitionsController : ControllerBase
                     StartDate = exhibition.StartDate,
                     EndDate = exhibition.EndDate,
                     Location = exhibition.Venue,
-                    HallNumber = !string.IsNullOrWhiteSpace(stReq.HallNumber) ? stReq.HallNumber : "Hall 1",
-                    BoothNumber = !string.IsNullOrWhiteSpace(stReq.BoothNumber) ? stReq.BoothNumber : "Booth 1",
+                    HallNumber = !string.IsNullOrWhiteSpace(stReq.HallNumber) ? stReq.HallNumber.Trim() : string.Empty,
+                    BoothNumber = !string.IsNullOrWhiteSpace(stReq.BoothNumber) ? stReq.BoothNumber.Trim() : string.Empty,
                     OwnerId = ownerGuid,
-                    OwnerName = !string.IsNullOrWhiteSpace(stReq.OwnerName) ? stReq.OwnerName : "Sales Representative",
+                    OwnerName = !string.IsNullOrWhiteSpace(stReq.OwnerName) ? stReq.OwnerName.Trim() : string.Empty,
                     Status = "Active"
                 };
 
@@ -256,6 +274,21 @@ public class ExhibitionsController : ControllerBase
         var exhibition = await _context.Exhibitions.FindAsync(id);
         if (exhibition == null) return NotFound(new { message = "Exhibition not found." });
 
+        if (!string.IsNullOrWhiteSpace(request.Code))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(request.Code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (match.Success && int.TryParse(match.Groups[1].Value, out var newLimit))
+            {
+                var existingStallsCount = await _context.Stalls.CountAsync(s => s.ExhibitionId == id);
+                if (newLimit < existingStallsCount)
+                {
+                    return BadRequest(new { 
+                        message = $"Cannot reduce 'No of stalls' to {newLimit} because {existingStallsCount} stall(s) are already assigned to this exhibition." 
+                    });
+                }
+            }
+            exhibition.Code = request.Code.Trim();
+        }
         if (!string.IsNullOrWhiteSpace(request.Name)) exhibition.Name = request.Name.Trim();
         if (!string.IsNullOrWhiteSpace(request.Organizer)) exhibition.Organizer = request.Organizer.Trim();
         if (!string.IsNullOrWhiteSpace(request.Venue)) exhibition.Venue = request.Venue.Trim();

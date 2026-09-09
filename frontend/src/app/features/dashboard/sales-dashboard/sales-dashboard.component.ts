@@ -37,12 +37,12 @@ export class SalesDashboardComponent implements OnInit {
     code: '',
     eventName: '',
     organizer: '',
-    durationDays: 4,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
-    location: 'Codissia Trade Fair Complex, Coimbatore',
-    hallNumber: 'Hall A',
-    boothNumber: 'Booth 12',
+    durationDays: null as any,
+    startDate: '',
+    endDate: '',
+    location: '',
+    hallNumber: '',
+    boothNumber: '',
     ownerId: '',
     ownerName: ''
   };
@@ -103,13 +103,13 @@ export class SalesDashboardComponent implements OnInit {
           code: nextCode,
           eventName: '',
           organizer: '',
-          durationDays: 4,
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+          durationDays: null as any,
+          startDate: '',
+          endDate: '',
           location: '',
           hallNumber: '',
           boothNumber: '',
-          ownerId: this.currentUser?.token || '',
+          ownerId: this.currentUser?.id || this.currentUser?.token || '',
           ownerName: this.currentUser?.fullName || ''
         };
         this.isCreateStallModalOpen.set(true);

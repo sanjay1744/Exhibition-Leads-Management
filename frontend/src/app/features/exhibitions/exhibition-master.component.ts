@@ -199,7 +199,7 @@ import { ToastService } from '../../core/services/toast.service';
                       title="View stalls linked to this exhibition"
                     >
                       <span class="material-icons text-xs">storefront</span>
-                      {{ exhibition.stallCount }} Stall{{ exhibition.stallCount === 1 ? '' : 's' }}
+                      {{ getStallCountForExh(exhibition.id) }} / {{ exhibition.stallCount || 1 }} Stalls
                     </button>
                   </td>
 
@@ -610,6 +610,7 @@ export class ExhibitionMasterComponent implements OnInit {
 
   ngOnInit(): void {
     this.exhibitionService.loadExhibitions();
+    this.stallService.loadStalls();
   }
 
   canCreateExhibition(): boolean {
@@ -727,16 +728,17 @@ export class ExhibitionMasterComponent implements OnInit {
     }
   }
 
+  getStallCountForExh(exhibitionId: string): number {
+    if (!exhibitionId) return 0;
+    const target = exhibitionId.trim().toLowerCase();
+    return this.stallService.stalls().filter((s) => s.exhibitionId && s.exhibitionId.trim().toLowerCase() === target).length;
+  }
+
   viewStalls(exhibition: ExhibitionDto): void {
     this.selectedExhibitionForStalls.set(exhibition);
-    this.exhibitionService.getExhibitionById(exhibition.id).subscribe({
-      next: (res) => {
-        this.linkedStallsList.set(res?.stalls || []);
-      },
-      error: () => {
-        this.linkedStallsList.set([]);
-      }
-    });
+    const target = exhibition.id.trim().toLowerCase();
+    const stalls = this.stallService.stalls().filter((s) => s.exhibitionId && s.exhibitionId.trim().toLowerCase() === target);
+    this.linkedStallsList.set(stalls);
   }
 
   closeStallsModal(): void {

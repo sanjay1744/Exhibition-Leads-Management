@@ -185,7 +185,7 @@
                   title="View stalls linked to this exhibition"
                 >
                   <span class="material-icons text-xs">storefront</span>
-                  {{ exhibition.stallCount }} Stall{{ exhibition.stallCount === 1 ? '' : 's' }}
+                  {{ getStallCountForExh(exhibition.id) }} / {{ exhibition.stallCount || 1 }} Stalls
                 </button>
               </td>
 
@@ -314,11 +314,11 @@
                   max="99"
                   [(ngModel)]="formStallNumber" 
                   (ngModelChange)="updateCodeForStall($event)"
-                  [disabled]="isEditMode()"
                   placeholder="1"
-                  class="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100"
+                  class="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
+              <p class="text-[10px] text-slate-500 mt-1">Total stall quota allowed for this event</p>
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Exhibition Code (Auto)</label>
@@ -451,6 +451,10 @@
             <h3 class="font-extrabold text-base tracking-wide flex items-center gap-2">
               <span class="material-icons">storefront</span>
               Stalls in {{ selectedExhibitionForStalls()?.name }}
+              <span class="text-xs px-2.5 py-0.5 rounded-full font-bold shadow-xs"
+                [ngClass]="linkedStallsList().length >= (selectedExhibitionForStalls()?.stallCount || 1) ? 'bg-amber-400 text-slate-900' : 'bg-blue-400/30 text-white'">
+                {{ linkedStallsList().length }} / {{ selectedExhibitionForStalls()?.stallCount || 1 }} Stalls
+              </span>
             </h3>
             <p class="text-xs text-blue-200 mt-0.5">{{ selectedExhibitionForStalls()?.organizer }} • {{ selectedExhibitionForStalls()?.venue }}</p>
           </div>
@@ -481,12 +485,19 @@
         </div>
 
         <div class="px-6 py-3 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
-          <button 
-            (click)="goToCreateStallForExhibition(selectedExhibitionForStalls()!)"
-            class="px-3 py-1.5 bg-[#1a3a5c] hover:bg-[#132b45] text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs"
-          >
-            <span class="material-icons text-xs">add</span> Add Stall in Stall Master
-          </button>
+          @if (linkedStallsList().length < (selectedExhibitionForStalls()?.stallCount || 1)) {
+            <button 
+              (click)="goToCreateStallForExhibition(selectedExhibitionForStalls()!)"
+              class="px-3 py-1.5 bg-[#1a3a5c] hover:bg-[#132b45] text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs"
+            >
+              <span class="material-icons text-xs">add</span> Add Stall in Stall Master
+            </button>
+          } @else {
+            <div class="text-xs text-amber-800 bg-amber-50 border border-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
+              <span class="material-icons text-sm text-amber-600">lock</span>
+              Max quota reached ({{ selectedExhibitionForStalls()?.stallCount }}/{{ selectedExhibitionForStalls()?.stallCount }} stalls). Edit exhibition to increase 'No of stalls'.
+            </div>
+          }
           <button (click)="closeStallsModal()" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition">
             Close
           </button>

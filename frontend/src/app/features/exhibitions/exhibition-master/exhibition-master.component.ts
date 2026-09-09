@@ -101,6 +101,7 @@ export class ExhibitionMasterComponent implements OnInit {
 
   ngOnInit(): void {
     this.exhibitionService.loadExhibitions();
+    this.stallService.loadStalls();
   }
 
   canCreateExhibition(): boolean {
@@ -115,10 +116,22 @@ export class ExhibitionMasterComponent implements OnInit {
     const validNum = stallNum && stallNum > 0 ? stallNum : 1;
     this.formStallNumber = validNum;
     const year2Digits = new Date().getFullYear().toString().slice(-2);
-    this.exhibitionService.getNextCode(validNum).subscribe({
-      next: (res) => this.formCode.set(res.code),
-      error: () => this.formCode.set(`EXH-STL${validNum}-${year2Digits}-001`)
-    });
+    if (this.isEditMode() && this.editingId()) {
+      // In edit mode, update the stall quota segment in existing code
+      const currentCode = this.formCode();
+      if (/EXH-STL\d+-/i.test(currentCode)) {
+        this.formCode.set(currentCode.replace(/EXH-STL\d+-/i, `EXH-STL${validNum}-`));
+      } else {
+        const parts = currentCode.split('-');
+        const lastPart = parts.length > 1 ? parts[parts.length - 1] : '001';
+        this.formCode.set(`EXH-STL${validNum}-${year2Digits}-${lastPart}`);
+      }
+    } else {
+      this.exhibitionService.getNextCode(validNum).subscribe({
+        next: (res) => this.formCode.set(res.code),
+        error: () => this.formCode.set(`EXH-STL${validNum}-${year2Digits}-001`)
+      });
+    }
   }
 
   openCreateModal(): void {
@@ -151,6 +164,7 @@ export class ExhibitionMasterComponent implements OnInit {
     this.formDurationDays = exhibition.durationDays || 3;
     this.formDescription = exhibition.description || '';
     this.formStatus = exhibition.status || 'Active';
+    this.formStallNumber = exhibition.stallCount || 1;
     this.inlineStalls = [];
     this.onDateChange();
 
@@ -174,6 +188,13 @@ export class ExhibitionMasterComponent implements OnInit {
   }
 
   addInlineStall(): void {
+    if (this.inlineStalls.length >= this.formStallNumber) {
+      this.toastService.showError(
+        'Stall Limit Reached',
+        `You have set 'No of stalls' to ${this.formStallNumber}. Increase 'No of stalls' if you wish to add more.`
+      );
+      return;
+    }
     this.inlineStalls.push({
       name: '',
       hallNumber: '',
@@ -186,10 +207,28 @@ export class ExhibitionMasterComponent implements OnInit {
     this.inlineStalls.splice(index, 1);
   }
 
+  getStallCountForExh(exhibitionId: string): number {
+    if (!exhibitionId) return 0;
+    const target = exhibitionId.trim().toLowerCase();
+    return this.stallService.stalls().filter((s) => s.exhibitionId && s.exhibitionId.trim().toLowerCase() === target).length;
+  }
+
   saveExhibition(): void {
     if (!this.formName.trim()) {
       this.toastService.showError('Validation Error', 'Exhibition title is required.');
       return;
+    }
+
+    // Validation: If editing, cannot reduce No of stalls below already assigned count
+    if (this.isEditMode() && this.editingId()) {
+      const assignedCount = this.getStallCountForExh(this.editingId()!);
+      if (this.formStallNumber < assignedCount) {
+        this.toastService.showError(
+          'Validation Error',
+          `Cannot reduce 'No of stalls' to ${this.formStallNumber} because ${assignedCount} stall(s) are already assigned to this exhibition.`
+        );
+        return;
+      }
     }
 
     const payload: CreateExhibitionRequest = {
@@ -202,13 +241,14 @@ export class ExhibitionMasterComponent implements OnInit {
       durationDays: this.formDurationDays,
       description: this.formDescription.trim(),
       status: this.formStatus,
+      stallCount: this.formStallNumber || 1,
       initialStalls: !this.isEditMode() ? this.inlineStalls : undefined
     };
 
     if (this.isEditMode() && this.editingId()) {
       this.exhibitionService.updateExhibition(this.editingId()!, payload).subscribe({
         next: () => {
-          this.toastService.showSuccess('Exhibition Updated', 'Exhibition details updated successfully.');
+          this.toastService.showSuccess('Exhibition Updated', `Exhibition updated with quota of ${payload.stallCount} stall(s).`);
           this.closeModal();
         },
         error: () => this.toastService.showError('Update Failed', 'Failed to update exhibition details.')
@@ -216,7 +256,7 @@ export class ExhibitionMasterComponent implements OnInit {
     } else {
       this.exhibitionService.createExhibition(payload).subscribe({
         next: () => {
-          this.toastService.showSuccess('Exhibition Created', 'Exhibition and stalls created successfully.');
+          this.toastService.showSuccess('Exhibition Created', `Exhibition created with capacity for ${payload.stallCount} stall(s).`);
           this.stallService.loadStalls();
           this.closeModal();
         },
@@ -227,14 +267,9 @@ export class ExhibitionMasterComponent implements OnInit {
 
   viewStalls(exhibition: ExhibitionDto): void {
     this.selectedExhibitionForStalls.set(exhibition);
-    this.exhibitionService.getExhibitionById(exhibition.id).subscribe({
-      next: (res) => {
-        this.linkedStallsList.set(res?.stalls || []);
-      },
-      error: () => {
-        this.linkedStallsList.set([]);
-      }
-    });
+    const target = exhibition.id.trim().toLowerCase();
+    const stalls = this.stallService.stalls().filter((s) => s.exhibitionId && s.exhibitionId.trim().toLowerCase() === target);
+    this.linkedStallsList.set(stalls);
   }
 
   closeStallsModal(): void {

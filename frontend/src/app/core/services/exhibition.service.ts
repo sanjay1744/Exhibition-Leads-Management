@@ -37,6 +37,7 @@ export interface CreateExhibitionRequest {
   durationDays?: number;
   description?: string;
   status?: string;
+  stallCount?: number;
   initialStalls?: InlineStallRequest[];
 }
 
@@ -132,7 +133,7 @@ export class ExhibitionService {
       description: data.description?.trim() || '',
       status: data.status || 'Active',
       createdAt: new Date().toISOString(),
-      stallCount: data.initialStalls?.length || 0,
+      stallCount: data.stallCount || data.initialStalls?.length || 1,
       leadCount: 0,
     };
 
@@ -153,7 +154,7 @@ export class ExhibitionService {
       description: data.description?.trim() || existing?.description || '',
       status: data.status || existing?.status || 'Active',
       createdAt: existing?.createdAt || new Date().toISOString(),
-      stallCount: existing?.stallCount || 0,
+      stallCount: data.stallCount !== undefined ? data.stallCount : (existing?.stallCount || 1),
       leadCount: existing?.leadCount || 0,
     };
 

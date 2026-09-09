@@ -9,7 +9,7 @@ public class User
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
-    public string UserGroup { get; set; } = "Naren-Marketing";
+    public string UserGroup { get; set; } = "Sales Team";
     public string Role { get; set; } = "Marketing"; // Admin, StallOwner, Marketing
     public Guid? AssignedStallId { get; set; }
     public string Status { get; set; } = "Active"; // Active, Inactive

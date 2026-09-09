@@ -262,20 +262,25 @@ export class SupabaseSyncService {
     try {
       const { data, error } = await supabase.from(this.EXHIBITIONS_TABLE).select('*');
       if (error || !data) return [];
-      return data.map((d: any) => ({
-        id: d.id,
-        code: d.code,
-        name: d.name,
-        organizer: d.organizer,
-        venue: d.venue,
-        startDate: d.start_date,
-        endDate: d.end_date,
-        durationDays: d.duration_days,
-        description: d.description,
-        status: d.status,
-        createdAt: d.created_at,
-        updatedAt: d.updated_at,
-      }));
+      return data.map((d: any) => {
+        const match = (d.code || '').match(/EXH-STL(\d+)-/i);
+        const codeStallCount = match ? parseInt(match[1], 10) : 1;
+        return {
+          id: d.id,
+          code: d.code,
+          name: d.name,
+          organizer: d.organizer,
+          venue: d.venue,
+          startDate: d.start_date,
+          endDate: d.end_date,
+          durationDays: d.duration_days,
+          description: d.description,
+          status: d.status,
+          stallCount: d.stall_count !== undefined ? d.stall_count : codeStallCount,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        };
+      });
     } catch {
       return [];
     }
@@ -342,6 +347,17 @@ export class SupabaseSyncService {
       }));
     } catch {
       return [];
+    }
+  }
+
+  /**
+   * Delete a stall from Supabase
+   */
+  async deleteStallFromSupabase(id: string): Promise<void> {
+    try {
+      await supabase.from(this.STALLS_TABLE).delete().eq('id', id);
+    } catch (err) {
+      console.warn('[SupabaseSyncService] Error deleting stall from Supabase:', err);
     }
   }
 

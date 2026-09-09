@@ -136,6 +136,18 @@ public class StallsController : ControllerBase
         if (request.ExhibitionId.HasValue && request.ExhibitionId.Value != Guid.Empty)
         {
             exh = await _context.Exhibitions.FindAsync(request.ExhibitionId.Value);
+            if (exh != null)
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(exh.Code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                int maxAllowed = match.Success && int.TryParse(match.Groups[1].Value, out var parsedLimit) ? parsedLimit : 1;
+                var currentCount = await _context.Stalls.CountAsync(s => s.ExhibitionId == exh.Id);
+                if (currentCount >= maxAllowed)
+                {
+                    return BadRequest(new { 
+                        message = $"Exhibition '{exh.Name}' has reached its maximum stall quota of {maxAllowed} stall(s) ({currentCount} already assigned). Please edit the exhibition in Exhibition Master to increase 'No of stalls'." 
+                    });
+                }
+            }
         }
 
         var duration = request.DurationDays.HasValue && request.DurationDays.Value > 0 
@@ -144,19 +156,19 @@ public class StallsController : ControllerBase
 
         var stall = new Stall
         {
-            Name = request.Name,
+            Name = request.Name.Trim(),
             Code = code,
             ExhibitionId = exh?.Id ?? request.ExhibitionId,
-            EventName = exh != null ? exh.Name : (!string.IsNullOrWhiteSpace(request.EventName) ? request.EventName : request.Name),
-            Organizer = exh != null ? exh.Organizer : (!string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer : "Exhibition Organizer"),
+            EventName = exh != null ? exh.Name : (!string.IsNullOrWhiteSpace(request.EventName) ? request.EventName.Trim() : request.Name.Trim()),
+            Organizer = exh != null ? exh.Organizer : (!string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer.Trim() : string.Empty),
             DurationDays = duration,
             StartDate = exh != null ? exh.StartDate : (request.StartDate ?? DateTime.UtcNow.Date),
             EndDate = exh != null ? exh.EndDate : (request.EndDate ?? DateTime.UtcNow.Date.AddDays(duration)),
-            Location = exh != null ? exh.Venue : (!string.IsNullOrWhiteSpace(request.Location) ? request.Location : "Venue"),
-            HallNumber = !string.IsNullOrWhiteSpace(request.HallNumber) ? request.HallNumber : "Hall 1",
-            BoothNumber = !string.IsNullOrWhiteSpace(request.BoothNumber) ? request.BoothNumber : "Booth 1",
+            Location = exh != null ? exh.Venue : (!string.IsNullOrWhiteSpace(request.Location) ? request.Location.Trim() : string.Empty),
+            HallNumber = !string.IsNullOrWhiteSpace(request.HallNumber) ? request.HallNumber.Trim() : string.Empty,
+            BoothNumber = !string.IsNullOrWhiteSpace(request.BoothNumber) ? request.BoothNumber.Trim() : string.Empty,
             OwnerId = ownerGuid,
-            OwnerName = !string.IsNullOrWhiteSpace(request.OwnerName) ? request.OwnerName : "Sales Representative",
+            OwnerName = !string.IsNullOrWhiteSpace(request.OwnerName) ? request.OwnerName.Trim() : string.Empty,
             Status = "Active"
         };
 
@@ -172,13 +184,24 @@ public class StallsController : ControllerBase
         var stall = await _context.Stalls.FindAsync(id);
         if (stall == null) return NotFound(new { message = "Stall not found." });
 
-        stall.Name = request.Name;
-        if (request.ExhibitionId.HasValue)
+        stall.ExhibitionId = request.ExhibitionId.HasValue && request.ExhibitionId.Value != Guid.Empty
+            ? request.ExhibitionId.Value
+            : null;
+
+        if (stall.ExhibitionId.HasValue)
         {
-            stall.ExhibitionId = request.ExhibitionId.Value;
-            var exh = await _context.Exhibitions.FindAsync(request.ExhibitionId.Value);
+            var exh = await _context.Exhibitions.FindAsync(stall.ExhibitionId.Value);
             if (exh != null)
             {
+                var match = System.Text.RegularExpressions.Regex.Match(exh.Code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                int maxAllowed = match.Success && int.TryParse(match.Groups[1].Value, out var parsedLimit) ? parsedLimit : 1;
+                var currentCount = await _context.Stalls.CountAsync(s => s.ExhibitionId == exh.Id && s.Id != stall.Id);
+                if (currentCount >= maxAllowed)
+                {
+                    return BadRequest(new { 
+                        message = $"Exhibition '{exh.Name}' has reached its maximum stall quota of {maxAllowed} stall(s) ({currentCount} already assigned). Please edit the exhibition in Exhibition Master to increase 'No of stalls'." 
+                    });
+                }
                 stall.EventName = exh.Name;
                 stall.Organizer = exh.Organizer;
                 stall.Location = exh.Venue;

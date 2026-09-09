@@ -9,6 +9,8 @@ import { ExhibitionService, ExhibitionDto } from '../../../core/services/exhibit
 import { ApplicationDatabase } from '../../../core/services/db.service';
 import { getApiUrl } from '../../../core/config/api.config';
 import { ToastService } from '../../../core/services/toast.service';
+import { UserService } from '../../../core/services/user.service';
+import { SupabaseSyncService } from '../../../core/services/supabase-sync.service';
 
 export interface StallMasterDto {
   id: string;
@@ -46,11 +48,14 @@ export class StallMasterComponent implements OnInit {
   private router = inject(Router);
   private toast = inject(ToastService);
   private db = inject(ApplicationDatabase);
+  private userService = inject(UserService);
+  private supabaseSync = inject(SupabaseSyncService);
 
   private get apiUrl() { return `${getApiUrl()}/stalls`; }
 
   stalls = signal<StallMasterDto[]>([]);
   exhibitions = this.exhibitionService.exhibitions;
+  users = this.userService.users;
   searchQuery = '';
   isModalOpen = signal(false);
   isEditMode = signal(false);
@@ -75,12 +80,12 @@ export class StallMasterComponent implements OnInit {
     code: '',
     eventName: '',
     organizer: '',
-    durationDays: 4,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
-    location: 'Codissia Trade Fair Complex, Coimbatore',
-    hallNumber: 'Hall A',
-    boothNumber: 'Booth 12',
+    durationDays: null as any,
+    startDate: '',
+    endDate: '',
+    location: '',
+    hallNumber: '',
+    boothNumber: '',
     ownerId: '',
     ownerName: '',
     exhibitionId: ''
@@ -95,6 +100,12 @@ export class StallMasterComponent implements OnInit {
 
   ngOnInit(): void {
     this.exhibitionService.loadExhibitions();
+    this.userService.initUsers();
+    this.userService.getUsers().subscribe({
+      next: (res) => {
+        if (res) this.userService.users.set(res);
+      }
+    });
     this.fetchStalls();
 
     this.route.queryParams.subscribe((params) => {
@@ -121,6 +132,19 @@ export class StallMasterComponent implements OnInit {
   async fetchStalls(): Promise<void> {
     try {
       const localLeads = await this.db.getAllLeads();
+      // 1. Fetch live authoritative stalls from Supabase
+      const cloudStalls = await this.supabaseSync.getStallsFromSupabase();
+      if (cloudStalls && cloudStalls.length > 0) {
+        const updated = cloudStalls.map((s: any) => {
+          const localCount = localLeads.filter((l) => l.exhibitionId === s.id).length;
+          const totalCount = Math.max(s.leadCount || 0, localCount);
+          return { ...s, leadCount: totalCount };
+        });
+        this.stalls.set(updated);
+        return;
+      }
+
+      // 2. Query backend
       this.http.get<StallMasterDto[]>(this.apiUrl).subscribe({
         next: (res) => {
           if (res) {
@@ -130,17 +154,18 @@ export class StallMasterComponent implements OnInit {
               return { ...s, leadCount: totalCount };
             });
             this.stalls.set(updated);
+            // Synchronize backend stalls to Supabase
+            for (const st of res) {
+              this.supabaseSync.saveStallToSupabase(st);
+            }
           }
         },
-        error: () => {}
+        error: () => {
+          this.stalls.set([]);
+        }
       });
     } catch {
-      this.http.get<StallMasterDto[]>(this.apiUrl).subscribe({
-        next: (res) => {
-          if (res) this.stalls.set(res);
-        },
-        error: () => {}
-      });
+      this.stalls.set([]);
     }
   }
 
@@ -202,6 +227,11 @@ export class StallMasterComponent implements OnInit {
     this.http.get<{ code: string }>(`${this.apiUrl}/next-code`).subscribe({
       next: (res) => {
         const nextCode = res.code || `STL-${new Date().getFullYear()}-002`;
+        const matchedUser = this.users().find(
+          (u) => u.id === this.currentUser?.id || 
+                 u.username === this.currentUser?.username || 
+                 u.fullName === this.currentUser?.fullName
+        );
         this.formData = {
           name: '',
           code: nextCode,
@@ -213,8 +243,8 @@ export class StallMasterComponent implements OnInit {
           location: '',
           hallNumber: '',
           boothNumber: '',
-          ownerId: this.currentUser?.token || '',
-          ownerName: this.currentUser?.fullName || '',
+          ownerId: matchedUser ? matchedUser.id : '',
+          ownerName: matchedUser ? (matchedUser.fullName || matchedUser.username) : '',
           exhibitionId: presetExhibitionId || ''
         };
         if (this.formData.exhibitionId) {
@@ -224,7 +254,14 @@ export class StallMasterComponent implements OnInit {
       },
       error: () => {
         const fallbackCode = `STL-${new Date().getFullYear()}-002`;
+        const matchedUser = this.users().find(
+          (u) => u.id === this.currentUser?.id || 
+                 u.username === this.currentUser?.username || 
+                 u.fullName === this.currentUser?.fullName
+        );
         this.formData.code = fallbackCode;
+        this.formData.ownerId = matchedUser ? matchedUser.id : '';
+        this.formData.ownerName = matchedUser ? (matchedUser.fullName || matchedUser.username) : '';
         if (presetExhibitionId) this.onExhibitionChange(presetExhibitionId);
         this.isModalOpen.set(true);
       }
@@ -234,6 +271,13 @@ export class StallMasterComponent implements OnInit {
   openEditModal(stall: StallMasterDto): void {
     this.isEditMode.set(true);
     this.editingStallId = stall.id;
+
+    // Match existing owner in users list either by id, fullName, or username
+    const matchedUser = this.users().find(
+      (u) => u.id === stall.ownerId || 
+             (stall.ownerName && (u.fullName?.toLowerCase() === stall.ownerName.toLowerCase() || u.username?.toLowerCase() === stall.ownerName.toLowerCase()))
+    );
+
     this.formData = {
       name: stall.name,
       code: stall.code,
@@ -245,8 +289,8 @@ export class StallMasterComponent implements OnInit {
       location: stall.location || '',
       hallNumber: stall.hallNumber || '',
       boothNumber: stall.boothNumber || '',
-      ownerId: stall.ownerId || this.currentUser?.token || '',
-      ownerName: stall.ownerName || this.currentUser?.fullName || '',
+      ownerId: matchedUser ? matchedUser.id : (stall.ownerId || ''),
+      ownerName: matchedUser ? (matchedUser.fullName || matchedUser.username) : (stall.ownerName || ''),
       exhibitionId: stall.exhibitionId || ''
     };
     this.onDateChange();
@@ -271,37 +315,155 @@ export class StallMasterComponent implements OnInit {
     this.editingStallId = null;
   }
 
+  getAssignedStallCount(exhibitionId: string): number {
+    if (!exhibitionId) return 0;
+    const target = exhibitionId.trim().toLowerCase();
+    return this.stalls().filter((s) => s.exhibitionId && s.exhibitionId.trim().toLowerCase() === target).length;
+  }
+
+  getExhibitionLimit(exhibitionId: string): number {
+    if (!exhibitionId) return 0;
+    const target = exhibitionId.trim().toLowerCase();
+    const exh = this.exhibitions().find((e) => e.id && e.id.trim().toLowerCase() === target);
+    return exh?.stallCount || 1;
+  }
+
+  isExhibitionLimitReached(exhibitionId: string): boolean {
+    if (!exhibitionId) return false;
+    const target = exhibitionId.trim().toLowerCase();
+    const assigned = this.stalls().filter(
+      (s) => s.exhibitionId && s.exhibitionId.trim().toLowerCase() === target && s.id !== this.editingStallId
+    ).length;
+    const limit = this.getExhibitionLimit(exhibitionId);
+    return assigned >= limit;
+  }
+
+  onOwnerChange(userId: string): void {
+    if (!userId) {
+      this.formData.ownerId = '';
+      this.formData.ownerName = '';
+      return;
+    }
+    const user = this.users().find((u) => u.id === userId);
+    if (user) {
+      this.formData.ownerId = user.id;
+      this.formData.ownerName = user.fullName || user.username;
+    }
+  }
+
+  isOwnerInList(ownerId: string): boolean {
+    if (!ownerId) return true;
+    return this.users().some((u) => u.id === ownerId);
+  }
+
   saveStall(): void {
     if (!this.formData.name) {
       this.toast.showError('Stall Name is required.');
       return;
     }
 
+    if (!this.formData.ownerId && !this.formData.ownerName) {
+      this.toast.showError('Assigned Stall Owner is required.');
+      return;
+    }
+
+    if (this.formData.ownerId && !this.formData.ownerName) {
+      const user = this.users().find((u) => u.id === this.formData.ownerId);
+      if (user) {
+        this.formData.ownerName = user.fullName || user.username;
+      }
+    }
+
+    // Quota Enforcement: Verify exhibition capacity
+    if (this.formData.exhibitionId && this.isExhibitionLimitReached(this.formData.exhibitionId)) {
+      const maxAllowed = this.getExhibitionLimit(this.formData.exhibitionId);
+      const assigned = this.getAssignedStallCount(this.formData.exhibitionId);
+      this.toast.showError(
+        'Stall Limit Reached',
+        `This exhibition allows a maximum of ${maxAllowed} stall(s) (${assigned} already assigned). Please edit the exhibition in Exhibition Master and increase 'No of stalls' before adding more.`
+      );
+      return;
+    }
+
+    const stallId = this.isEditMode() && this.editingStallId 
+      ? this.editingStallId 
+      : crypto.randomUUID();
+
+    const exhibitionIdVal = this.formData.exhibitionId && this.formData.exhibitionId.trim()
+      ? this.formData.exhibitionId.trim()
+      : undefined;
+
+    const stallRecord: StallMasterDto = {
+      id: stallId,
+      name: this.formData.name.trim(),
+      code: this.formData.code || `STL-${new Date().getFullYear()}-001`,
+      eventName: this.formData.eventName || '',
+      organizer: this.formData.organizer || '',
+      durationDays: this.formData.durationDays || 3,
+      startDate: this.formData.startDate || '',
+      endDate: this.formData.endDate || '',
+      location: this.formData.location || '',
+      hallNumber: this.formData.hallNumber || '',
+      boothNumber: this.formData.boothNumber || '',
+      ownerId: this.formData.ownerId || '',
+      ownerName: this.formData.ownerName || '',
+      status: 'Active',
+      leadCount: 0,
+      createdAt: new Date().toISOString(),
+      exhibitionId: exhibitionIdVal
+    };
+
+    // 1. Immediately update in-memory signals and Dexie so Exhibition Master changes from 0 to 1 in real time
+    this.stallService.addOrUpdateStallInMemory(stallRecord as any);
+    this.stalls.update((list) => {
+      const targetId = stallId.toLowerCase();
+      const idx = list.findIndex((s) => s.id?.toLowerCase() === targetId);
+      if (idx >= 0) {
+        const copy = [...list];
+        copy[idx] = { ...copy[idx], ...stallRecord };
+        return copy;
+      }
+      return [stallRecord, ...list];
+    });
+    this.db.saveStall(stallRecord as any);
+
+    // 2. Persist to Supabase
+    this.supabaseSync.saveStallToSupabase(stallRecord);
+
+    // 3. Persist to Backend API
+    const backendPayload = {
+      ...this.formData,
+      id: stallId,
+      exhibitionId: exhibitionIdVal || null
+    };
+
     if (this.isEditMode() && this.editingStallId) {
-      this.http.put<StallMasterDto>(`${this.apiUrl}/${this.editingStallId}`, this.formData).subscribe({
+      this.http.put<StallMasterDto>(`${this.apiUrl}/${this.editingStallId}`, backendPayload).subscribe({
         next: (updated) => {
-          this.toast.showSuccess(`Stall project "${updated.name || this.formData.name}" updated successfully.`);
-          this.fetchStalls();
-          this.stallService.loadStalls();
+          if (updated) {
+            this.stallService.addOrUpdateStallInMemory(updated as any);
+            this.supabaseSync.saveStallToSupabase(updated);
+          }
+          this.toast.showSuccess(`Stall project "${updated?.name || this.formData.name}" updated successfully.`);
           this.closeModal();
         },
         error: () => {
           this.toast.showSuccess(`Stall project "${this.formData.name}" updated successfully.`);
-          this.fetchStalls();
           this.closeModal();
         }
       });
     } else {
-      this.http.post<StallMasterDto>(this.apiUrl, this.formData).subscribe({
+      this.http.post<StallMasterDto>(this.apiUrl, backendPayload).subscribe({
         next: (created) => {
-          this.toast.showSuccess(`Stall project "${created.name}" created successfully.`);
-          this.fetchStalls();
-          this.stallService.loadStalls();
+          if (created) {
+            this.stallService.addOrUpdateStallInMemory(created as any);
+            this.supabaseSync.saveStallToSupabase(created);
+          }
+          this.toast.showSuccess(`Stall project "${created?.name || this.formData.name}" created successfully.`);
           this.closeModal();
         },
         error: () => {
           this.toast.showSuccess(`Stall project "${this.formData.name}" created successfully.`);
-          this.fetchStalls();
           this.closeModal();
         }
       });
@@ -322,18 +484,19 @@ export class StallMasterComponent implements OnInit {
     const stall = this.selectedStallForDelete();
     if (!stall) return;
 
+    this.stallService.removeStallFromMemory(stall.id);
+    this.stalls.update((list) => list.filter((s) => s.id !== stall.id));
+    this.db.deleteStall(stall.id);
+    this.supabaseSync.deleteStallFromSupabase(stall.id);
+
     this.http.delete(`${this.apiUrl}/${stall.id}`).subscribe({
       next: () => {
         this.toast.showSuccess(`Stall project "${stall.name}" deleted.`);
         this.selectedStallForDelete.set(null);
-        this.fetchStalls();
-        this.stallService.loadStalls();
       },
       error: () => {
-        this.stalls.update(list => list.filter(s => s.id !== stall.id));
         this.toast.showSuccess(`Stall project "${stall.name}" deleted locally.`);
         this.selectedStallForDelete.set(null);
-        this.stallService.loadStalls();
       }
     });
   }
