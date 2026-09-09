@@ -150,16 +150,39 @@
           {{ editingUser() ? 'Edit User' : 'Add New User' }}
         </h2>
 
-        <form (ngSubmit)="saveUser()">
+        <form (ngSubmit)="saveUser()" autocomplete="off">
+          <!-- Hidden inputs to divert browser autofill from pre-entering saved credentials -->
+          <input type="text" style="display:none" aria-hidden="true" autocomplete="off" />
+          <input type="password" style="display:none" aria-hidden="true" autocomplete="off" />
+
           <div class="space-y-3 mb-5">
             <div>
               <label class="form-label">Full Name *</label>
-              <input [(ngModel)]="formData.fullName" name="fullName" required class="form-control" placeholder="Full Name" />
+              <input 
+                [(ngModel)]="formData.fullName" 
+                name="new_fullName" 
+                id="new_fullName" 
+                autocomplete="off" 
+                required 
+                class="form-control" 
+                placeholder="Enter full name" 
+              />
             </div>
 
             <div>
               <label class="form-label">Username *</label>
-              <input [(ngModel)]="formData.username" name="username" required class="form-control" placeholder="Username" />
+              <input 
+                [(ngModel)]="formData.username" 
+                name="new_username" 
+                id="new_username" 
+                autocomplete="new-password" 
+                autocorrect="off"
+                autocapitalize="none"
+                spellcheck="false"
+                required 
+                class="form-control" 
+                placeholder="Enter username" 
+              />
             </div>
 
             <div>
@@ -182,7 +205,16 @@
             @if (!editingUser()) {
               <div>
                 <label class="form-label">Password *</label>
-                <input type="password" [(ngModel)]="formData.password" name="password" required class="form-control" placeholder="••••••••" />
+                <input 
+                  type="password" 
+                  [(ngModel)]="formData.password" 
+                  name="new_password" 
+                  id="new_password" 
+                  autocomplete="new-password" 
+                  required 
+                  class="form-control" 
+                  placeholder="Enter password" 
+                />
               </div>
             }
           </div>
