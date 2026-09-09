@@ -548,11 +548,11 @@ export class LeadListComponent implements OnInit {
 
     const media = this.filterHasMedia();
     if (media === 'CARD_ONLY') {
-      list = list.filter((l) => !!l.photoBlob);
+      list = list.filter((l) => !!(l.photoBlob || l.cardImageUrl || (l as any).card_image_url));
     } else if (media === 'VOICE_ONLY') {
-      list = list.filter((l) => !!l.voiceBlob || !!l.voiceNotesTranscript);
+      list = list.filter((l) => !!(l.voiceBlob || l.voiceAudioUrl || (l as any).voice_audio_url || l.voiceNotesTranscript));
     } else if (media === 'ANY_MEDIA') {
-      list = list.filter((l) => !!l.photoBlob || !!l.voiceBlob || !!l.voiceNotesTranscript);
+      list = list.filter((l) => !!(l.photoBlob || l.cardImageUrl || (l as any).card_image_url || l.voiceBlob || l.voiceAudioUrl || (l as any).voice_audio_url || l.voiceNotesTranscript));
     }
 
     return list;
@@ -607,8 +607,27 @@ export class LeadListComponent implements OnInit {
     this.currentPage.set(Math.max(1, totalPages));
   }
 
-  openViewModal(lead: LocalLead): void {
-    this.selectedLeadForView.set(lead);
+  async openViewModal(lead: LocalLead): Promise<void> {
+    let leadToShow = lead;
+    try {
+      const fresh = await this.db.getLeadById(lead.id);
+      if (fresh) {
+        const photo = fresh.photoBlob || lead.photoBlob || fresh.cardImageUrl || lead.cardImageUrl;
+        const cardUrl = fresh.cardImageUrl || lead.cardImageUrl || (typeof photo === 'string' && photo.startsWith('http') ? photo : undefined);
+        const voice = fresh.voiceBlob || lead.voiceBlob || fresh.voiceAudioUrl || lead.voiceAudioUrl;
+        const voiceUrl = fresh.voiceAudioUrl || lead.voiceAudioUrl || (typeof voice === 'string' && voice.startsWith('http') ? voice : undefined);
+
+        leadToShow = {
+          ...lead,
+          ...fresh,
+          photoBlob: photo,
+          cardImageUrl: cardUrl,
+          voiceBlob: voice,
+          voiceAudioUrl: voiceUrl,
+        };
+      }
+    } catch {}
+    this.selectedLeadForView.set(leadToShow);
   }
 
   closeViewModal(): void {
@@ -628,51 +647,87 @@ export class LeadListComponent implements OnInit {
   }
 
   getVoiceAudioUrl(lead: LocalLead | null): string | null {
-    if (!lead || !lead.voiceBlob) return null;
-    if (lead.voiceBlob instanceof Blob) {
-      return URL.createObjectURL(lead.voiceBlob);
+    if (!lead) return null;
+    const audio = lead.voiceBlob || lead.voiceAudioUrl || (lead as any).voice_audio_url;
+    if (!audio) return null;
+    if (audio instanceof Blob) {
+      return URL.createObjectURL(audio);
     }
-    if (typeof lead.voiceBlob === 'string') {
-      return lead.voiceBlob;
+    if (typeof audio === 'string') {
+      return audio;
     }
     return null;
   }
 
-  downloadLeadAudio(lead: LocalLead | null): void {
+  async downloadLeadAudio(lead: LocalLead | null): Promise<void> {
     if (!lead) return;
     const url = this.getVoiceAudioUrl(lead);
     if (!url) return;
-    const ext = url.startsWith('data:audio/mp4') || url.startsWith('data:audio/m4a') ? '.m4a' : '.webm';
+    const ext = url.includes('.m4a') || url.startsWith('data:audio/mp4') || url.startsWith('data:audio/m4a') ? '.m4a' : '.webm';
     const fileName = `${lead.leadNumber || 'lead'}_voice_note${ext}`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      if (url.startsWith('http')) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (e) {
+      console.warn('[LeadList] Audio download fallback:', e);
+      window.open(url, '_blank');
+    }
   }
 
   getCardImageUrl(lead: LocalLead | null): string | null {
-    if (!lead || !lead.photoBlob) return null;
-    if (typeof lead.photoBlob === 'string') return lead.photoBlob;
-    if (lead.photoBlob instanceof Blob) return URL.createObjectURL(lead.photoBlob);
+    if (!lead) return null;
+    const img = lead.photoBlob || lead.cardImageUrl || (lead as any).card_image_url;
+    if (!img) return null;
+    if (typeof img === 'string') return img;
+    if (img instanceof Blob) return URL.createObjectURL(img);
     return null;
   }
 
-  downloadLeadCardImage(lead: LocalLead | null): void {
+  async downloadLeadCardImage(lead: LocalLead | null): Promise<void> {
     if (!lead) return;
     const url = this.getCardImageUrl(lead);
     if (!url) return;
-    const fileName = `${lead.leadNumber || 'S1L00001'}.jpg`;
+    const fileName = `${lead.leadNumber || 'lead_card'}.jpg`;
     try {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      if (url.startsWith('http')) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
     } catch (e) {
-      console.warn('[LeadList] Image download failed:', e);
+      console.warn('[LeadList] Image download fallback:', e);
+      window.open(url, '_blank');
     }
   }
 

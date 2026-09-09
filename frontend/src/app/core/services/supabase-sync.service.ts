@@ -127,13 +127,26 @@ export class SupabaseSyncService {
         let cardImageUrl: string | null = null;
         if (typeof lead.photoBlob === 'string' && lead.photoBlob.startsWith('data:')) {
           cardImageUrl = await this.uploadCardImage(lead.leadNumber, lead.photoBlob);
-        } else if (typeof lead.photoBlob === 'string') {
+        } else if (typeof lead.photoBlob === 'string' && lead.photoBlob.trim().length > 0) {
           cardImageUrl = lead.photoBlob;
+        } else if (lead.cardImageUrl) {
+          cardImageUrl = lead.cardImageUrl;
         }
 
         let audioUrl: string | null = null;
         if (lead.voiceBlob) {
           audioUrl = await this.uploadVoiceAudio(lead.leadNumber, lead.voiceBlob);
+        } else if (lead.voiceAudioUrl) {
+          audioUrl = lead.voiceAudioUrl;
+        }
+
+        if (cardImageUrl) {
+          lead.cardImageUrl = cardImageUrl;
+          lead.photoBlob = cardImageUrl;
+        }
+        if (audioUrl) {
+          lead.voiceAudioUrl = audioUrl;
+          lead.voiceBlob = audioUrl;
         }
 
         const supabaseRecord = {
@@ -207,8 +220,10 @@ export class SupabaseSyncService {
         website: d.website,
         address: d.address,
         captureMethod: d.capture_method,
-        cardImageUrl: d.card_image_url,
-        voiceAudioUrl: d.voice_audio_url,
+        cardImageUrl: d.card_image_url || undefined,
+        photoBlob: d.card_image_url || undefined,
+        voiceAudioUrl: d.voice_audio_url || undefined,
+        voiceBlob: d.voice_audio_url || undefined,
         interestLevel: d.interest_level,
         productCategory: d.product_category,
         priority: d.priority,

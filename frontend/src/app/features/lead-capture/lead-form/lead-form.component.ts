@@ -285,9 +285,9 @@ export class LeadFormComponent implements OnInit {
     this.address = lead.address || '';
     this.interestLevel = lead.interestLevel;
     this.remarks = lead.remarks || '';
-    this.voiceBlob = lead.voiceBlob || null;
+    this.voiceBlob = lead.voiceBlob || lead.voiceAudioUrl || (lead as any).voice_audio_url || null;
     this.voiceNotesTranscript = lead.voiceNotesTranscript || '';
-    this.scannedPhotoDataUrl = typeof lead.photoBlob === 'string' ? lead.photoBlob : null;
+    this.scannedPhotoDataUrl = typeof lead.photoBlob === 'string' ? lead.photoBlob : (lead.cardImageUrl || (lead as any).card_image_url || null);
     this.captureMethod = lead.captureMethod || 'manual';
     this.isAutoFilled.set(true);
 
@@ -307,9 +307,9 @@ export class LeadFormComponent implements OnInit {
       this.address = lead.address || '';
       this.interestLevel = lead.interestLevel;
       this.remarks = lead.remarks || '';
-      this.voiceBlob = lead.voiceBlob || null;
+      this.voiceBlob = lead.voiceBlob || lead.voiceAudioUrl || (lead as any).voice_audio_url || null;
       this.voiceNotesTranscript = lead.voiceNotesTranscript || '';
-      this.scannedPhotoDataUrl = typeof lead.photoBlob === 'string' ? lead.photoBlob : null;
+      this.scannedPhotoDataUrl = typeof lead.photoBlob === 'string' ? lead.photoBlob : (lead.cardImageUrl || (lead as any).card_image_url || null);
       this.captureMethod = lead.captureMethod || 'manual';
       this.existingCreatedAt = lead.createdAt;
     } else {
@@ -544,7 +544,9 @@ export class LeadFormComponent implements OnInit {
       address: this.address,
       captureMethod: this.captureMethod,
       photoBlob: this.scannedPhotoDataUrl || undefined,
+      cardImageUrl: (typeof this.scannedPhotoDataUrl === 'string' && this.scannedPhotoDataUrl.startsWith('http')) ? this.scannedPhotoDataUrl : undefined,
       voiceBlob: finalVoiceAudioUrl || (typeof this.voiceBlob === 'string' ? this.voiceBlob : undefined),
+      voiceAudioUrl: (typeof finalVoiceAudioUrl === 'string' && finalVoiceAudioUrl.startsWith('http')) ? finalVoiceAudioUrl : undefined,
       voiceNotesTranscript: this.voiceNotesTranscript || undefined,
       interestLevel: this.interestLevel || 'Warm',
       productCategory: ['Enterprise'],
@@ -619,5 +621,14 @@ export class LeadFormComponent implements OnInit {
     setTimeout(() => {
       this.savedMessage.set(null);
     }, 4000);
+  }
+
+  getCardImageUrl(lead: LocalLead | null): string | null {
+    if (!lead) return null;
+    const img = lead.photoBlob || lead.cardImageUrl || (lead as any).card_image_url;
+    if (!img) return null;
+    if (typeof img === 'string') return img;
+    if (img instanceof Blob) return URL.createObjectURL(img);
+    return null;
   }
 }

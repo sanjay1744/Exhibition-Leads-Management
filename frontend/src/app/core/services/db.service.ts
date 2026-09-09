@@ -39,9 +39,33 @@ export class ApplicationDatabase extends Dexie {
   }
 
   /**
-   * Save or Update a Lead in IndexedDB
+   * Save or Update a Lead in IndexedDB with intelligent field preservation
    */
   async saveLead(lead: LocalLead): Promise<string> {
+    const existing = await this.leads.get(lead.id);
+    if (existing) {
+      const mergedLead: LocalLead = {
+        ...existing,
+        ...lead,
+        photoBlob: lead.photoBlob || lead.cardImageUrl || existing.photoBlob || existing.cardImageUrl,
+        cardImageUrl: lead.cardImageUrl || existing.cardImageUrl || (typeof lead.photoBlob === 'string' && lead.photoBlob.startsWith('http') ? lead.photoBlob : undefined),
+        voiceBlob: lead.voiceBlob || lead.voiceAudioUrl || existing.voiceBlob || existing.voiceAudioUrl,
+        voiceAudioUrl: lead.voiceAudioUrl || existing.voiceAudioUrl || (typeof lead.voiceBlob === 'string' && lead.voiceBlob.startsWith('http') ? lead.voiceBlob : undefined),
+      };
+      return await this.leads.put(mergedLead);
+    }
+    if (!lead.photoBlob && lead.cardImageUrl) {
+      lead.photoBlob = lead.cardImageUrl;
+    }
+    if (!lead.cardImageUrl && typeof lead.photoBlob === 'string' && lead.photoBlob.startsWith('http')) {
+      lead.cardImageUrl = lead.photoBlob;
+    }
+    if (!lead.voiceBlob && lead.voiceAudioUrl) {
+      lead.voiceBlob = lead.voiceAudioUrl;
+    }
+    if (!lead.voiceAudioUrl && typeof lead.voiceBlob === 'string' && lead.voiceBlob.startsWith('http')) {
+      lead.voiceAudioUrl = lead.voiceBlob;
+    }
     return await this.leads.put(lead);
   }
 

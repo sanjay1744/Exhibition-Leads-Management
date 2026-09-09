@@ -20,7 +20,9 @@ export interface LocalLead {
   // Capture Meta
   captureMethod: CaptureMethod;
   photoBlob?: Blob | string; // Card image Blob or Base64/Data URL
+  cardImageUrl?: string; // Supabase CDN or remote card image URL
   voiceBlob?: Blob | string; // Voice recording audio Blob
+  voiceAudioUrl?: string; // Supabase CDN or remote audio URL
   voiceNotesTranscript?: string;
 
   // Qualification

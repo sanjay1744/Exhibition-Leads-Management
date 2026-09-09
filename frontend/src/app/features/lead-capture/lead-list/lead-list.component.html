@@ -743,9 +743,14 @@
               <td class="py-1.5 px-4 text-xs font-normal text-slate-700 border-r border-slate-200/60">
                 <div class="flex items-center justify-between gap-1">
                   <span>{{ lead.name }}</span>
-                  @if (lead.voiceBlob || lead.voiceNotesTranscript) {
-                    <span class="material-icons text-sm text-red-600 bg-red-50 p-0.5 rounded" title="Voice Note Audio Attached">mic</span>
-                  }
+                  <div class="flex items-center gap-1 shrink-0">
+                    @if (lead.photoBlob || lead.cardImageUrl) {
+                      <span class="material-icons text-sm text-blue-600 bg-blue-50 p-0.5 rounded" title="Scanned Card Attached">credit_card</span>
+                    }
+                    @if (lead.voiceBlob || lead.voiceAudioUrl || lead.voiceNotesTranscript) {
+                      <span class="material-icons text-sm text-red-600 bg-red-50 p-0.5 rounded" title="Voice Note Audio Attached">mic</span>
+                    }
+                  </div>
                 </div>
               </td>
 
@@ -959,7 +964,7 @@
           </div>
 
           <!-- Business Card Image Section -->
-          @if (selectedLeadForView()?.photoBlob) {
+          @if (getCardImageUrl(selectedLeadForView())) {
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
               <div class="flex items-center justify-between text-xs font-bold text-[#1a3a5c] uppercase tracking-wide">
                 <span class="flex items-center gap-1.5">
@@ -969,20 +974,20 @@
                 <button 
                   type="button" 
                   (click)="downloadLeadCardImage(selectedLeadForView())" 
-                  class="text-[11px] text-blue-700 hover:text-blue-900 font-bold flex items-center gap-1 bg-blue-100/80 px-2.5 py-1 rounded border border-blue-200 transition shadow-2xs"
+                  class="text-[11px] text-blue-700 hover:text-blue-900 font-bold flex items-center gap-1 bg-blue-100/80 px-2.5 py-1 rounded border border-blue-200 transition shadow-2xs cursor-pointer"
                 >
                   <span class="material-icons text-xs">download</span>
                   Download {{ selectedLeadForView()?.leadNumber }}.jpg
                 </button>
               </div>
               <div class="flex justify-center bg-slate-900/90 p-2 rounded-lg border border-slate-700">
-                <img [src]="getCardImageUrl(selectedLeadForView())" alt="Business Card" class="max-h-40 max-w-full object-contain rounded" />
+                <img [src]="getCardImageUrl(selectedLeadForView())" alt="Business Card" class="max-h-56 max-w-full object-contain rounded shadow-md" />
               </div>
             </div>
           }
 
           <!-- Voice Note Audio & Transcript Section -->
-          @if (selectedLeadForView()?.voiceBlob || selectedLeadForView()?.voiceNotesTranscript) {
+          @if (getVoiceAudioUrl(selectedLeadForView()) || selectedLeadForView()?.voiceNotesTranscript) {
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
               <div class="flex items-center justify-between text-xs font-bold text-[#1a3a5c] uppercase tracking-wide">
                 <span class="flex items-center gap-1.5">
@@ -991,6 +996,7 @@
                 </span>
                 @if (getVoiceAudioUrl(selectedLeadForView())) {
                   <button 
+                    type="button"
                     (click)="downloadLeadAudio(selectedLeadForView())" 
                     class="text-[10px] bg-red-50 hover:bg-red-100 text-red-700 font-bold px-2.5 py-0.5 rounded-lg border border-red-200 flex items-center gap-1 transition cursor-pointer"
                   >
