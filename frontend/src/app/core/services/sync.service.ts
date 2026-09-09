@@ -12,6 +12,11 @@ export class SyncService {
   private supabaseSync = inject(SupabaseSyncService);
 
   constructor() {
+    // Sync any pending leads immediately on startup
+    setTimeout(() => {
+      this.syncPendingLeads();
+    }, 1000);
+
     // Automatically trigger sync when network status changes to online
     window.addEventListener('online', () => {
       this.syncPendingLeads();

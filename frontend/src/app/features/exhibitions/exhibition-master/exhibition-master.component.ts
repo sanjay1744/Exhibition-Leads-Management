@@ -51,7 +51,17 @@ export class ExhibitionMasterComponent implements OnInit {
   activeCount = computed(() => this.exhibitions().filter(e => e.status === 'Active').length);
   upcomingCount = computed(() => this.exhibitions().filter(e => e.status === 'Upcoming').length);
   completedCount = computed(() => this.exhibitions().filter(e => e.status === 'Completed').length);
+  closedCount = computed(() => this.exhibitions().filter(e => e.status === 'Closed').length);
   totalStallsCount = computed(() => this.exhibitions().reduce((acc, curr) => acc + (curr.stallCount || 0), 0));
+
+  isDateAutomatedStatus = true;
+  reviewBufferState = {
+    isActive: false,
+    isExpired: false,
+    reviewEndDate: null as Date | null,
+    reviewEndDateFormatted: '',
+    currentDay: 1
+  };
 
   filteredExhibitions = computed(() => {
     const q = this.searchQuery.trim().toLowerCase();
@@ -100,8 +110,45 @@ export class ExhibitionMasterComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.exhibitionService.loadExhibitions();
+    this.exhibitionService.loadExhibitions().then(() => {
+      this.autoCloseExpiredExhibitions();
+    });
     this.stallService.loadStalls();
+  }
+
+  autoCloseExpiredExhibitions(): void {
+    const today = this.getTodayMidnight();
+    for (const exh of this.exhibitions()) {
+      if (exh.status !== 'Closed' && exh.status !== 'Archived' && exh.endDate) {
+        const end = this.parseLocalDate(exh.endDate);
+        if (end) {
+          const reviewEnd = new Date(end.getTime());
+          reviewEnd.setDate(reviewEnd.getDate() + 2);
+          if (today > reviewEnd) {
+            this.exhibitionService.updateExhibition(exh.id, {
+              ...exh,
+              status: 'Closed'
+            }).subscribe();
+          }
+        }
+      }
+    }
+  }
+
+  getTodayMidnight(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  }
+
+  parseLocalDate(dateStr?: string | null): Date | null {
+    if (!dateStr) return null;
+    const clean = dateStr.split('T')[0];
+    const parts = clean.split('-');
+    if (parts.length !== 3) return null;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    return new Date(y, m, d, 0, 0, 0, 0);
   }
 
   canCreateExhibition(): boolean {
@@ -145,6 +192,8 @@ export class ExhibitionMasterComponent implements OnInit {
     this.formDurationDays = null as any;
     this.formDescription = '';
     this.formStatus = 'Upcoming';
+    this.isDateAutomatedStatus = true;
+    this.reviewBufferState = { isActive: false, isExpired: false, reviewEndDate: null, reviewEndDateFormatted: '', currentDay: 1 };
     this.inlineStalls = [];
     this.formStallNumber = 1;
 
@@ -166,6 +215,7 @@ export class ExhibitionMasterComponent implements OnInit {
     this.formStatus = exhibition.status || 'Active';
     this.formStallNumber = exhibition.stallCount || 1;
     this.inlineStalls = [];
+    this.isDateAutomatedStatus = false;
     this.onDateChange();
 
     this.isModalOpen.set(true);
@@ -173,14 +223,159 @@ export class ExhibitionMasterComponent implements OnInit {
 
   onDateChange(): void {
     if (this.formStartDate && this.formEndDate) {
-      const start = new Date(this.formStartDate);
-      const end = new Date(this.formEndDate);
-      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
+      const start = this.parseLocalDate(this.formStartDate);
+      const end = this.parseLocalDate(this.formEndDate);
+      if (start && end && end >= start) {
         const diffTime = Math.abs(end.getTime() - start.getTime());
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
         this.formDurationDays = diffDays;
       }
     }
+
+    this.updateAutomatedStatus();
+  }
+
+  updateAutomatedStatus(): void {
+    if (!this.formStartDate) {
+      this.reviewBufferState = { isActive: false, isExpired: false, reviewEndDate: null, reviewEndDateFormatted: '', currentDay: 1 };
+      return;
+    }
+
+    const today = this.getTodayMidnight();
+    const start = this.parseLocalDate(this.formStartDate);
+    const end = this.formEndDate ? this.parseLocalDate(this.formEndDate) : start;
+
+    if (!start) return;
+
+    // 1. Future dates -> Upcoming
+    if (start > today) {
+      this.formStatus = 'Upcoming';
+      this.isDateAutomatedStatus = true;
+      this.reviewBufferState = { isActive: false, isExpired: false, reviewEndDate: null, reviewEndDateFormatted: '', currentDay: 1 };
+      return;
+    }
+
+    // 2. Present dates -> Active
+    if (end && start <= today && today <= end) {
+      this.formStatus = 'Active';
+      this.isDateAutomatedStatus = true;
+      this.reviewBufferState = { isActive: false, isExpired: false, reviewEndDate: null, reviewEndDateFormatted: '', currentDay: 1 };
+      return;
+    }
+
+    // 3. Completed dates -> 2 days review buffer, then closed
+    if (end && today > end) {
+      const reviewEnd = new Date(end.getTime());
+      reviewEnd.setDate(reviewEnd.getDate() + 2);
+
+      const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+      const formattedReviewEnd = reviewEnd.toLocaleDateString(undefined, options);
+
+      if (today <= reviewEnd) {
+        // Within 2-day review period
+        const dayDiff = Math.floor((today.getTime() - end.getTime()) / (1000 * 60 * 60 * 24));
+        const currentDay = Math.min(Math.max(dayDiff, 1), 2);
+
+        this.formStatus = 'Completed';
+        this.isDateAutomatedStatus = true;
+        this.reviewBufferState = {
+          isActive: true,
+          isExpired: false,
+          reviewEndDate: reviewEnd,
+          reviewEndDateFormatted: formattedReviewEnd,
+          currentDay
+        };
+      } else {
+        // Review period ended -> Closed
+        this.formStatus = 'Closed';
+        this.isDateAutomatedStatus = true;
+        this.reviewBufferState = {
+          isActive: false,
+          isExpired: true,
+          reviewEndDate: reviewEnd,
+          reviewEndDateFormatted: formattedReviewEnd,
+          currentDay: 2
+        };
+      }
+    }
+  }
+
+  onManualStatusChange(): void {
+    this.isDateAutomatedStatus = false;
+  }
+
+  closeFormExhibition(): void {
+    this.formStatus = 'Closed';
+    this.isDateAutomatedStatus = false;
+    this.toastService.showSuccess('Status Set to Closed', 'Exhibition marked as Closed.');
+  }
+
+  reopenFormExhibitionToReview(): void {
+    this.formStatus = 'Completed';
+    this.isDateAutomatedStatus = true;
+  }
+
+  isExhibitionInReview(exhibition: ExhibitionDto): boolean {
+    if (exhibition.status === 'Closed' || exhibition.status === 'Archived') return false;
+    if (!exhibition.endDate) return false;
+    const end = this.parseLocalDate(exhibition.endDate);
+    if (!end) return false;
+    const today = this.getTodayMidnight();
+    if (today <= end) return false;
+
+    const reviewEnd = new Date(end.getTime());
+    reviewEnd.setDate(reviewEnd.getDate() + 2);
+    return today > end && today <= reviewEnd;
+  }
+
+  isExhibitionReviewExpired(exhibition: ExhibitionDto): boolean {
+    if (exhibition.status === 'Closed' || exhibition.status === 'Archived') return false;
+    if (!exhibition.endDate) return false;
+    const end = this.parseLocalDate(exhibition.endDate);
+    if (!end) return false;
+    const today = this.getTodayMidnight();
+
+    const reviewEnd = new Date(end.getTime());
+    reviewEnd.setDate(reviewEnd.getDate() + 2);
+    return today > reviewEnd;
+  }
+
+  getReviewDaysLeftText(exhibition: ExhibitionDto): string {
+    if (!exhibition.endDate) return '';
+    const end = this.parseLocalDate(exhibition.endDate);
+    if (!end) return '';
+    const today = this.getTodayMidnight();
+    const reviewEnd = new Date(end.getTime());
+    reviewEnd.setDate(reviewEnd.getDate() + 2);
+    const diffDays = Math.ceil((reviewEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return `${diffDays}d review left`;
+  }
+
+  closeExhibition(exhibition: ExhibitionDto): void {
+    const payload: CreateExhibitionRequest = {
+      name: exhibition.name,
+      code: exhibition.code,
+      organizer: exhibition.organizer,
+      venue: exhibition.venue,
+      startDate: exhibition.startDate,
+      endDate: exhibition.endDate,
+      durationDays: exhibition.durationDays,
+      description: exhibition.description,
+      status: 'Closed',
+      stallCount: exhibition.stallCount
+    };
+
+    this.exhibitionService.updateExhibition(exhibition.id, payload).subscribe({
+      next: () => {
+        this.toastService.showSuccess(
+          'Exhibition Closed',
+          `Exhibition "${exhibition.name}" has been marked as Closed.`
+        );
+      },
+      error: () => {
+        this.toastService.showError('Close Failed', 'Could not close the exhibition.');
+      }
+    });
   }
 
   closeModal(): void {

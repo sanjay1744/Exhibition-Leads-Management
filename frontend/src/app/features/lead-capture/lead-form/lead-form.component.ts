@@ -11,6 +11,7 @@ import { QrScannerComponent, QrParsedContact } from '../qr-scanner/qr-scanner.co
 import { VoiceRecorderComponent } from '../voice-recorder/voice-recorder.component';
 import { PREDEFINED_DESIGNATIONS } from '../../../core/services/card-parser.service';
 import { VoiceParserService } from '../../../core/services/voice-parser.service';
+import { SupabaseSyncService } from '../../../core/services/supabase-sync.service';
 import { getApiUrl } from '../../../core/config/api.config';
 
 @Component({
@@ -25,6 +26,7 @@ export class LeadFormComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private voiceParser = inject(VoiceParserService);
+  private supabaseSync = inject(SupabaseSyncService);
   stallService = inject(StallService);
 
   @ViewChild('ocrScanner') ocrScanner?: OcrScannerComponent;
@@ -215,6 +217,21 @@ export class LeadFormComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.exhibitionService.loadExhibitions();
     this.stallService.loadStalls();
+
+    // Automatically sync any pending leads from previous sessions to Supabase Cloud DB
+    try {
+      const pending = await this.db.getPendingLeads();
+      if (pending && pending.length > 0) {
+        console.log(`[LeadForm] Syncing ${pending.length} pending lead(s) to Supabase Cloud DB...`);
+        const syncedIds = await this.supabaseSync.syncLeadsToSupabase(pending);
+        if (syncedIds && syncedIds.length > 0) {
+          await this.db.markLeadsSynced(syncedIds);
+          console.log(`[LeadForm] Synced ${syncedIds.length} lead(s) to Supabase Cloud DB.`);
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[LeadForm] Initial pending leads sync warning:', syncErr);
+    }
 
     const stallIdParam = this.route.snapshot.queryParamMap.get('stallId');
     if (stallIdParam) {
@@ -541,11 +558,57 @@ export class LeadFormComponent implements OnInit {
 
     await this.db.saveLead(leadToSave);
     const actionText = this.isEditMode() ? 'updated' : 'saved';
+
+    // Direct Cloud Save to Supabase (Authoritative Cloud DB)
+    try {
+      const syncedIds = await this.supabaseSync.syncLeadsToSupabase([leadToSave]);
+      if (syncedIds && syncedIds.length > 0) {
+        leadToSave.syncStatus = 'Synced';
+        await this.db.saveLead(leadToSave);
+        console.log(`[LeadForm] Lead ${leadNumberToUse} successfully saved to Supabase Cloud DB.`);
+      }
+    } catch (supErr) {
+      console.warn('[LeadForm] Supabase cloud direct save warning, preserved in local Dexie cache:', supErr);
+    }
+
+    // Also notify Backend API / SQLite DB if running
+    try {
+      const apiUrl = `${getApiUrl()}/v1/leads/sync`;
+      fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leads: [{
+            id: leadToSave.id,
+            leadNumber: leadToSave.leadNumber,
+            exhibitionId: leadToSave.exhibitionId,
+            repId: leadToSave.repId,
+            name: leadToSave.name,
+            company: leadToSave.company,
+            designation: leadToSave.designation,
+            phone: leadToSave.phone,
+            email: leadToSave.email,
+            website: leadToSave.website,
+            address: leadToSave.address,
+            captureMethod: leadToSave.captureMethod,
+            photoDataUrl: typeof leadToSave.photoBlob === 'string' ? leadToSave.photoBlob : undefined,
+            interestLevel: leadToSave.interestLevel,
+            productCategory: leadToSave.productCategory,
+            priority: leadToSave.priority,
+            budget: leadToSave.budget,
+            purchaseTimeline: leadToSave.purchaseTimeline,
+            followUpDate: leadToSave.followUpDate,
+            remarks: leadToSave.remarks,
+            createdAt: leadToSave.createdAt
+          }]
+        })
+      }).catch(() => {});
+    } catch {}
     
     this.sessionLeads.update(list => [leadToSave, ...list.filter(l => l.id !== leadToSave.id)]);
     this.currentPage.set(1);
 
-    this.savedMessage.set(`Lead ${leadNumberToUse} ${actionText} successfully and added to preview grid below!`);
+    this.savedMessage.set(`Lead ${leadNumberToUse} ${actionText} successfully and saved to Database!`);
 
     this.isEditMode.set(false);
     this.editingLeadId = null;

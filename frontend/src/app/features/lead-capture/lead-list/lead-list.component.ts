@@ -6,6 +6,7 @@ import { ApplicationDatabase } from '../../../core/services/db.service';
 import { LocalLead } from '../../../core/models/lead.model';
 import { StallService } from '../../../core/services/stall.service';
 import { ExhibitionService } from '../../../core/services/exhibition.service';
+import { SupabaseSyncService } from '../../../core/services/supabase-sync.service';
 
 @Component({
   selector: 'app-lead-list',
@@ -17,6 +18,7 @@ import { ExhibitionService } from '../../../core/services/exhibition.service';
 export class LeadListComponent implements OnInit {
   private db = inject(ApplicationDatabase);
   private router = inject(Router);
+  private supabaseSync = inject(SupabaseSyncService);
   stallService = inject(StallService);
   exhibitionService = inject(ExhibitionService);
 
@@ -410,6 +412,32 @@ export class LeadListComponent implements OnInit {
   }
 
   async loadLeads(): Promise<void> {
+    // 1. Fetch live authoritative leads from Supabase Cloud DB
+    try {
+      const cloudLeads = await this.supabaseSync.getAllLeadsFromSupabase();
+      if (cloudLeads && cloudLeads.length > 0) {
+        for (const cl of cloudLeads) {
+          await this.db.saveLead(cl);
+        }
+      }
+    } catch (cloudErr) {
+      console.warn('[LeadList] Supabase leads fetch notice:', cloudErr);
+    }
+
+    // 2. Sync any pending unsynced local leads up to Supabase
+    try {
+      const pending = await this.db.getPendingLeads();
+      if (pending && pending.length > 0) {
+        const syncedIds = await this.supabaseSync.syncLeadsToSupabase(pending);
+        if (syncedIds && syncedIds.length > 0) {
+          await this.db.markLeadsSynced(syncedIds);
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[LeadList] Pending leads sync warning:', syncErr);
+    }
+
+    // 3. Load all leads from DB
     const list = await this.db.getAllLeads();
     let updated = false;
     for (let i = 0; i < list.length; i++) {

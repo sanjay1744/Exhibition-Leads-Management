@@ -257,7 +257,7 @@
                 <option value="">-- Direct Stall (No Parent Exhibition) --</option>
                 @for (exh of exhibitions(); track exh.id) {
                   <option [value]="exh.id">
-                    {{ exh.code }} - {{ exh.name }} [{{ getAssignedStallCount(exh.id) }}/{{ exh.stallCount || 1 }} Stalls]
+                    {{ exh.code }} - {{ exh.name }}
                   </option>
                 }
               </select>

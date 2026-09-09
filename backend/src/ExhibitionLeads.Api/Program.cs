@@ -61,17 +61,20 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Configure SQL Server / InMemory DbContext
+// Configure Database: SQL Server or Persistent SQLite on Disk (Never lose data on server restart!)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (!string.IsNullOrWhiteSpace(connectionString))
+if (!string.IsNullOrWhiteSpace(connectionString) && !connectionString.Contains("sqlite", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlServer(connectionString));
 }
 else
 {
+    var dataDir = Path.Combine(AppContext.BaseDirectory, "Data");
+    Directory.CreateDirectory(dataDir);
+    var dbPath = Path.Combine(dataDir, "exhibition_leads.db");
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseInMemoryDatabase("ExhibitionLeadsInMemoryDB"));
+        options.UseSqlite($"Data Source={dbPath}"));
 }
 
 var app = builder.Build();

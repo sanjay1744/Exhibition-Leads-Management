@@ -21,6 +21,7 @@ public class SupabaseCloudService
     {
         _httpClient = httpClient;
         _config = config;
+        _logger = logger;
         _supabaseUrl = (_config["Supabase:Url"] ?? Environment.GetEnvironmentVariable("SUPABASE_URL") ?? "https://rxsnrpkkejoqwujoireu.supabase.co").TrimEnd('/');
         _supabaseKey = _config["Supabase:SecretKey"] 
             ?? _config["Supabase:PublishableKey"] 

@@ -10,6 +10,7 @@ import { StallService, Stall } from '../../../core/services/stall.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SyncService } from '../../../core/services/sync.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { SupabaseSyncService } from '../../../core/services/supabase-sync.service';
 import { getApiUrl } from '../../../core/config/api.config';
 
 @Component({
@@ -25,6 +26,7 @@ export class SalesDashboardComponent implements OnInit {
   private http = inject(HttpClient);
   private syncService = inject(SyncService);
   private toastService = inject(ToastService);
+  private supabaseSync = inject(SupabaseSyncService);
   stallService = inject(StallService);
   network = inject(NetworkService);
 
@@ -55,6 +57,15 @@ export class SalesDashboardComponent implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    try {
+      const cloudLeads = await this.supabaseSync.getAllLeadsFromSupabase();
+      if (cloudLeads && cloudLeads.length > 0) {
+        for (const cl of cloudLeads) {
+          await this.db.saveLead(cl);
+        }
+      }
+    } catch {}
+
     const list = await this.db.getAllLeads();
     this.allLeads.set(list);
   }
