@@ -107,6 +107,7 @@ export class LeadFormComponent implements OnInit {
 
   sessionLeads = signal<LocalLead[]>([]);
   selectedLeadForView = signal<LocalLead | null>(null);
+  showCardZoomModal = signal(false);
 
   activeStallSubtitle = computed(() => {
     const stall = this.stallService.activeStall();
@@ -287,7 +288,17 @@ export class LeadFormComponent implements OnInit {
     this.remarks = lead.remarks || '';
     this.voiceBlob = lead.voiceBlob || lead.voiceAudioUrl || (lead as any).voice_audio_url || null;
     this.voiceNotesTranscript = lead.voiceNotesTranscript || '';
-    this.scannedPhotoDataUrl = typeof lead.photoBlob === 'string' ? lead.photoBlob : (lead.cardImageUrl || (lead as any).card_image_url || null);
+    if (typeof lead.photoBlob === 'string') {
+      this.scannedPhotoDataUrl = lead.photoBlob;
+    } else if (lead.photoBlob instanceof Blob) {
+      this.scannedPhotoDataUrl = URL.createObjectURL(lead.photoBlob);
+    } else if (lead.cardImageUrl) {
+      this.scannedPhotoDataUrl = lead.cardImageUrl;
+    } else if ((lead as any).card_image_url) {
+      this.scannedPhotoDataUrl = (lead as any).card_image_url;
+    } else {
+      this.scannedPhotoDataUrl = null;
+    }
     this.captureMethod = lead.captureMethod || 'manual';
     this.isAutoFilled.set(true);
 
@@ -309,7 +320,17 @@ export class LeadFormComponent implements OnInit {
       this.remarks = lead.remarks || '';
       this.voiceBlob = lead.voiceBlob || lead.voiceAudioUrl || (lead as any).voice_audio_url || null;
       this.voiceNotesTranscript = lead.voiceNotesTranscript || '';
-      this.scannedPhotoDataUrl = typeof lead.photoBlob === 'string' ? lead.photoBlob : (lead.cardImageUrl || (lead as any).card_image_url || null);
+      if (typeof lead.photoBlob === 'string') {
+        this.scannedPhotoDataUrl = lead.photoBlob;
+      } else if (lead.photoBlob instanceof Blob) {
+        this.scannedPhotoDataUrl = URL.createObjectURL(lead.photoBlob);
+      } else if (lead.cardImageUrl) {
+        this.scannedPhotoDataUrl = lead.cardImageUrl;
+      } else if ((lead as any).card_image_url) {
+        this.scannedPhotoDataUrl = (lead as any).card_image_url;
+      } else {
+        this.scannedPhotoDataUrl = null;
+      }
       this.captureMethod = lead.captureMethod || 'manual';
       this.existingCreatedAt = lead.createdAt;
     } else {
@@ -630,5 +651,108 @@ export class LeadFormComponent implements OnInit {
     if (typeof img === 'string') return img;
     if (img instanceof Blob) return URL.createObjectURL(img);
     return null;
+  }
+
+  getVoiceAudioUrl(): string | null {
+    if (!this.voiceBlob) return null;
+    if (typeof this.voiceBlob === 'string') return this.voiceBlob;
+    if (this.voiceBlob instanceof Blob) return URL.createObjectURL(this.voiceBlob);
+    return null;
+  }
+
+  hasMultipleMediaInEdit(): boolean {
+    let count = 0;
+    if (this.scannedPhotoDataUrl) count++;
+    if (this.voiceBlob || this.voiceNotesTranscript) count++;
+    if (this.captureMethod === 'qr_scan' && !this.scannedPhotoDataUrl) count++;
+    return count > 1;
+  }
+
+  openCardZoomModal(): void {
+    this.showCardZoomModal.set(true);
+  }
+
+  closeCardZoomModal(): void {
+    this.showCardZoomModal.set(false);
+  }
+
+  onReplaceCardFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.scannedPhotoDataUrl = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  removeCardPhoto(): void {
+    this.scannedPhotoDataUrl = null;
+  }
+
+  removeVoiceAudio(): void {
+    this.voiceBlob = null;
+    this.voiceNotesTranscript = '';
+  }
+
+  async downloadCardPhoto(): Promise<void> {
+    if (!this.scannedPhotoDataUrl) return;
+    const url = this.scannedPhotoDataUrl;
+    const fileName = `${this.existingLeadNumber || 'lead_card'}.jpg`;
+    try {
+      if (url.startsWith('http')) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (e) {
+      window.open(url, '_blank');
+    }
+  }
+
+  async downloadVoiceAudio(): Promise<void> {
+    const url = this.getVoiceAudioUrl();
+    if (!url) return;
+    const ext = url.includes('.m4a') || url.startsWith('data:audio/mp4') || url.startsWith('data:audio/m4a') ? '.m4a' : '.webm';
+    const fileName = `${this.existingLeadNumber || 'lead'}_voice_note${ext}`;
+    try {
+      if (url.startsWith('http')) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (e) {
+      window.open(url, '_blank');
+    }
   }
 }

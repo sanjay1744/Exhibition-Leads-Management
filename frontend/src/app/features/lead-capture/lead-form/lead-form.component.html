@@ -3,8 +3,8 @@
   <div class="page-title-bar flex items-center justify-between mb-6">
     <div>
       <div class="text-xs font-black text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-        <span class="material-icons text-sm text-slate-900">post_add</span>
-        New Leads
+        <span class="material-icons text-sm text-slate-900">{{ isEditMode() ? 'edit_note' : 'post_add' }}</span>
+        {{ isEditMode() ? ('Edit Lead ' + (existingLeadNumber ? ('(' + existingLeadNumber + ')') : '')) : 'New Leads' }}
       </div>
       <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
         <span>{{ activeStallSubtitle() }}</span>
@@ -12,6 +12,15 @@
     </div>
 
     <div class="flex items-center gap-2">
+      @if (isEditMode()) {
+        <a 
+          routerLink="/leads" 
+          class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+        >
+          <span class="material-icons text-sm">arrow_back</span>
+          <span>Back to Leads</span>
+        </a>
+      }
       <button 
         type="button" 
         (click)="openTargetSelectionModal()" 
@@ -24,19 +33,226 @@
     </div>
   </div>
 
-  <!-- Quick Acquisition Tools Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <app-ocr-scanner #ocrScanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
-    <app-qr-scanner #qrScanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
-    <app-voice-recorder 
-      #voiceRecorder
-      [initialAudio]="voiceBlob" 
-      [initialTranscript]="voiceNotesTranscript" 
-      (voiceRecorded)="onVoiceRecorded($event)" 
-      (transcriptGenerated)="onTranscriptGenerated($event)"
-      (voiceCleared)="onVoiceCleared()"
-    ></app-voice-recorder>
-  </div>
+  <!-- EDIT MODE: Replace Acquisition Tools with Attached Media (Card Image / Audio Player / QR) -->
+  @if (isEditMode()) {
+    @if (scannedPhotoDataUrl || voiceBlob || voiceNotesTranscript || captureMethod === 'qr_scan') {
+      <div class="mb-6">
+        <div 
+          class="grid gap-4"
+          [ngClass]="{
+            'grid-cols-1 md:grid-cols-2': hasMultipleMediaInEdit(),
+            'grid-cols-1': !hasMultipleMediaInEdit()
+          }"
+        >
+          <!-- Business Card Image Card -->
+          @if (scannedPhotoDataUrl) {
+            <div class="card-panel p-0 overflow-hidden bg-white border border-slate-200/80 rounded-2xl shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+              <div>
+                <!-- Header with Rich Navy Gradient (#1a3a5c) -->
+                <div class="bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] text-white p-3.5 px-4 flex items-center justify-between shadow-xs border-b border-white/10">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0 backdrop-blur-xs">
+                      <span class="material-icons text-blue-200 text-lg">credit_card</span>
+                    </div>
+                    <div>
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-white">Scanned Business Card</h3>
+                      <p class="text-[10px] text-blue-200/80 font-mono">{{ existingLeadNumber ? ('Lead ' + existingLeadNumber) : 'Attached Card Image' }}</p>
+                    </div>
+                  </div>
+                  <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-400/20 text-blue-100 border border-blue-300/30">
+                    Uploaded Card
+                  </span>
+                </div>
+
+                <!-- Card Image Preview -->
+                <div class="p-4 space-y-3">
+                  <div 
+                    (click)="openCardZoomModal()" 
+                    class="bg-slate-900/90 rounded-xl p-3 flex items-center justify-center border border-slate-700/60 shadow-inner group cursor-pointer relative overflow-hidden min-h-[160px]"
+                    title="Click to view full image"
+                  >
+                    <img 
+                      [src]="scannedPhotoDataUrl" 
+                      alt="Scanned Business Card" 
+                      class="max-h-52 max-w-full object-contain rounded-lg shadow-md group-hover:scale-[1.02] transition-transform duration-200" 
+                    />
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-bold backdrop-blur-[1px]">
+                      <span class="material-icons text-base">zoom_in</span>
+                      <span>Click to View Full Size</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer Action Buttons -->
+              <div class="p-3.5 px-4 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between gap-2 flex-wrap text-xs">
+                <div class="flex items-center gap-2">
+                  <button 
+                    type="button" 
+                    (click)="downloadCardPhoto()" 
+                    class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg border border-blue-200 flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs"
+                  >
+                    <span class="material-icons text-xs">download</span>
+                    <span>Download</span>
+                  </button>
+
+                  <button 
+                    type="button" 
+                    (click)="openCardZoomModal()" 
+                    class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-lg border border-slate-200 flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs"
+                  >
+                    <span class="material-icons text-xs">visibility</span>
+                    <span>View Full</span>
+                  </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <label class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-lg border border-slate-200 flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs">
+                    <span class="material-icons text-xs text-blue-600">file_upload</span>
+                    <span>Replace Photo</span>
+                    <input type="file" accept="image/*" (change)="onReplaceCardFile($event)" class="hidden" />
+                  </label>
+
+                  <button 
+                    type="button" 
+                    (click)="removeCardPhoto()" 
+                    class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg border border-rose-200 flex items-center gap-1 transition shadow-2xs cursor-pointer text-xs"
+                    title="Remove Photo"
+                  >
+                    <span class="material-icons text-xs">delete_outline</span>
+                    <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Voice Note Audio Player Card -->
+          @if (voiceBlob || voiceNotesTranscript) {
+            <div class="card-panel p-0 overflow-hidden bg-white border border-slate-200/80 rounded-2xl shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+              <div>
+                <!-- Header with Rich Navy Gradient (#1a3a5c) -->
+                <div class="bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] text-white p-3.5 px-4 flex items-center justify-between shadow-xs border-b border-white/10">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0 backdrop-blur-xs">
+                      <span class="material-icons text-blue-200 text-lg">mic</span>
+                    </div>
+                    <div>
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-white">Voice Note Audio</h3>
+                      <p class="text-[10px] text-blue-200/80">Recorded Discussion Audio & Transcript</p>
+                    </div>
+                  </div>
+                  <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-200 border border-rose-400/30">
+                    Audio Attached
+                  </span>
+                </div>
+
+                <!-- Audio Player Body -->
+                <div class="p-4 space-y-3">
+                  @if (getVoiceAudioUrl()) {
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                      <div class="flex items-center justify-between text-xs font-bold text-slate-700">
+                        <span class="flex items-center gap-1.5 text-rose-700">
+                          <span class="material-icons text-sm animate-pulse text-rose-600">graphic_eq</span>
+                          Voice Note Audio Playback
+                        </span>
+                      </div>
+                      <audio [src]="getVoiceAudioUrl()" controls class="w-full h-8 rounded focus:outline-none"></audio>
+                    </div>
+                  }
+
+                  @if (voiceNotesTranscript) {
+                    <div class="p-3 bg-blue-50/50 border border-blue-100 rounded-xl space-y-1">
+                      <div class="text-[10px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
+                        <span class="material-icons text-xs text-blue-600">subtitles</span>
+                        Transcribed Discussion Notes
+                      </div>
+                      <p class="text-xs text-slate-700 italic font-medium leading-relaxed">
+                        "{{ voiceNotesTranscript }}"
+                      </p>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Footer Action Buttons -->
+              <div class="p-3.5 px-4 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between gap-2 flex-wrap text-xs">
+                @if (getVoiceAudioUrl()) {
+                  <button 
+                    type="button" 
+                    (click)="downloadVoiceAudio()" 
+                    class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-lg border border-red-200 flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs"
+                  >
+                    <span class="material-icons text-xs">download</span>
+                    <span>Download Audio</span>
+                  </button>
+                }
+
+                <button 
+                  type="button" 
+                  (click)="removeVoiceAudio()" 
+                  class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg border border-rose-200 flex items-center gap-1 transition shadow-2xs cursor-pointer text-xs ml-auto"
+                  title="Remove Audio"
+                >
+                  <span class="material-icons text-xs">delete_outline</span>
+                  <span>Remove Audio</span>
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- QR Code / vCard Badge Card -->
+          @if (captureMethod === 'qr_scan' && !scannedPhotoDataUrl) {
+            <div class="card-panel p-0 overflow-hidden bg-white border border-slate-200/80 rounded-2xl shadow-xs flex flex-col justify-between hover:shadow-md transition-all">
+              <div>
+                <!-- Header with Rich Navy Gradient (#1a3a5c) -->
+                <div class="bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] text-white p-3.5 px-4 flex items-center justify-between shadow-xs border-b border-white/10">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0 backdrop-blur-xs">
+                      <span class="material-icons text-blue-200 text-lg">qr_code_scanner</span>
+                    </div>
+                    <div>
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-white">QR Code / vCard</h3>
+                      <p class="text-[10px] text-blue-200/80">Captured via Badge Scan</p>
+                    </div>
+                  </div>
+                  <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 border border-emerald-300/30">
+                    vCard / QR
+                  </span>
+                </div>
+
+                <div class="p-4 space-y-3">
+                  <div class="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <span class="material-icons text-2xl">verified</span>
+                    </div>
+                    <div>
+                      <span class="text-xs font-bold text-emerald-900 block">Visitor Badge QR Scanned</span>
+                      <p class="text-[11px] text-emerald-700">Visitor contact details successfully extracted and populated in the form below.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  } @else {
+    <!-- Quick Acquisition Tools Grid (Shown when creating a new lead) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <app-ocr-scanner #ocrScanner (cardExtracted)="onCardExtracted($event)"></app-ocr-scanner>
+      <app-qr-scanner #qrScanner (qrScanned)="onQrScanned($event)"></app-qr-scanner>
+      <app-voice-recorder 
+        #voiceRecorder
+        [initialAudio]="voiceBlob" 
+        [initialTranscript]="voiceNotesTranscript" 
+        (voiceRecorded)="onVoiceRecorded($event)" 
+        (transcriptGenerated)="onTranscriptGenerated($event)"
+        (voiceCleared)="onVoiceCleared()"
+      ></app-voice-recorder>
+    </div>
+  }
 
   <!-- Visitor Information Form Card -->
   <div class="card-panel bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all duration-300 p-0 overflow-hidden mb-8">
@@ -57,7 +273,7 @@
     </div>
 
     <form (ngSubmit)="saveLead()" class="p-6">
-      @if (scannedPhotoDataUrl) {
+      @if (scannedPhotoDataUrl && !isEditMode()) {
         <div class="flex items-center justify-between bg-blue-50/80 border border-blue-200 p-3 rounded-xl text-xs mb-6 shadow-2xs">
           <div class="flex items-center gap-3">
             <img [src]="scannedPhotoDataUrl" alt="Card Preview" class="h-12 w-20 rounded-lg border border-blue-300 object-cover shadow-2xs" />
@@ -672,6 +888,44 @@
             class="w-full py-2.5 px-4 bg-gradient-to-r from-[#142e4a] via-[#1a3a5c] to-[#204770] hover:from-[#183656] hover:to-[#255280] text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md active:scale-95"
           >
             OK, Got It
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: View Full Size Business Card Image Lightbox -->
+  @if (showCardZoomModal() && scannedPhotoDataUrl) {
+    <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        <!-- Modal Header -->
+        <div class="bg-[#1a3a5c] text-white px-5 py-3.5 flex items-center justify-between shrink-0 border-b border-slate-700/50">
+          <div class="flex items-center gap-2.5">
+            <span class="material-icons text-blue-200">credit_card</span>
+            <div>
+              <h3 class="text-sm font-bold uppercase tracking-wider">Business Card Image</h3>
+              <p class="text-[11px] text-blue-200 font-mono">{{ existingLeadNumber || 'Scanned Card' }}</p>
+            </div>
+          </div>
+          <button (click)="closeCardZoomModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer" title="Close">
+            <span class="material-icons text-base">close</span>
+          </button>
+        </div>
+
+        <!-- Image Body -->
+        <div class="p-4 flex items-center justify-center bg-slate-950 flex-1 overflow-auto min-h-[250px]">
+          <img [src]="scannedPhotoDataUrl" alt="Full Business Card" class="max-h-[70vh] max-w-full object-contain rounded shadow-lg" />
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+          <button type="button" (click)="downloadCardPhoto()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+            <span class="material-icons text-sm">download</span>
+            <span>Download Image</span>
+          </button>
+
+          <button type="button" (click)="closeCardZoomModal()" class="btn btn-outline-pill text-xs px-4 py-2 cursor-pointer">
+            Close
           </button>
         </div>
       </div>
