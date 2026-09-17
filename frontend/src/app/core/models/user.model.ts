@@ -1,9 +1,11 @@
+export type UserRole = 'SuperAdmin' | 'Admin' | 'StallOwner' | 'Marketing';
+
 export interface AppUser {
   id: string;
   fullName: string;
   username: string;
   email: string;
-  role: 'Admin' | 'StallOwner' | 'Marketing' | string;
+  role: UserRole | string;
   userGroup?: string;
   status: 'Active' | 'Inactive';
   password?: string;

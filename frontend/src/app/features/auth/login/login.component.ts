@@ -29,9 +29,13 @@ export class LoginComponent {
     this.errorMessage.set(null);
 
     this.authService.login({ username: this.username, password: this.password }).subscribe({
-      next: () => {
+      next: (session) => {
         this.isLoading.set(false);
-        this.router.navigate(['/dashboard']);
+        if (session.role === 'Marketing') {
+          this.router.navigate(['/leads']);
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (err) => {
         this.isLoading.set(false);

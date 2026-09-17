@@ -171,8 +171,13 @@ public class ExhibitionsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Exhibition>> CreateExhibition([FromBody] CreateExhibitionRequest request)
+    public async Task<ActionResult<Exhibition>> CreateExhibition([FromBody] CreateExhibitionRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (!string.IsNullOrEmpty(requestingRole) && !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Only Super Admin can create new exhibitions." });
+        }
+
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             return BadRequest(new { message = "Exhibition Name is required." });
@@ -269,8 +274,14 @@ public class ExhibitionsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateExhibition(Guid id, [FromBody] CreateExhibitionRequest request)
+    public async Task<IActionResult> UpdateExhibition(Guid id, [FromBody] CreateExhibitionRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (string.Equals(requestingRole, "StallOwner", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(requestingRole, "Marketing", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "You do not have permission to edit exhibitions." });
+        }
+
         var exhibition = await _context.Exhibitions.FindAsync(id);
         if (exhibition == null) return NotFound(new { message = "Exhibition not found." });
 
@@ -317,8 +328,13 @@ public class ExhibitionsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteExhibition(Guid id)
+    public async Task<IActionResult> DeleteExhibition(Guid id, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (!string.IsNullOrEmpty(requestingRole) && !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Only Super Admin can delete exhibitions." });
+        }
+
         var exhibition = await _context.Exhibitions.FindAsync(id);
         if (exhibition == null) return NotFound(new { message = "Exhibition not found." });
 

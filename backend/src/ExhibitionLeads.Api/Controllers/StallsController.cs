@@ -104,8 +104,13 @@ public class StallsController : ControllerBase
     );
 
     [HttpPost]
-    public async Task<ActionResult<Stall>> CreateStall([FromBody] CreateStallRequest request)
+    public async Task<ActionResult<Stall>> CreateStall([FromBody] CreateStallRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (string.Equals(requestingRole, "Marketing", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Marketing Rep is restricted from creating stalls." });
+        }
+
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             return BadRequest(new { message = "Stall Name is required." });
@@ -179,8 +184,13 @@ public class StallsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateStall(Guid id, [FromBody] CreateStallRequest request)
+    public async Task<IActionResult> UpdateStall(Guid id, [FromBody] CreateStallRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (string.Equals(requestingRole, "Marketing", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Marketing Rep is restricted from updating stalls." });
+        }
+
         var stall = await _context.Stalls.FindAsync(id);
         if (stall == null) return NotFound(new { message = "Stall not found." });
 
@@ -225,8 +235,13 @@ public class StallsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteStall(Guid id)
+    public async Task<IActionResult> DeleteStall(Guid id, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (string.Equals(requestingRole, "Marketing", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Marketing Rep is restricted from deleting stalls." });
+        }
+
         var stall = await _context.Stalls.FindAsync(id);
         if (stall == null) return NotFound(new { message = "Stall not found." });
 

@@ -61,6 +61,33 @@ export class StallMasterComponent implements OnInit {
   isEditMode = signal(false);
   editingStallId: string | null = null;
 
+  isViewModalOpen = signal(false);
+  viewingStall = signal<StallMasterDto | null>(null);
+
+  openViewModal(stall: StallMasterDto): void {
+    this.viewingStall.set(stall);
+    this.isViewModalOpen.set(true);
+  }
+
+  closeViewModal(): void {
+    this.isViewModalOpen.set(false);
+    this.viewingStall.set(null);
+  }
+
+  switchToEditFromView(): void {
+    const stall = this.viewingStall();
+    this.closeViewModal();
+    if (stall && this.canEditStall()) {
+      this.openEditModal(stall);
+    }
+  }
+
+  getLinkedExhibition(exhibitionId?: string): ExhibitionDto | undefined {
+    if (!exhibitionId) return undefined;
+    const target = exhibitionId.trim().toLowerCase();
+    return this.exhibitions().find(e => e.id && e.id.trim().toLowerCase() === target);
+  }
+
   formData: {
     name: string;
     code: string;
@@ -95,7 +122,17 @@ export class StallMasterComponent implements OnInit {
 
   canCreateStall = computed(() => {
     const role = this.currentUser?.role;
-    return role === 'Admin' || role === 'StallOwner';
+    return role === 'SuperAdmin' || role === 'Admin' || role === 'StallOwner';
+  });
+
+  canEditStall = computed(() => {
+    const role = this.currentUser?.role;
+    return role === 'SuperAdmin' || role === 'Admin' || role === 'StallOwner';
+  });
+
+  canDeleteStall = computed(() => {
+    const role = this.currentUser?.role;
+    return role === 'SuperAdmin' || role === 'Admin' || role === 'StallOwner';
   });
 
   ngOnInit(): void {

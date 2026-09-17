@@ -30,6 +30,27 @@ export class UserMasterComponent implements OnInit {
   isModalOpen = signal(false);
   editingUser = signal<UserMasterItem | null>(null);
 
+  isViewModalOpen = signal(false);
+  viewingUser = signal<UserMasterItem | null>(null);
+
+  openViewModal(user: UserMasterItem): void {
+    this.viewingUser.set(user);
+    this.isViewModalOpen.set(true);
+  }
+
+  closeViewModal(): void {
+    this.isViewModalOpen.set(false);
+    this.viewingUser.set(null);
+  }
+
+  switchToEditFromView(): void {
+    const user = this.viewingUser();
+    this.closeViewModal();
+    if (user && this.canEditUser()) {
+      this.openEditModal(user);
+    }
+  }
+
   formData: {
     fullName: string;
     username: string;
@@ -50,8 +71,15 @@ export class UserMasterComponent implements OnInit {
 
   currentUser = this.auth.currentUser();
 
+  isSuperAdmin = computed(() => this.currentUser?.role === 'SuperAdmin');
   isAdmin = computed(() => this.currentUser?.role === 'Admin');
   isStallOwner = computed(() => this.currentUser?.role === 'StallOwner');
+  isMarketing = computed(() => this.currentUser?.role === 'Marketing');
+
+  canCreateUser = computed(() => this.isSuperAdmin());
+  canEditUser = computed(() => this.isSuperAdmin() || this.isAdmin());
+  canDeleteUser = computed(() => this.isSuperAdmin());
+  canResetPassword = computed(() => this.isSuperAdmin());
 
   ngOnInit(): void {
     this.fetchUsers();
@@ -108,6 +136,10 @@ export class UserMasterComponent implements OnInit {
   }
 
   openAddModal(): void {
+    if (!this.canCreateUser()) {
+      this.toast.showError('Access Denied', 'Only Super Admin can add new users.');
+      return;
+    }
     this.editingUser.set(null);
     this.formData = {
       fullName: '',
@@ -122,6 +154,10 @@ export class UserMasterComponent implements OnInit {
   }
 
   openEditModal(user: UserMasterItem): void {
+    if (!this.canEditUser()) {
+      this.toast.showError('Access Denied', 'You do not have permission to edit users.');
+      return;
+    }
     this.editingUser.set(user);
     this.formData = {
       fullName: user.fullName,
@@ -136,6 +172,10 @@ export class UserMasterComponent implements OnInit {
   }
 
   openPasswordModal(user: UserMasterItem): void {
+    if (!this.canResetPassword()) {
+      this.toast.showError('Access Denied', 'Only Super Admin can reset passwords.');
+      return;
+    }
     const newPass = prompt(`Reset Password for ${user.username}:`, 'Admin@123');
     if (newPass) {
       this.userService.resetPassword(user.id, newPass).subscribe({
@@ -148,6 +188,10 @@ export class UserMasterComponent implements OnInit {
   selectedUserForDelete = signal<UserMasterItem | null>(null);
 
   deleteUser(user: UserMasterItem): void {
+    if (!this.canDeleteUser()) {
+      this.toast.showError('Access Denied', 'Only Super Admin can delete users.');
+      return;
+    }
     this.selectedUserForDelete.set(user);
   }
 
@@ -156,6 +200,11 @@ export class UserMasterComponent implements OnInit {
   }
 
   confirmDeleteUser(): void {
+    if (!this.canDeleteUser()) {
+      this.toast.showError('Access Denied', 'Only Super Admin can delete users.');
+      this.selectedUserForDelete.set(null);
+      return;
+    }
     const user = this.selectedUserForDelete();
     if (!user) return;
 
@@ -182,11 +231,26 @@ export class UserMasterComponent implements OnInit {
       return;
     }
 
+    if (!this.editingUser() && !this.canCreateUser()) {
+      this.toast.showError('Access Denied', 'Only Super Admin can add new users.');
+      return;
+    }
+
+    if (this.editingUser() && !this.canEditUser()) {
+      this.toast.showError('Access Denied', 'You do not have permission to edit users.');
+      return;
+    }
+
     const payload: Partial<AppUser> = {
       ...this.formData,
       email: this.formData.email || `${this.formData.username.toLowerCase().trim()}@company.com`,
       userGroup: this.formData.userGroup || 'Sales Team'
     };
+
+    // Prevent non-superadmin from promoting to SuperAdmin
+    if (!this.isSuperAdmin() && payload.role === 'SuperAdmin') {
+      payload.role = this.editingUser() ? this.editingUser()!.role : 'Marketing';
+    }
 
     if (this.editingUser()) {
       this.userService.updateUser(this.editingUser()!.id, payload).subscribe({

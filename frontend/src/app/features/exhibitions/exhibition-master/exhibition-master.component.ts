@@ -30,6 +30,33 @@ export class ExhibitionMasterComponent implements OnInit {
   isEditMode = signal(false);
   editingId = signal<string | null>(null);
 
+  isViewModalOpen = signal(false);
+  viewingExhibition = signal<ExhibitionDto | null>(null);
+
+  openViewModal(exhibition: ExhibitionDto): void {
+    this.viewingExhibition.set(exhibition);
+    this.isViewModalOpen.set(true);
+  }
+
+  closeViewModal(): void {
+    this.isViewModalOpen.set(false);
+    this.viewingExhibition.set(null);
+  }
+
+  switchToEditFromView(): void {
+    const exh = this.viewingExhibition();
+    this.closeViewModal();
+    if (exh && this.canEditExhibition()) {
+      this.editExhibition(exh);
+    }
+  }
+
+  getStallsForExh(exhibitionId?: string): any[] {
+    if (!exhibitionId) return [];
+    const target = exhibitionId.trim().toLowerCase();
+    return this.stallService.stalls().filter((s) => s.exhibitionId && s.exhibitionId.trim().toLowerCase() === target);
+  }
+
   formCode = signal('');
   formStallNumber = 1;
   formName = '';
@@ -152,11 +179,16 @@ export class ExhibitionMasterComponent implements OnInit {
   }
 
   canCreateExhibition(): boolean {
-    return this.authService.currentUser()?.role === 'Admin' || true;
+    return this.authService.currentUser()?.role === 'SuperAdmin';
   }
 
   canDeleteExhibition(): boolean {
-    return this.authService.currentUser()?.role === 'Admin';
+    return this.authService.currentUser()?.role === 'SuperAdmin';
+  }
+
+  canEditExhibition(): boolean {
+    const role = this.authService.currentUser()?.role;
+    return role === 'SuperAdmin' || role === 'Admin';
   }
 
   updateCodeForStall(stallNum: number): void {
@@ -182,6 +214,10 @@ export class ExhibitionMasterComponent implements OnInit {
   }
 
   openCreateModal(): void {
+    if (!this.canCreateExhibition()) {
+      this.toastService.showError('Access Denied', 'Only Super Admin can create new exhibitions.');
+      return;
+    }
     this.isEditMode.set(false);
     this.editingId.set(null);
     this.formName = '';
@@ -202,6 +238,10 @@ export class ExhibitionMasterComponent implements OnInit {
   }
 
   editExhibition(exhibition: ExhibitionDto): void {
+    if (!this.canEditExhibition()) {
+      this.toastService.showError('Access Denied', 'You do not have permission to edit exhibitions.');
+      return;
+    }
     this.isEditMode.set(true);
     this.editingId.set(exhibition.id);
     this.formCode.set(exhibition.code);
@@ -441,6 +481,10 @@ export class ExhibitionMasterComponent implements OnInit {
     };
 
     if (this.isEditMode() && this.editingId()) {
+      if (!this.canEditExhibition()) {
+        this.toastService.showError('Access Denied', 'You do not have permission to edit exhibitions.');
+        return;
+      }
       this.exhibitionService.updateExhibition(this.editingId()!, payload).subscribe({
         next: () => {
           this.toastService.showSuccess('Exhibition Updated', `Exhibition updated with quota of ${payload.stallCount} stall(s).`);
@@ -449,6 +493,10 @@ export class ExhibitionMasterComponent implements OnInit {
         error: () => this.toastService.showError('Update Failed', 'Failed to update exhibition details.')
       });
     } else {
+      if (!this.canCreateExhibition()) {
+        this.toastService.showError('Access Denied', 'Only Super Admin can create new exhibitions.');
+        return;
+      }
       this.exhibitionService.createExhibition(payload).subscribe({
         next: () => {
           this.toastService.showSuccess('Exhibition Created', `Exhibition created with capacity for ${payload.stallCount} stall(s).`);
@@ -477,10 +525,19 @@ export class ExhibitionMasterComponent implements OnInit {
   }
 
   promptDeleteExhibition(exhibition: ExhibitionDto): void {
+    if (!this.canDeleteExhibition()) {
+      this.toastService.showError('Access Denied', 'Only Super Admin can delete exhibitions.');
+      return;
+    }
     this.selectedExhibitionForDelete.set(exhibition);
   }
 
   confirmDeleteExhibition(): void {
+    if (!this.canDeleteExhibition()) {
+      this.toastService.showError('Access Denied', 'Only Super Admin can delete exhibitions.');
+      this.selectedExhibitionForDelete.set(null);
+      return;
+    }
     const item = this.selectedExhibitionForDelete();
     if (!item) return;
 

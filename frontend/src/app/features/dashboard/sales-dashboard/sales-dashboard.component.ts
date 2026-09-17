@@ -53,7 +53,7 @@ export class SalesDashboardComponent implements OnInit {
 
   canCreateStall = computed(() => {
     const role = this.currentUser?.role;
-    return role === 'Admin' || role === 'StallOwner';
+    return role === 'SuperAdmin' || role === 'Admin' || role === 'StallOwner';
   });
 
   async ngOnInit(): Promise<void> {

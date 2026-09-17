@@ -72,87 +72,80 @@ import { ToastService } from './core/services/toast.service';
             >
               <!-- Sidebar Navigation Menu -->
               <nav class="sidebar-nav">
-            <!-- 1. Dashboard -->
-            <a routerLink="/dashboard" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon">dashboard</span>
-              <span class="nav-text">Dashboard</span>
-            </a>
+            <!-- 1. Dashboard (Hidden for Marketing Rep) -->
+            @if (!auth.isMarketing()) {
+              <a routerLink="/dashboard" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link">
+                <span class="material-icons nav-chevron">chevron_right</span>
+                <span class="material-icons nav-icon">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+              </a>
+            }
 
-            <!-- 1.5 OCR Debugger (Hidden from UI as requested) -->
-            <!-- 
-            <a routerLink="/ocr-debugger" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link font-bold text-amber-300">
-              <span class="material-icons nav-chevron">chevron_right</span>
-              <span class="material-icons nav-icon text-amber-400">bug_report</span>
-              <span class="nav-text">OCR Debugger</span>
-            </a>
-            -->
-
-            <!-- 2. Expandable Admin Folder -->
-            <div>
-              <div (click)="toggleAdminMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
-                <div class="flex items-center">
-                  <span class="material-icons nav-chevron">
-                    {{ isAdminExpanded() ? 'expand_more' : 'chevron_right' }}
-                  </span>
-                  <span class="material-icons nav-icon">admin_panel_settings</span>
-                  <span class="nav-text font-semibold">Admin</span>
+            <!-- 2. Expandable Admin Folder (Super Admin & Admin Only) -->
+            @if (auth.isSuperAdmin() || auth.isAdmin()) {
+              <div>
+                <div (click)="toggleAdminMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
+                  <div class="flex items-center">
+                    <span class="material-icons nav-chevron">
+                      {{ isAdminExpanded() ? 'expand_more' : 'chevron_right' }}
+                    </span>
+                    <span class="material-icons nav-icon">admin_panel_settings</span>
+                    <span class="nav-text font-semibold">Admin</span>
+                  </div>
                 </div>
+
+                @if (isAdminExpanded()) {
+                  <div class="pl-6 bg-black/10">
+                    <a routerLink="/admin/notification-config" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                      <span class="material-icons nav-icon text-sm">notifications</span>
+                      <span class="nav-text">Notification Config</span>
+                    </a>
+                    <a routerLink="/admin/smtp-config" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                      <span class="material-icons nav-icon text-sm">mail</span>
+                      <span class="nav-text">SMTP Config</span>
+                    </a>
+                    <a routerLink="/admin/notification-logs" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                      <span class="material-icons nav-icon text-sm">history</span>
+                      <span class="nav-text">Notification Logs</span>
+                    </a>
+                  </div>
+                }
               </div>
+            }
 
-              @if (isAdminExpanded()) {
-                <div class="pl-6 bg-black/10">
-                  <a routerLink="/admin/notification-config" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm">notifications</span>
-                    <span class="nav-text">Notification Config</span>
-                  </a>
-                  <a routerLink="/admin/smtp-config" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm">mail</span>
-                    <span class="nav-text">SMTP Config</span>
-                  </a>
-                  <a routerLink="/admin/notification-logs" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm">history</span>
-                    <span class="nav-text">Notification Logs</span>
-                  </a>
-                  <!--
-                  <a routerLink="/ocr-debugger" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm text-blue-400">bug_report</span>
-                    <span class="nav-text font-bold text-blue-300">OCR Debugger</span>
-                  </a>
-                  -->
+            <!-- 3. Expandable Master Folder (Hidden for Marketing Rep) -->
+            @if (!auth.isMarketing()) {
+              <div>
+                <div (click)="toggleMasterMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
+                  <div class="flex items-center">
+                    <span class="material-icons nav-chevron">
+                      {{ isMasterExpanded() ? 'expand_more' : 'chevron_right' }}
+                    </span>
+                    <span class="material-icons nav-icon">dataset</span>
+                    <span class="nav-text font-semibold">Master</span>
+                  </div>
                 </div>
-              }
-            </div>
 
-            <!-- 3. Expandable Master Folder (User Master first, then Stalls) -->
-            <div>
-              <div (click)="toggleMasterMenu()" class="nav-item-link cursor-pointer hover:bg-white/10 flex items-center justify-between">
-                <div class="flex items-center">
-                  <span class="material-icons nav-chevron">
-                    {{ isMasterExpanded() ? 'expand_more' : 'chevron_right' }}
-                  </span>
-                  <span class="material-icons nav-icon">dataset</span>
-                  <span class="nav-text font-semibold">Master</span>
-                </div>
+                @if (isMasterExpanded()) {
+                  <div class="pl-6 bg-black/10">
+                    <a routerLink="/exhibitions" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                      <span class="material-icons nav-icon text-sm">event_available</span>
+                      <span class="nav-text">Exhibition Master</span>
+                    </a>
+                    @if (auth.isSuperAdmin() || auth.isAdmin()) {
+                      <a routerLink="/ums/user" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                        <span class="material-icons nav-icon text-sm">group</span>
+                        <span class="nav-text">User Master</span>
+                      </a>
+                    }
+                    <a routerLink="/stalls" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                      <span class="material-icons nav-icon text-sm">storefront</span>
+                      <span class="nav-text">Stalls</span>
+                    </a>
+                  </div>
+                }
               </div>
-
-              @if (isMasterExpanded()) {
-                <div class="pl-6 bg-black/10">
-                  <a routerLink="/exhibitions" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm">event_available</span>
-                    <span class="nav-text">Exhibition Master</span>
-                  </a>
-                  <a routerLink="/ums/user" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm">group</span>
-                    <span class="nav-text">User Master</span>
-                  </a>
-                  <a routerLink="/stalls" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                    <span class="material-icons nav-icon text-sm">storefront</span>
-                    <span class="nav-text">Stalls</span>
-                  </a>
-                </div>
-              }
-            </div>
+            }
 
             <!-- 4. Expandable Lead Folder -->
             <div>
@@ -292,14 +285,16 @@ import { ToastService } from './core/services/toast.service';
 
                   <!-- Menu Links -->
                   <div class="py-1">
-                    <a 
-                      routerLink="/stalls" 
-                      (click)="closeProfileMenu()" 
-                      class="flex items-center gap-3 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                    >
-                      <span class="material-icons text-slate-500 text-base">storefront</span>
-                      Stalls
-                    </a>
+                    @if (!auth.isMarketing()) {
+                      <a 
+                        routerLink="/stalls" 
+                        (click)="closeProfileMenu()" 
+                        class="flex items-center gap-3 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                      >
+                        <span class="material-icons text-slate-500 text-base">storefront</span>
+                        Stalls
+                      </a>
+                    }
 
                     <a 
                       routerLink="/profile" 
@@ -310,14 +305,16 @@ import { ToastService } from './core/services/toast.service';
                       My Profile
                     </a>
 
-                    <a 
-                      routerLink="/admin/smtp-config" 
-                      (click)="closeProfileMenu()" 
-                      class="flex items-center gap-3 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                    >
-                      <span class="material-icons text-slate-500 text-base">settings</span>
-                      SMTP Settings
-                    </a>
+                    @if (auth.isSuperAdmin() || auth.isAdmin()) {
+                      <a 
+                        routerLink="/admin/smtp-config" 
+                        (click)="closeProfileMenu()" 
+                        class="flex items-center gap-3 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                      >
+                        <span class="material-icons text-slate-500 text-base">settings</span>
+                        SMTP Settings
+                      </a>
+                    }
                   </div>
 
                   <div class="border-t border-slate-100 my-1"></div>

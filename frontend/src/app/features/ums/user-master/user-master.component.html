@@ -3,21 +3,33 @@
   <div class="page-title-bar flex items-center justify-between mb-6">
     <div>
       <h1 class="page-title text-xl font-bold text-slate-900 uppercase tracking-wide">USER MASTER</h1>
-      <p class="text-xs text-slate-500">Dynamic User Management (Role Hierarchy: Admin > Stall Owner > Marketing)</p>
+      <p class="text-xs text-slate-500">Dynamic User Management (Role Hierarchy: Super Admin > Admin > Stall Owner > Marketing Rep)</p>
     </div>
 
     <div class="page-actions flex items-center gap-2">
-      @if (isStallOwner()) {
+      @if (isSuperAdmin()) {
+        <span class="text-xs bg-indigo-50 text-indigo-800 border border-indigo-200 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1">
+          <span class="material-icons text-sm text-indigo-600">verified_user</span>
+          Super Admin (Full User Master Control)
+        </span>
+      } @else if (isAdmin()) {
         <span class="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1">
-          <span class="material-icons text-sm text-amber-600">security</span>
-          Stall Owner Role (User Deletion Restricted)
+          <span class="material-icons text-sm text-amber-600">info</span>
+          Admin Role (Adding Users Restricted to Super Admin)
+        </span>
+      } @else if (isStallOwner()) {
+        <span class="text-xs bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1">
+          <span class="material-icons text-sm text-slate-600">lock</span>
+          Stall Owner (User Management Restricted)
         </span>
       }
 
-      <button (click)="openAddModal()" class="btn btn-primary text-xs px-3.5 py-1.5 rounded-md font-semibold flex items-center gap-1 shadow-sm">
-        <span class="material-icons text-sm">add</span>
-        Add New User
-      </button>
+      @if (canCreateUser()) {
+        <button (click)="openAddModal()" class="btn btn-primary text-xs px-3.5 py-1.5 rounded-md font-semibold flex items-center gap-1 shadow-sm">
+          <span class="material-icons text-sm">add</span>
+          Add New User
+        </button>
+      }
     </div>
   </div>
 
@@ -46,7 +58,7 @@
             <th class="py-2.5 px-4 border-r border-white/20">Username</th>
             <th class="py-2.5 px-4 border-r border-white/20">Role</th>
             <th class="py-2.5 px-4 text-center border-r border-white/20">Status</th>
-            <th class="py-2.5 px-4 text-center w-28">Actions</th>
+            <th class="py-2.5 px-4 text-center w-36">Actions</th>
           </tr>
         </thead>
         <tbody class="text-xs text-slate-700 font-medium">
@@ -68,15 +80,16 @@
                 <span 
                   class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1"
                   [ngClass]="{
+                    'bg-indigo-100 text-indigo-800 border border-indigo-200': user.role === 'SuperAdmin',
                     'bg-purple-100 text-purple-800 border border-purple-200': user.role === 'Admin',
                     'bg-blue-100 text-blue-800 border border-blue-200': user.role === 'StallOwner',
-                    'bg-slate-100 text-slate-700': user.role === 'Marketing' || user.role === '-'
+                    'bg-slate-100 text-slate-700 border border-slate-200': user.role === 'Marketing' || user.role === '-'
                   }"
                 >
                   <span class="material-icons text-[12px]">
-                    {{ user.role === 'Admin' ? 'shield' : user.role === 'StallOwner' ? 'storefront' : 'person' }}
+                    {{ user.role === 'SuperAdmin' ? 'verified_user' : user.role === 'Admin' ? 'shield' : user.role === 'StallOwner' ? 'storefront' : 'person' }}
                   </span>
-                  {{ user.role === 'StallOwner' ? 'Stall Owner' : user.role }}
+                  {{ user.role === 'SuperAdmin' ? 'Super Admin' : user.role === 'StallOwner' ? 'Stall Owner' : user.role === 'Marketing' ? 'Marketing Rep' : user.role }}
                 </span>
               </td>
 
@@ -91,14 +104,23 @@
 
               <td class="py-2.5 px-4 text-center">
                 <div class="flex items-center justify-center gap-2">
-                  <button (click)="openEditModal(user)" class="text-blue-600 hover:text-blue-800 p-0.5" title="Edit User">
-                    <span class="material-icons text-base">edit</span>
+                  <!-- View User Details (Eye Icon) -->
+                  <button (click)="openViewModal(user)" class="text-teal-600 hover:text-teal-800 p-0.5 transition" title="View User Details">
+                    <span class="material-icons text-base">visibility</span>
                   </button>
-                  <button (click)="openPasswordModal(user)" class="text-amber-600 hover:text-amber-800 p-0.5" title="Reset Key">
-                    <span class="material-icons text-base">vpn_key</span>
-                  </button>
-                  @if (isAdmin()) {
-                    <button (click)="deleteUser(user)" class="text-rose-600 hover:text-rose-800 p-0.5" title="Delete User (Admin Only)">
+
+                  @if (canEditUser()) {
+                    <button (click)="openEditModal(user)" class="text-blue-600 hover:text-blue-800 p-0.5 transition" title="Edit User">
+                      <span class="material-icons text-base">edit</span>
+                    </button>
+                  }
+                  @if (canResetPassword()) {
+                    <button (click)="openPasswordModal(user)" class="text-amber-600 hover:text-amber-800 p-0.5 transition" title="Reset Key">
+                      <span class="material-icons text-base">vpn_key</span>
+                    </button>
+                  }
+                  @if (canDeleteUser()) {
+                    <button (click)="deleteUser(user)" class="text-rose-600 hover:text-rose-800 p-0.5 transition" title="Delete User (Super Admin Only)">
                       <span class="material-icons text-base">delete</span>
                     </button>
                   }
@@ -198,9 +220,12 @@
             <div>
               <label class="form-label font-bold text-xs text-slate-700 mb-1">Role Hierarchy *</label>
               <select [(ngModel)]="formData.role" name="role" class="form-control font-semibold">
-                <option value="Admin">Admin (All Access)</option>
-                <option value="StallOwner">Stall Owner (Stall Admin, Cannot Delete Users)</option>
-                <option value="Marketing">Marketing Rep (Stall Lead Collector)</option>
+                @if (isSuperAdmin()) {
+                  <option value="SuperAdmin">Super Admin (All Access & User Master Control)</option>
+                }
+                <option value="Admin">Admin (All Access, Cannot Add/Delete Exhibitions)</option>
+                <option value="StallOwner">Stall Owner (Can Add/Delete Stalls, Cannot Add/Delete Exhibitions)</option>
+                <option value="Marketing">Marketing Rep (Leads Only)</option>
               </select>
             </div>
 
@@ -287,6 +312,125 @@
             <span class="material-icons text-sm">delete_forever</span>
             Delete Permanently
           </button>
+        </div>
+
+      </div>
+    </div>
+  }
+
+  <!-- View User Details Modal -->
+  @if (isViewModalOpen() && viewingUser()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/80">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center font-bold">
+              <span class="material-icons text-base">visibility</span>
+            </div>
+            <div>
+              <h2 class="text-sm font-extrabold text-slate-900 leading-tight">View User Details</h2>
+              <p class="text-[11px] text-slate-500 font-medium">Complete user profile and role assignment</p>
+            </div>
+          </div>
+          <button (click)="closeViewModal()" class="text-slate-400 hover:text-slate-600 transition p-1">
+            <span class="material-icons text-base">close</span>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6 overflow-y-auto space-y-4">
+          <!-- Profile Identity Header Banner -->
+          <div class="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-slate-50 to-teal-50/30 border border-slate-200/80">
+            <div class="w-14 h-14 rounded-full bg-[#1a3a5c] text-white flex items-center justify-center font-black text-xl shadow-sm shrink-0">
+              {{ (viewingUser()?.fullName || viewingUser()?.username || 'U')[0].toUpperCase() }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="font-black text-base text-slate-900 truncate">{{ viewingUser()?.fullName }}</h3>
+                <span 
+                  class="px-2.5 py-0.5 rounded text-[10px] font-extrabold inline-flex items-center gap-1"
+                  [ngClass]="viewingUser()?.status === 'Active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-100 text-red-700 border border-red-200'"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full" [ngClass]="viewingUser()?.status === 'Active' ? 'bg-emerald-600' : 'bg-red-600'"></span>
+                  {{ viewingUser()?.status }}
+                </span>
+              </div>
+              <div class="text-xs text-slate-500 font-mono mt-0.5">&#64;{{ viewingUser()?.username }}</div>
+              
+              <div class="mt-2">
+                <span 
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1"
+                  [ngClass]="{
+                    'bg-indigo-100 text-indigo-800 border border-indigo-200': viewingUser()?.role === 'SuperAdmin',
+                    'bg-purple-100 text-purple-800 border border-purple-200': viewingUser()?.role === 'Admin',
+                    'bg-blue-100 text-blue-800 border border-blue-200': viewingUser()?.role === 'StallOwner',
+                    'bg-slate-100 text-slate-700 border border-slate-200': viewingUser()?.role === 'Marketing' || viewingUser()?.role === '-'
+                  }"
+                >
+                  <span class="material-icons text-[12px]">
+                    {{ viewingUser()?.role === 'SuperAdmin' ? 'verified_user' : viewingUser()?.role === 'Admin' ? 'shield' : viewingUser()?.role === 'StallOwner' ? 'storefront' : 'person' }}
+                  </span>
+                  {{ viewingUser()?.role === 'SuperAdmin' ? 'Super Admin' : viewingUser()?.role === 'StallOwner' ? 'Stall Owner' : viewingUser()?.role === 'Marketing' ? 'Marketing Rep' : viewingUser()?.role }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Information Grid -->
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="p-3 bg-slate-50/70 border border-slate-200/70 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Email Address</span>
+              <span class="font-semibold text-slate-800 break-all">{{ viewingUser()?.email || '—' }}</span>
+            </div>
+
+            <div class="p-3 bg-slate-50/70 border border-slate-200/70 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">User Group / Dept</span>
+              <span class="font-semibold text-slate-800">{{ viewingUser()?.userGroup || 'Sales Team' }}</span>
+            </div>
+
+            <div class="p-3 bg-slate-50/70 border border-slate-200/70 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Phone Number</span>
+              <span class="font-semibold text-slate-800">{{ viewingUser()?.phone || '—' }}</span>
+            </div>
+
+            <div class="p-3 bg-slate-50/70 border border-slate-200/70 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Short Name</span>
+              <span class="font-semibold text-slate-800">{{ viewingUser()?.shortName || viewingUser()?.username || '—' }}</span>
+            </div>
+
+            <div class="col-span-2 p-3 bg-slate-50/70 border border-slate-200/70 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Address</span>
+              <span class="font-semibold text-slate-800">
+                {{ viewingUser()?.address1 ? (viewingUser()?.address1 + (viewingUser()?.city ? ', ' + viewingUser()?.city : '') + (viewingUser()?.state ? ', ' + viewingUser()?.state : '')) : '—' }}
+              </span>
+            </div>
+
+            @if (viewingUser()?.createdAt) {
+              <div class="col-span-2 p-3 bg-slate-50/70 border border-slate-200/70 rounded-xl flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Created On</span>
+                <span class="font-mono text-slate-600 font-medium text-[11px]">{{ viewingUser()?.createdAt | date:'medium' }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex items-center justify-end gap-2 px-6 py-3.5 bg-slate-50 border-t border-slate-200 shrink-0">
+          <button type="button" (click)="closeViewModal()" class="btn btn-outline-pill text-xs px-4 py-2">
+            Close
+          </button>
+          @if (canEditUser()) {
+            <button 
+              type="button" 
+              (click)="switchToEditFromView()" 
+              class="btn btn-primary text-xs px-5 py-2 flex items-center gap-1.5"
+            >
+              <span class="material-icons text-sm">edit</span>
+              Edit User
+            </button>
+          }
         </div>
 
       </div>

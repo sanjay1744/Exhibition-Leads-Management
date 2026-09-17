@@ -34,8 +34,13 @@ public class UsersController : ControllerBase
     );
 
     [HttpPost]
-    public async Task<ActionResult<User>> CreateUser([FromBody] CreateUserRequest request)
+    public async Task<ActionResult<User>> CreateUser([FromBody] CreateUserRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (!string.IsNullOrEmpty(requestingRole) && !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Only Super Admin can create new users." });
+        }
+
         if (await _context.Users.AnyAsync(u => u.Username == request.Username))
         {
             return BadRequest(new { message = "Username already exists." });
@@ -60,8 +65,14 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] CreateUserRequest request)
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] CreateUserRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (string.Equals(requestingRole, "StallOwner", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(requestingRole, "Marketing", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "You do not have permission to edit users." });
+        }
+
         var user = await _context.Users.FindAsync(id);
         if (user == null) return NotFound();
 
@@ -83,10 +94,10 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteUser(Guid id, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
-        // Enforce Hierarchy: Stall Owner cannot delete users
-        if (string.Equals(requestingRole, "StallOwner", StringComparison.OrdinalIgnoreCase))
+        // Enforce Hierarchy: Only Super Admin can delete users
+        if (!string.IsNullOrEmpty(requestingRole) && !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
         {
-            return StatusCode(403, new { message = "Stall Owners are restricted from deleting users. Only Admin can delete users." });
+            return StatusCode(403, new { message = "Only Super Admin can delete users." });
         }
 
         var user = await _context.Users.FindAsync(id);
@@ -98,8 +109,13 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}/reset-password")]
-    public async Task<IActionResult> ResetPassword(Guid id, [FromBody] string newPassword)
+    public async Task<IActionResult> ResetPassword(Guid id, [FromBody] string newPassword, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
+        if (!string.IsNullOrEmpty(requestingRole) && !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Only Super Admin can reset user passwords." });
+        }
+
         var user = await _context.Users.FindAsync(id);
         if (user == null) return NotFound();
 

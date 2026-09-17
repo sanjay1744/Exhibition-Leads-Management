@@ -10,7 +10,7 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public string UserGroup { get; set; } = "Sales Team";
-    public string Role { get; set; } = "Marketing"; // Admin, StallOwner, Marketing
+    public string Role { get; set; } = "Marketing"; // SuperAdmin, Admin, StallOwner, Marketing
     public Guid? AssignedStallId { get; set; }
     public string Status { get; set; } = "Active"; // Active, Inactive
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

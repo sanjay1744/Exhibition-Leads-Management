@@ -150,8 +150,7 @@
             <th class="py-2.5 px-4 border-r border-white/20 text-center">Stalls</th>
             <th class="py-2.5 px-4 border-r border-white/20 text-center">Leads</th>
             <th class="py-2.5 px-4 border-r border-white/20 text-center">Status</th>
-            <th class="py-2.5 px-3 border-r border-white/20 text-center w-14">Edit</th>
-            <th class="py-2.5 px-3 text-center w-14">Delete</th>
+            <th class="py-2.5 px-4 text-center w-28">Actions</th>
           </tr>
         </thead>
         <tbody class="text-xs text-slate-700 font-medium">
@@ -255,33 +254,45 @@
                 }
               </td>
 
-              <!-- Edit -->
-              <td class="py-2.5 px-3 text-center border-r border-slate-200/60">
-                <button 
-                  (click)="editExhibition(exhibition)" 
-                  class="text-blue-600 hover:text-blue-800 p-0.5"
-                  title="Edit Exhibition"
-                >
-                  <span class="material-icons text-base">edit</span>
-                </button>
-              </td>
-
-              <!-- Delete -->
-              <td class="py-2.5 px-3 text-center">
-                @if (canDeleteExhibition()) {
+              <!-- Actions -->
+              <td class="py-2.5 px-4 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <!-- View Exhibition Details (Eye Icon) -->
                   <button 
-                    (click)="promptDeleteExhibition(exhibition)" 
-                    class="text-red-600 hover:text-red-800 p-0.5"
-                    title="Delete Exhibition"
+                    (click)="openViewModal(exhibition)" 
+                    class="text-teal-600 hover:text-teal-800 p-0.5 transition cursor-pointer"
+                    title="View Exhibition Details"
                   >
-                    <span class="material-icons text-base">delete</span>
+                    <span class="material-icons text-base">visibility</span>
                   </button>
-                }
+
+                  <!-- Edit Exhibition -->
+                  @if (canEditExhibition()) {
+                    <button 
+                      (click)="editExhibition(exhibition)" 
+                      class="text-blue-600 hover:text-blue-800 p-0.5 transition cursor-pointer"
+                      title="Edit Exhibition"
+                    >
+                      <span class="material-icons text-base">edit</span>
+                    </button>
+                  }
+
+                  <!-- Delete Exhibition -->
+                  @if (canDeleteExhibition()) {
+                    <button 
+                      (click)="promptDeleteExhibition(exhibition)" 
+                      class="text-red-600 hover:text-red-800 p-0.5 transition cursor-pointer"
+                      title="Delete Exhibition (Super Admin Only)"
+                    >
+                      <span class="material-icons text-base">delete</span>
+                    </button>
+                  }
+                </div>
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="10" class="py-8 text-center text-slate-400 font-medium">
+              <td colspan="9" class="py-8 text-center text-slate-400 font-medium">
                 No exhibitions found. Click "Create New Exhibition" to add one.
               </td>
             </tr>
@@ -659,6 +670,179 @@
             Confirm Delete
           </button>
         </div>
+      </div>
+    </div>
+  }
+
+  <!-- View Exhibition Details Modal -->
+  @if (isViewModalOpen() && viewingExhibition()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        
+        <!-- Modal Header -->
+        <div class="px-6 py-4 bg-gradient-to-r from-[#1a3a5c] to-[#2a5584] text-white flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/20">
+              <span class="material-icons text-xl">visibility</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold text-white">{{ viewingExhibition()?.name }}</h3>
+                <span class="font-mono text-[11px] bg-blue-500/30 text-blue-100 border border-blue-400/40 px-2 py-0.5 rounded font-bold">
+                  {{ viewingExhibition()?.code }}
+                </span>
+              </div>
+              <p class="text-xs text-blue-200 mt-0.5">Exhibition Details & Linked Stalls</p>
+            </div>
+          </div>
+          <button (click)="closeViewModal()" class="text-white/70 hover:text-white transition p-1 cursor-pointer">
+            <span class="material-icons text-lg">close</span>
+          </button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="p-6 overflow-y-auto space-y-4 flex-1">
+          
+          <!-- Key Metrics / Badges Row -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</span>
+              <span 
+                class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase inline-block"
+                [ngClass]="{
+                  'bg-emerald-100 text-emerald-800': viewingExhibition()?.status === 'Active',
+                  'bg-amber-100 text-amber-800': viewingExhibition()?.status === 'Upcoming',
+                  'bg-blue-100 text-blue-800': viewingExhibition()?.status === 'Completed',
+                  'bg-slate-200 text-slate-700': viewingExhibition()?.status === 'Closed',
+                  'bg-slate-100 text-slate-600': viewingExhibition()?.status === 'Archived'
+                }"
+              >
+                {{ viewingExhibition()?.status }}
+              </span>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Stalls Assigned</span>
+              <span class="font-bold text-slate-900 text-xs">
+                {{ getStallCountForExh(viewingExhibition()?.id || '') }} / {{ viewingExhibition()?.stallCount || 1 }} Stalls
+              </span>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Total Leads</span>
+              <span class="font-bold text-blue-700 text-xs">
+                {{ viewingExhibition()?.leadCount || 0 }} Leads
+              </span>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Duration</span>
+              <span class="font-bold text-slate-900 text-xs">
+                {{ viewingExhibition()?.durationDays || 0 }} Days
+              </span>
+            </div>
+          </div>
+
+          <!-- Information Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Organizer</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-slate-400">business</span>
+                {{ viewingExhibition()?.organizer || '—' }}
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Venue / Location</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-slate-400">place</span>
+                {{ viewingExhibition()?.venue || '—' }}
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Start Date</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-slate-400">event</span>
+                {{ viewingExhibition()?.startDate ? (viewingExhibition()?.startDate | date:'mediumDate') : 'TBD' }}
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">End Date</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-slate-400">event_available</span>
+                {{ viewingExhibition()?.endDate ? (viewingExhibition()?.endDate | date:'mediumDate') : 'TBD' }}
+              </div>
+            </div>
+
+            @if (viewingExhibition()?.description) {
+              <div class="col-span-1 sm:col-span-2 p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+                <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Description</span>
+                <p class="text-slate-700 leading-relaxed">{{ viewingExhibition()?.description }}</p>
+              </div>
+            }
+          </div>
+
+          <!-- Linked Stalls Section -->
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <span class="material-icons text-sm text-purple-600">storefront</span>
+                Linked Stalls ({{ getStallsForExh(viewingExhibition()?.id).length }})
+              </span>
+              <span class="text-[11px] text-slate-500 font-medium">
+                Capacity: {{ viewingExhibition()?.stallCount || 1 }} Stall(s)
+              </span>
+            </div>
+            <div class="p-3 space-y-2 max-h-48 overflow-y-auto">
+              @for (stall of getStallsForExh(viewingExhibition()?.id); track stall.id) {
+                <div class="p-2.5 bg-slate-50 border border-slate-200/80 rounded-lg flex items-center justify-between text-xs">
+                  <div>
+                    <span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-mono font-bold rounded mr-1.5">
+                      {{ stall.code }}
+                    </span>
+                    <span class="font-bold text-slate-800">{{ stall.name }}</span>
+                    <span class="text-slate-500 text-[11px] ml-2">
+                      {{ stall.hallNumber || 'Hall A' }} • {{ stall.boothNumber || 'Booth 01' }} | Owner: {{ stall.ownerName || '—' }}
+                    </span>
+                  </div>
+                  <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">
+                    {{ stall.status || 'Active' }}
+                  </span>
+                </div>
+              } @empty {
+                <div class="text-center py-4 text-slate-400 text-xs">
+                  No stalls currently registered for this exhibition.
+                </div>
+              }
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex items-center justify-end gap-2 px-6 py-3.5 bg-slate-50 border-t border-slate-200 shrink-0">
+          <button 
+            type="button" 
+            (click)="closeViewModal()" 
+            class="px-4 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          >
+            Close
+          </button>
+          @if (canEditExhibition()) {
+            <button 
+              type="button" 
+              (click)="switchToEditFromView()" 
+              class="px-5 py-2 bg-[#1a3a5c] hover:bg-[#132b45] text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <span class="material-icons text-sm">edit</span>
+              Edit Exhibition
+            </button>
+          }
+        </div>
+
       </div>
     </div>
   }

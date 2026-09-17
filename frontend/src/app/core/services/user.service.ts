@@ -26,6 +26,14 @@ export class UserService {
       // 1. Fetch live authoritative users from Supabase
       const remoteUsers = await this.supabaseSync.getUsersFromSupabase();
       if (remoteUsers && remoteUsers.length > 0) {
+        // Auto-promote primary admin to SuperAdmin
+        for (const u of remoteUsers) {
+          if (u.username?.toLowerCase() === 'sanjay' && u.role !== 'SuperAdmin') {
+            u.role = 'SuperAdmin';
+            u.userGroup = 'Super Admin';
+            await this.supabaseSync.saveUserToSupabase(u);
+          }
+        }
         this.users.set(remoteUsers);
 
         // Supabase is Primary DB: Prune stale local users that do not exist in Supabase
@@ -251,13 +259,13 @@ export class UserService {
       return remote[0];
     }
 
-    // Auto-create initial Admin user if completely empty
+    // Auto-create initial SuperAdmin user if completely empty
     const adminUser = await this.createUserAsync({
       username: 'sanjay',
       fullName: 'Sanjay',
       email: 'sanjay@company.com',
-      role: 'Admin',
-      userGroup: 'Admin',
+      role: 'SuperAdmin',
+      userGroup: 'Super Admin',
       status: 'Active',
       password: '123456'
     });

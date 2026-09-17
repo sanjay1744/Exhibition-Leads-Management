@@ -45,8 +45,7 @@
             <th class="py-2.5 px-4 border-r border-white/20">Stall Owner</th>
             <th class="py-2.5 px-4 border-r border-white/20 text-center">Leads</th>
             <th class="py-2.5 px-4 border-r border-white/20 text-center">Status</th>
-            <th class="py-2.5 px-3 border-r border-white/20 text-center w-14">Edit</th>
-            <th class="py-2.5 px-3 text-center w-14">Delete</th>
+            <th class="py-2.5 px-4 text-center w-28">Actions</th>
           </tr>
         </thead>
         <tbody class="text-xs text-slate-700 font-medium">
@@ -115,31 +114,49 @@
                 </span>
               </td>
 
-              <!-- Edit Column -->
-              <td class="py-2.5 px-3 text-center border-r border-slate-200/60">
-                <button 
-                  (click)="openEditModal(stall)" 
-                  class="text-blue-600 hover:text-blue-800 p-0.5 transition inline-flex items-center justify-center"
-                  title="Edit Stall Project"
-                >
-                  <span class="material-icons text-base">edit</span>
-                </button>
-              </td>
+              <!-- Actions -->
+              <td class="py-2.5 px-4 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <!-- View Stall (Eye Icon) -->
+                  <button 
+                    (click)="openViewModal(stall)" 
+                    class="text-teal-600 hover:text-teal-800 p-0.5 transition inline-flex items-center justify-center cursor-pointer"
+                    title="View Stall Details"
+                  >
+                    <span class="material-icons text-base">visibility</span>
+                  </button>
 
-              <!-- Delete Column -->
-              <td class="py-2.5 px-3 text-center">
-                <button 
-                  (click)="deleteStall(stall)" 
-                  class="text-rose-600 hover:text-rose-800 p-0.5 transition inline-flex items-center justify-center"
-                  title="Delete Stall Project"
-                >
-                  <span class="material-icons text-base">delete</span>
-                </button>
+                  <!-- Edit Column -->
+                  @if (canEditStall()) {
+                    <button 
+                      (click)="openEditModal(stall)" 
+                      class="text-blue-600 hover:text-blue-800 p-0.5 transition inline-flex items-center justify-center cursor-pointer"
+                      title="Edit Stall Project"
+                    >
+                      <span class="material-icons text-base">edit</span>
+                    </button>
+                  } @else {
+                    <span class="material-icons text-slate-300 text-sm" title="Edit Restricted">lock</span>
+                  }
+
+                  <!-- Delete Column -->
+                  @if (canDeleteStall()) {
+                    <button 
+                      (click)="deleteStall(stall)" 
+                      class="text-rose-600 hover:text-rose-800 p-0.5 transition inline-flex items-center justify-center cursor-pointer"
+                      title="Delete Stall Project"
+                    >
+                      <span class="material-icons text-base">delete</span>
+                    </button>
+                  } @else {
+                    <span class="material-icons text-slate-300 text-sm" title="Delete Restricted">lock</span>
+                  }
+                </div>
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="10" class="py-12 text-center text-slate-400">
+              <td colspan="9" class="py-12 text-center text-slate-400">
                 No stall projects found. Click "Create New Stall" to add one.
               </td>
             </tr>
@@ -465,6 +482,160 @@
             <span class="material-icons text-sm">delete_forever</span>
             Delete Permanently
           </button>
+        </div>
+
+      </div>
+    </div>
+  }
+
+  <!-- View Stall Details Modal -->
+  @if (isViewModalOpen() && viewingStall()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        
+        <!-- Modal Header -->
+        <div class="px-6 py-4 bg-gradient-to-r from-[#1a3a5c] to-[#2a5584] text-white flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/20">
+              <span class="material-icons text-xl">storefront</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold text-white">{{ viewingStall()?.name }}</h3>
+                <span class="font-mono text-[11px] bg-blue-500/30 text-blue-100 border border-blue-400/40 px-2 py-0.5 rounded font-bold">
+                  {{ viewingStall()?.code }}
+                </span>
+              </div>
+              <p class="text-xs text-blue-200 mt-0.5">{{ viewingStall()?.eventName || 'Exhibition Stall Project' }}</p>
+            </div>
+          </div>
+          <button (click)="closeViewModal()" class="text-white/70 hover:text-white transition p-1 cursor-pointer">
+            <span class="material-icons text-lg">close</span>
+          </button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="p-6 overflow-y-auto space-y-4 flex-1">
+          
+          <!-- Key Metrics / Badges Row -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</span>
+              <span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[11px] font-bold inline-block">
+                {{ viewingStall()?.status || 'Active' }}
+              </span>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Leads Captured</span>
+              <span class="font-bold text-emerald-700 text-xs">
+                {{ viewingStall()?.leadCount || 0 }} Leads
+              </span>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Fair Duration</span>
+              <span class="font-bold text-slate-900 text-xs">
+                {{ viewingStall()?.durationDays || 0 }} Days
+              </span>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Booth</span>
+              <span class="font-bold text-blue-700 text-xs">
+                {{ viewingStall()?.boothNumber || 'Booth 01' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Information Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Linked Exhibition</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-blue-600">event_available</span>
+                <span>{{ viewingStall()?.eventName || '—' }}</span>
+              </div>
+              @if (viewingStall()?.exhibitionId) {
+                <span class="inline-block mt-1 text-[10px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.2 rounded">
+                  {{ getLinkedExhibition(viewingStall()?.exhibitionId)?.code || viewingStall()?.exhibitionId }}
+                </span>
+              }
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Stall In-Charge / Owner</span>
+              <div class="flex items-center gap-2 mt-1">
+                <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                  {{ viewingStall()?.ownerName ? viewingStall()?.ownerName?.[0] : 'U' }}
+                </div>
+                <span class="font-semibold text-slate-800">{{ viewingStall()?.ownerName || '—' }}</span>
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Venue Location</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-slate-400">place</span>
+                {{ viewingStall()?.location || '—' }}
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Hall & Booth Placement</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-blue-600">meeting_room</span>
+                {{ viewingStall()?.hallNumber || 'Hall A' }}, {{ viewingStall()?.boothNumber || 'Booth 01' }}
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Event Dates</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-slate-400">event</span>
+                {{ viewingStall()?.startDate ? (viewingStall()?.startDate | date:'mediumDate') : 'TBD' }}
+                - 
+                {{ viewingStall()?.endDate ? (viewingStall()?.endDate | date:'mediumDate') : 'TBD' }}
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Organizer</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-slate-400">business</span>
+                {{ viewingStall()?.organizer || 'Internal' }}
+              </div>
+            </div>
+
+            @if (viewingStall()?.createdAt) {
+              <div class="col-span-1 sm:col-span-2 p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Created On</span>
+                <span class="font-mono text-slate-600 font-medium text-[11px]">{{ viewingStall()?.createdAt | date:'medium' }}</span>
+              </div>
+            }
+          </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex items-center justify-end gap-2 px-6 py-3.5 bg-slate-50 border-t border-slate-200 shrink-0">
+          <button 
+            type="button" 
+            (click)="closeViewModal()" 
+            class="px-4 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          >
+            Close
+          </button>
+          @if (canEditStall()) {
+            <button 
+              type="button" 
+              (click)="switchToEditFromView()" 
+              class="px-5 py-2 bg-[#1a3a5c] hover:bg-[#132b45] text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <span class="material-icons text-sm">edit</span>
+              Edit Stall Project
+            </button>
+          }
         </div>
 
       </div>
