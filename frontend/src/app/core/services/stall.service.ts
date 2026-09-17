@@ -1,10 +1,11 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, from, of, firstValueFrom } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApplicationDatabase } from './db.service';
 import { SupabaseSyncService } from './supabase-sync.service';
 import { getApiUrl } from '../config/api.config';
+import { AuthService } from './auth.service';
 
 export interface Stall {
   id: string;
@@ -32,12 +33,45 @@ export class StallService {
   private db = inject(ApplicationDatabase);
   private supabaseSync = inject(SupabaseSyncService);
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
 
-  stalls = signal<Stall[]>([]);
+  allStalls = signal<Stall[]>([]);
+
+  stalls = computed<Stall[]>(() => {
+    const list = this.allStalls();
+    const user = this.auth.currentUser();
+    if (user && user.role === 'StallOwner') {
+      const myId = user.id?.toLowerCase();
+      const myUsername = user.username?.toLowerCase();
+      const myFullName = user.fullName?.toLowerCase();
+      return list.filter((s) => {
+        const ownerId = s.ownerId?.toLowerCase();
+        const ownerName = s.ownerName?.toLowerCase();
+        return (
+          (ownerId && myId && ownerId === myId) ||
+          (ownerName && myUsername && ownerName === myUsername) ||
+          (ownerName && myFullName && ownerName === myFullName)
+        );
+      });
+    }
+    return list;
+  });
+
   activeStall = signal<Stall | null>(null);
 
   constructor() {
     this.loadStalls();
+    effect(() => {
+      this.ensureValidActiveStall();
+    }, { allowSignalWrites: true });
+  }
+
+  private ensureValidActiveStall(): void {
+    const visible = this.stalls();
+    const current = this.activeStall();
+    if (!current || !visible.some((s) => s.id?.toLowerCase() === current.id?.toLowerCase())) {
+      this.activeStall.set(visible.length > 0 ? visible[0] : null);
+    }
   }
 
   async loadStalls(): Promise<void> {
@@ -45,10 +79,8 @@ export class StallService {
     try {
       const cloudStalls = (await this.supabaseSync.getStallsFromSupabase()) as Stall[];
       if (cloudStalls && cloudStalls.length > 0) {
-        this.stalls.set(cloudStalls);
-        if (!this.activeStall()) {
-          this.activeStall.set(cloudStalls[0]);
-        }
+        this.allStalls.set(cloudStalls);
+        this.ensureValidActiveStall();
 
         // Synchronize to local Dexie cache
         for (const s of cloudStalls) {
@@ -83,10 +115,8 @@ export class StallService {
           endDate: s.endDate || '',
           status: s.status || 'Active'
         }));
-        this.stalls.set(mapped);
-        if (!this.activeStall() && mapped.length > 0) {
-          this.activeStall.set(mapped[0]);
-        }
+        this.allStalls.set(mapped);
+        this.ensureValidActiveStall();
 
         // Synchronize backend stalls to Supabase and Dexie
         for (const st of mapped) {
@@ -103,10 +133,8 @@ export class StallService {
     try {
       const cached = (await this.db.getAllStalls()) as Stall[];
       if (cached && cached.length > 0) {
-        this.stalls.set(cached);
-        if (!this.activeStall()) {
-          this.activeStall.set(cached[0]);
-        }
+        this.allStalls.set(cached);
+        this.ensureValidActiveStall();
       }
     } catch (dbErr) {
       console.warn('[StallService] Error loading local cached stalls:', dbErr);
@@ -119,7 +147,7 @@ export class StallService {
 
   addOrUpdateStallInMemory(stall: Stall): void {
     const targetId = stall.id?.toLowerCase();
-    this.stalls.update((list) => {
+    this.allStalls.update((list) => {
       const idx = list.findIndex((s) => s.id?.toLowerCase() === targetId);
       if (idx >= 0) {
         const copy = [...list];
@@ -128,21 +156,18 @@ export class StallService {
       }
       return [stall, ...list];
     });
-    this.setActiveStall(stall);
+    this.ensureValidActiveStall();
   }
 
   removeStallFromMemory(id: string): void {
     const targetId = id?.toLowerCase();
-    this.stalls.update((list) => list.filter((s) => s.id?.toLowerCase() !== targetId));
-    if (this.activeStall()?.id?.toLowerCase() === targetId) {
-      const remaining = this.stalls();
-      this.activeStall.set(remaining.length > 0 ? remaining[0] : null);
-    }
+    this.allStalls.update((list) => list.filter((s) => s.id?.toLowerCase() !== targetId));
+    this.ensureValidActiveStall();
   }
 
   getNextCode(): Observable<{ code: string }> {
     const year = new Date().getFullYear();
-    const count = this.stalls().length + 1;
+    const count = this.allStalls().length + 1;
     const code = `STL-${year}-${count.toString().padStart(3, '0')}`;
     return of({ code });
   }

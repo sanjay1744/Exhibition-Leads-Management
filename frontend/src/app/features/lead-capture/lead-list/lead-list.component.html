@@ -67,7 +67,7 @@
                     }
                   </button>
 
-                  @for (exh of exhibitionService.exhibitions(); track exh.id) {
+                  @for (exh of availableExhibitions(); track exh.id) {
                     <button 
                       type="button"
                       (click)="onExhibitionFilterChange(exh.id); showExhibitionDropdown.set(false)"
@@ -1127,7 +1127,7 @@
               class="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl outline-none focus:border-blue-600 bg-white shadow-2xs"
             >
               <option value="">-- Select Exhibition Event --</option>
-              @for (exh of exhibitionService.exhibitions(); track exh.id) {
+              @for (exh of availableExhibitions(); track exh.id) {
                 <option [value]="exh.id">{{ exh.name }} ({{ exh.code }})</option>
               }
             </select>

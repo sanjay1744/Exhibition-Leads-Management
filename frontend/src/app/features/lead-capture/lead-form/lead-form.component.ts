@@ -13,6 +13,7 @@ import { PREDEFINED_DESIGNATIONS } from '../../../core/services/card-parser.serv
 import { VoiceParserService } from '../../../core/services/voice-parser.service';
 import { SupabaseSyncService } from '../../../core/services/supabase-sync.service';
 import { getApiUrl } from '../../../core/config/api.config';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-lead-form',
@@ -28,6 +29,7 @@ export class LeadFormComponent implements OnInit {
   private voiceParser = inject(VoiceParserService);
   private supabaseSync = inject(SupabaseSyncService);
   stallService = inject(StallService);
+  auth = inject(AuthService);
 
   @ViewChild('ocrScanner') ocrScanner?: OcrScannerComponent;
   @ViewChild('qrScanner') qrScanner?: QrScannerComponent;
@@ -163,6 +165,15 @@ export class LeadFormComponent implements OnInit {
   targetExhibitionId = signal<string>('');
   targetStallId = signal<string>('');
 
+  availableExhibitions = computed(() => {
+    const list = this.exhibitionService.exhibitions();
+    if (this.auth.isStallOwner()) {
+      const myStallExhIds = new Set(this.stallService.stalls().map((s) => s.exhibitionId).filter(Boolean));
+      return list.filter((e) => myStallExhIds.has(e.id));
+    }
+    return list;
+  });
+
   targetStalls = computed(() => {
     const exhId = this.targetExhibitionId();
     if (!exhId) return [];
@@ -177,7 +188,7 @@ export class LeadFormComponent implements OnInit {
     if (activeStall?.exhibitionId) {
       this.targetExhibitionId.set(activeStall.exhibitionId);
     } else {
-      this.targetExhibitionId.set(this.exhibitionService.exhibitions()[0]?.id || '');
+      this.targetExhibitionId.set(this.availableExhibitions()[0]?.id || '');
     }
     this.targetStallId.set(activeStall?.id || '');
     this.isTargetModalOpen.set(true);

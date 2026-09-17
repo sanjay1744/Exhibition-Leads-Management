@@ -214,9 +214,25 @@ export class StallMasterComponent implements OnInit {
   }
 
   filteredStalls = computed(() => {
+    let list = this.stalls();
+    if (this.isStallOwner()) {
+      const myId = this.currentUser?.id?.toLowerCase();
+      const myUsername = this.currentUser?.username?.toLowerCase();
+      const myFullName = this.currentUser?.fullName?.toLowerCase();
+      list = list.filter((s) => {
+        const ownerId = s.ownerId?.toLowerCase();
+        const ownerName = s.ownerName?.toLowerCase();
+        return (
+          (ownerId && myId && ownerId === myId) ||
+          (ownerName && myUsername && ownerName === myUsername) ||
+          (ownerName && myFullName && ownerName === myFullName)
+        );
+      });
+    }
+
     const q = this.searchQuery.toLowerCase().trim();
-    if (!q) return this.stalls();
-    return this.stalls().filter(
+    if (!q) return list;
+    return list.filter(
       (s) =>
         s.code.toLowerCase().includes(q) ||
         s.name.toLowerCase().includes(q) ||
@@ -317,6 +333,21 @@ export class StallMasterComponent implements OnInit {
   }
 
   openEditModal(stall: StallMasterDto): void {
+    if (this.isStallOwner()) {
+      const myId = this.currentUser?.id?.toLowerCase();
+      const myUsername = this.currentUser?.username?.toLowerCase();
+      const myFullName = this.currentUser?.fullName?.toLowerCase();
+      const ownerId = stall.ownerId?.toLowerCase();
+      const ownerName = stall.ownerName?.toLowerCase();
+      const isOwner = (ownerId && myId && ownerId === myId) ||
+                      (ownerName && myUsername && ownerName === myUsername) ||
+                      (ownerName && myFullName && ownerName === myFullName);
+      if (!isOwner) {
+        this.toast.showError('Access Denied', 'You can only edit stalls mapped to your account.');
+        return;
+      }
+    }
+
     this.isEditMode.set(true);
     this.editingStallId = stall.id;
 

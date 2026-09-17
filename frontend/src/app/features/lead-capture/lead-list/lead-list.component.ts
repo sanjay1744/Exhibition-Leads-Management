@@ -7,6 +7,7 @@ import { LocalLead } from '../../../core/models/lead.model';
 import { StallService } from '../../../core/services/stall.service';
 import { ExhibitionService } from '../../../core/services/exhibition.service';
 import { SupabaseSyncService } from '../../../core/services/supabase-sync.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-lead-list',
@@ -21,6 +22,7 @@ export class LeadListComponent implements OnInit {
   private supabaseSync = inject(SupabaseSyncService);
   stallService = inject(StallService);
   exhibitionService = inject(ExhibitionService);
+  auth = inject(AuthService);
 
   allLeads = signal<LocalLead[]>([]);
   selectedLeadForView = signal<LocalLead | null>(null);
@@ -31,6 +33,15 @@ export class LeadListComponent implements OnInit {
   targetExhibitionId = signal<string>('');
   targetStallId = signal<string>('');
 
+  availableExhibitions = computed(() => {
+    const list = this.exhibitionService.exhibitions();
+    if (this.auth.isStallOwner()) {
+      const myStallExhIds = new Set(this.stallService.stalls().map((s) => s.exhibitionId).filter(Boolean));
+      return list.filter((e) => myStallExhIds.has(e.id));
+    }
+    return list;
+  });
+
   targetStalls = computed(() => {
     const exhId = this.targetExhibitionId();
     if (!exhId) return [];
@@ -38,7 +49,8 @@ export class LeadListComponent implements OnInit {
   });
 
   openTargetSelectionModal(): void {
-    this.targetExhibitionId.set('');
+    const firstExh = this.availableExhibitions()[0]?.id || '';
+    this.targetExhibitionId.set(firstExh);
     this.targetStallId.set('');
     this.isTargetModalOpen.set(true);
   }
@@ -181,7 +193,7 @@ export class LeadListComponent implements OnInit {
 
   getSelectedExhibitionName(): string {
     if (this.selectedExhibitionId() === 'ALL') return 'All Exhibitions';
-    const found = this.exhibitionService.exhibitions().find((e) => e.id === this.selectedExhibitionId());
+    const found = this.availableExhibitions().find((e) => e.id === this.selectedExhibitionId());
     return found ? `${found.name} (${found.code})` : 'All Exhibitions';
   }
 
@@ -488,6 +500,12 @@ export class LeadListComponent implements OnInit {
 
   dateAndStallFilteredLeads = computed(() => {
     let list = this.allLeads();
+
+    // If StallOwner, strictly filter all leads to only those belonging to this stall owner's mapped stalls
+    if (this.auth.isStallOwner()) {
+      const myStallIds = new Set(this.stallService.stalls().map((s) => s.id));
+      list = list.filter((l) => l.exhibitionId && myStallIds.has(l.exhibitionId));
+    }
 
     const exhId = this.selectedExhibitionId();
     if (exhId && exhId !== 'ALL') {

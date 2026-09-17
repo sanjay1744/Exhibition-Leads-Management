@@ -37,13 +37,32 @@ public class StallsController : ControllerBase
     );
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<StallDto>>> GetStalls([FromQuery] string? ownerId, [FromQuery] string? exhibitionId)
+    public async Task<ActionResult<IEnumerable<StallDto>>> GetStalls(
+        [FromQuery] string? ownerId, 
+        [FromQuery] string? exhibitionId,
+        [FromHeader(Name = "X-User-Role")] string? requestingRole,
+        [FromHeader(Name = "X-User-Id")] string? requestingUserId,
+        [FromHeader(Name = "X-User-Name")] string? requestingUserName)
     {
         var query = _context.Stalls.AsQueryable();
-        if (!string.IsNullOrEmpty(ownerId) && Guid.TryParse(ownerId, out var oGuid))
+
+        // If StallOwner is calling, strictly restrict to stalls mapped to this stall owner
+        if (!string.IsNullOrEmpty(requestingRole) && 
+            string.Equals(requestingRole, "StallOwner", StringComparison.OrdinalIgnoreCase))
+        {
+            var parsedGuid = Guid.TryParse(requestingUserId, out var reqOwnerGuid);
+            var reqUserLower = requestingUserName?.Trim().ToLower() ?? "";
+
+            query = query.Where(s => 
+                (parsedGuid && s.OwnerId == reqOwnerGuid) ||
+                (!string.IsNullOrEmpty(reqUserLower) && s.OwnerName.ToLower() == reqUserLower)
+            );
+        }
+        else if (!string.IsNullOrEmpty(ownerId) && Guid.TryParse(ownerId, out var oGuid))
         {
             query = query.Where(s => s.OwnerId == oGuid);
         }
+
         if (!string.IsNullOrEmpty(exhibitionId) && Guid.TryParse(exhibitionId, out var eGuid))
         {
             query = query.Where(s => s.ExhibitionId == eGuid);
@@ -187,7 +206,12 @@ public class StallsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateStall(Guid id, [FromBody] CreateStallRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
+    public async Task<IActionResult> UpdateStall(
+        Guid id, 
+        [FromBody] CreateStallRequest request, 
+        [FromHeader(Name = "X-User-Role")] string? requestingRole,
+        [FromHeader(Name = "X-User-Id")] string? requestingUserId,
+        [FromHeader(Name = "X-User-Name")] string? requestingUserName)
     {
         if (string.Equals(requestingRole, "Marketing", StringComparison.OrdinalIgnoreCase))
         {
@@ -196,6 +220,19 @@ public class StallsController : ControllerBase
 
         var stall = await _context.Stalls.FindAsync(id);
         if (stall == null) return NotFound(new { message = "Stall not found." });
+
+        // If StallOwner is calling, ensure the stall is mapped to them
+        if (string.Equals(requestingRole, "StallOwner", StringComparison.OrdinalIgnoreCase))
+        {
+            var parsedGuid = Guid.TryParse(requestingUserId, out var reqOwnerGuid);
+            var reqUserLower = requestingUserName?.Trim().ToLower() ?? "";
+            bool isMapped = (parsedGuid && stall.OwnerId == reqOwnerGuid) ||
+                            (!string.IsNullOrEmpty(reqUserLower) && stall.OwnerName.Equals(reqUserLower, StringComparison.OrdinalIgnoreCase));
+            if (!isMapped)
+            {
+                return StatusCode(403, new { message = "You can only edit stalls mapped to your account." });
+            }
+        }
 
         stall.ExhibitionId = request.ExhibitionId.HasValue && request.ExhibitionId.Value != Guid.Empty
             ? request.ExhibitionId.Value
