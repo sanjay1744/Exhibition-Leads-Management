@@ -1,9 +1,11 @@
 import { Component, EventEmitter, Output, signal, computed, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import type { Worker } from 'tesseract.js';
 import { OcrPreprocessorService, CardCorners, Point2D } from '../../../core/services/ocr-preprocessor.service';
 import { CardParserService, ExtractedCardData, PREDEFINED_DESIGNATIONS } from '../../../core/services/card-parser.service';
+import { OcrService } from '../../../core/services/ocr.service';
 
 export { ExtractedCardData };
 
@@ -17,6 +19,7 @@ export { ExtractedCardData };
 export class OcrScannerComponent implements OnDestroy {
   private preprocessor = inject(OcrPreprocessorService);
   private parser = inject(CardParserService);
+  private ocrService = inject(OcrService);
 
   readonly predefinedDesignations = PREDEFINED_DESIGNATIONS;
 
@@ -404,24 +407,50 @@ export class OcrScannerComponent implements OnDestroy {
 
       this.previewDataUrl.set(warped.dataUrl);
 
-      this.progressPercent.set(35);
-      this.statusMessage.set('Recognizing Card Text (Pass 1)...');
+      this.progressPercent.set(40);
+      this.statusMessage.set('Extracting details with Gemini 3.8 Flash AI...');
 
-      let res1 = await this.runTesseractOcr(warped.dataUrl);
-      let parsedData1 = this.parser.parseCardText(res1.text, res1.lineMetadata);
+      let parsedData1: ExtractedCardData;
 
-      const hasMissingFields = !parsedData1.name || !parsedData1.email || !parsedData1.phone || !parsedData1.company;
-      if (hasMissingFields) {
-        this.statusMessage.set('Secondary Fallback Pass (Pass 2)...');
-        this.progressPercent.set(70);
-        try {
-          const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
-          const res2 = await this.runTesseractOcr(binarizedUrl);
-          const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
-          parsedData1 = this.parser.mergeCardData(parsedData1, parsedData2);
-        } catch {
+      // Extract details exclusively using Gemini 3.8 Flash AI
+      const geminiResult = await firstValueFrom(this.ocrService.parseCardWithGemini(warped.dataUrl));
+      const hasValidFields = !!(
+        geminiResult &&
+        (geminiResult.name || geminiResult.company || geminiResult.phone || geminiResult.email || geminiResult.designation)
+      );
+
+      if (!hasValidFields) {
+        throw new Error('Gemini OCR returned empty fields or backend returned unparsed response.');
+      }
+
+      parsedData1 = { ...geminiResult, photoDataUrl: warped.dataUrl };
+      this.progressPercent.set(90);
+
+      /* FALLBACK COMMENTED OUT - RUNNING STRICTLY ON GEMINI AI
+      // Local Tesseract OCR fallback:
+      try {
+        // ...
+      } catch (geminiErr: any) {
+        const errorDetails = geminiErr?.error?.Details || geminiErr?.error?.Message || geminiErr?.message || '';
+        console.warn('Gemini 3.8 Flash OCR error or empty response, falling back to local OCR...', errorDetails, geminiErr);
+        this.statusMessage.set('Reading card details with local engine...');
+        this.progressPercent.set(60);
+
+        let res1 = await this.runTesseractOcr(warped.dataUrl);
+        parsedData1 = this.parser.parseCardText(res1.text, res1.lineMetadata);
+
+        const hasMissingFields = !parsedData1.name || !parsedData1.email || !parsedData1.phone || !parsedData1.company;
+        if (hasMissingFields) {
+          try {
+            const binarizedUrl = await this.preprocessor.createContrastBinarizedDataUrl(warped.dataUrl);
+            const res2 = await this.runTesseractOcr(binarizedUrl);
+            const parsedData2 = this.parser.parseCardText(res2.text, res2.lineMetadata);
+            parsedData1 = this.parser.mergeCardData(parsedData1, parsedData2);
+          } catch {
+          }
         }
       }
+      */
 
       parsedData1.photoDataUrl = warped.dataUrl;
       this.progressPercent.set(100);
@@ -429,9 +458,10 @@ export class OcrScannerComponent implements OnDestroy {
       this.modalData = { ...parsedData1 };
       this.cardExtracted.emit(parsedData1);
       this.openEditModal();
-    } catch (err) {
-      console.error('Perspective warp OCR Error:', err);
-      alert('Could not process card perspective warp. Please try again.');
+    } catch (err: any) {
+      console.error('Gemini OCR Processing Error:', err);
+      const errorMsg = err?.error?.Details || err?.error?.Message || err?.message || 'Could not process card with Gemini OCR. Please try again.';
+      alert(`Gemini OCR Error: ${errorMsg}`);
     } finally {
       this.isProcessing.set(false);
     }
