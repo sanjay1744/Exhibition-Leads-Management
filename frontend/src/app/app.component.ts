@@ -128,11 +128,13 @@ import { ToastService } from './core/services/toast.service';
 
                 @if (isMasterExpanded()) {
                   <div class="pl-6 bg-black/10">
-                    <a routerLink="/exhibitions" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
-                      <span class="material-icons nav-icon text-sm">event_available</span>
-                      <span class="nav-text">Exhibition Master</span>
-                    </a>
                     @if (auth.isSuperAdmin() || auth.isAdmin()) {
+                      <a routerLink="/exhibitions" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                        <span class="material-icons nav-icon text-sm">event_available</span>
+                        <span class="nav-text">Exhibition Master</span>
+                      </a>
+                    }
+                    @if (auth.isSuperAdmin() || auth.isAdmin() || auth.isStallOwner()) {
                       <a routerLink="/ums/user" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
                         <span class="material-icons nav-icon text-sm">group</span>
                         <span class="nav-text">User Master</span>

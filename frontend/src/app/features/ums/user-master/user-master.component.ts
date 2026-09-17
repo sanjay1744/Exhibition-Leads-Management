@@ -46,7 +46,7 @@ export class UserMasterComponent implements OnInit {
   switchToEditFromView(): void {
     const user = this.viewingUser();
     this.closeViewModal();
-    if (user && this.canEditUser()) {
+    if (user && this.canEditUser(user)) {
       this.openEditModal(user);
     }
   }
@@ -76,10 +76,58 @@ export class UserMasterComponent implements OnInit {
   isStallOwner = computed(() => this.currentUser?.role === 'StallOwner');
   isMarketing = computed(() => this.currentUser?.role === 'Marketing');
 
-  canCreateUser = computed(() => this.isSuperAdmin());
-  canEditUser = computed(() => this.isSuperAdmin() || this.isAdmin());
-  canDeleteUser = computed(() => this.isSuperAdmin());
-  canResetPassword = computed(() => this.isSuperAdmin());
+  // Matrix: Super Admin: TRUE, Admin: TRUE, Stall Owner: TRUE, Marketing: FALSE
+  canCreateUser = computed(() => this.isSuperAdmin() || this.isAdmin() || this.isStallOwner());
+
+  availableRoles = computed(() => {
+    if (this.isSuperAdmin()) return ['SuperAdmin', 'Admin', 'StallOwner', 'Marketing'];
+    if (this.isAdmin()) return ['Admin', 'StallOwner', 'Marketing'];
+    if (this.isStallOwner()) return ['StallOwner', 'Marketing'];
+    return [];
+  });
+
+  // Granular row-level permissions according to Excel Matrix
+  canEditUser(targetUser: UserMasterItem): boolean {
+    if (this.isSuperAdmin()) return true;
+    if (this.isAdmin()) {
+      // Row 6: Edit Admin: FALSE; Row 10: Edit Stall Owner: TRUE; Row 14: Edit Marketing: TRUE
+      return targetUser.role === 'StallOwner' || targetUser.role === 'Marketing';
+    }
+    if (this.isStallOwner()) {
+      // Row 10: Edit Stall Owner: FALSE; Row 14: Edit Marketing: TRUE
+      return targetUser.role === 'Marketing';
+    }
+    return false;
+  }
+
+  canDeleteUser(targetUser: UserMasterItem): boolean {
+    if (targetUser.id === this.currentUser?.id || targetUser.username === this.currentUser?.username) {
+      return false; // Cannot delete self
+    }
+    if (this.isSuperAdmin()) return true;
+    if (this.isAdmin()) {
+      // Row 7: Delete Admin: FALSE; Row 11: Delete Stall Owner: TRUE; Row 15: Delete Marketing: TRUE
+      return targetUser.role === 'StallOwner' || targetUser.role === 'Marketing';
+    }
+    if (this.isStallOwner()) {
+      // Row 11: Delete Stall Owner: FALSE; Row 15: Delete Marketing: TRUE
+      return targetUser.role === 'Marketing';
+    }
+    return false;
+  }
+
+  canResetPassword(targetUser: UserMasterItem): boolean {
+    if (this.isSuperAdmin()) return true;
+    if (this.isAdmin()) {
+      // Row 8: Reset Admin: FALSE; Row 12: Reset Stall Owner: TRUE; Row 16: Reset Marketing: TRUE
+      return targetUser.role === 'StallOwner' || targetUser.role === 'Marketing';
+    }
+    if (this.isStallOwner()) {
+      // Row 12: Reset Stall Owner: FALSE; Row 16: Reset Marketing: TRUE
+      return targetUser.role === 'Marketing';
+    }
+    return false;
+  }
 
   ngOnInit(): void {
     this.fetchUsers();
@@ -99,9 +147,14 @@ export class UserMasterComponent implements OnInit {
   }
 
   filteredUsers = computed(() => {
+    let list = this.users();
+    // StallOwner only views StallOwner and Marketing users
+    if (this.isStallOwner()) {
+      list = list.filter((u) => u.role === 'StallOwner' || u.role === 'Marketing');
+    }
     const q = this.searchQuery.toLowerCase().trim();
-    if (!q) return this.users();
-    return this.users().filter(
+    if (!q) return list;
+    return list.filter(
       (u) =>
         u.fullName.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
@@ -137,15 +190,16 @@ export class UserMasterComponent implements OnInit {
 
   openAddModal(): void {
     if (!this.canCreateUser()) {
-      this.toast.showError('Access Denied', 'Only Super Admin can add new users.');
+      this.toast.showError('Access Denied', 'You do not have permission to add new users.');
       return;
     }
     this.editingUser.set(null);
+    const defaultRole = this.isStallOwner() ? 'Marketing' : (this.isAdmin() ? 'StallOwner' : 'Marketing');
     this.formData = {
       fullName: '',
       username: '',
       email: '',
-      role: 'Marketing',
+      role: defaultRole,
       status: 'Active',
       password: '',
       userGroup: 'Sales Team'
@@ -154,8 +208,8 @@ export class UserMasterComponent implements OnInit {
   }
 
   openEditModal(user: UserMasterItem): void {
-    if (!this.canEditUser()) {
-      this.toast.showError('Access Denied', 'You do not have permission to edit users.');
+    if (!this.canEditUser(user)) {
+      this.toast.showError('Access Denied', 'You do not have permission to edit this user.');
       return;
     }
     this.editingUser.set(user);
@@ -172,8 +226,8 @@ export class UserMasterComponent implements OnInit {
   }
 
   openPasswordModal(user: UserMasterItem): void {
-    if (!this.canResetPassword()) {
-      this.toast.showError('Access Denied', 'Only Super Admin can reset passwords.');
+    if (!this.canResetPassword(user)) {
+      this.toast.showError('Access Denied', 'You do not have permission to reset password for this user.');
       return;
     }
     const newPass = prompt(`Reset Password for ${user.username}:`, 'Admin@123');
@@ -188,8 +242,8 @@ export class UserMasterComponent implements OnInit {
   selectedUserForDelete = signal<UserMasterItem | null>(null);
 
   deleteUser(user: UserMasterItem): void {
-    if (!this.canDeleteUser()) {
-      this.toast.showError('Access Denied', 'Only Super Admin can delete users.');
+    if (!this.canDeleteUser(user)) {
+      this.toast.showError('Access Denied', 'You do not have permission to delete this user.');
       return;
     }
     this.selectedUserForDelete.set(user);
@@ -200,13 +254,12 @@ export class UserMasterComponent implements OnInit {
   }
 
   confirmDeleteUser(): void {
-    if (!this.canDeleteUser()) {
-      this.toast.showError('Access Denied', 'Only Super Admin can delete users.');
+    const user = this.selectedUserForDelete();
+    if (!user || !this.canDeleteUser(user)) {
+      this.toast.showError('Access Denied', 'You do not have permission to delete this user.');
       this.selectedUserForDelete.set(null);
       return;
     }
-    const user = this.selectedUserForDelete();
-    if (!user) return;
 
     this.userService.deleteUser(user.id).subscribe({
       next: () => {
@@ -232,12 +285,12 @@ export class UserMasterComponent implements OnInit {
     }
 
     if (!this.editingUser() && !this.canCreateUser()) {
-      this.toast.showError('Access Denied', 'Only Super Admin can add new users.');
+      this.toast.showError('Access Denied', 'You do not have permission to add new users.');
       return;
     }
 
-    if (this.editingUser() && !this.canEditUser()) {
-      this.toast.showError('Access Denied', 'You do not have permission to edit users.');
+    if (this.editingUser() && !this.canEditUser(this.editingUser()!)) {
+      this.toast.showError('Access Denied', 'You do not have permission to edit this user.');
       return;
     }
 

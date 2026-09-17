@@ -17,6 +17,8 @@ export interface ExhibitionDto {
   createdAt: string;
   stallCount: number;
   leadCount: number;
+  adminId?: string;
+  adminName?: string;
 }
 
 export interface InlineStallRequest {
@@ -39,6 +41,8 @@ export interface CreateExhibitionRequest {
   status?: string;
   stallCount?: number;
   initialStalls?: InlineStallRequest[];
+  adminId?: string;
+  adminName?: string;
 }
 
 export interface ExhibitionDetailDto {

@@ -18,6 +18,11 @@ public static class DbInitializer
         {
             EnsureSqlServerSchema(dbContext);
         }
+        else if (provider != null && provider.Contains("Sqlite"))
+        {
+            try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Exhibitions ADD COLUMN AdminId TEXT;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Exhibitions ADD COLUMN AdminName TEXT;"); } catch { }
+        }
     }
 
     private static void EnsureSqlServerSchema(AppDbContext dbContext)
@@ -36,8 +41,17 @@ public static class DbInitializer
                     [DurationDays] INT NOT NULL DEFAULT 3,
                     [Description] NVARCHAR(MAX) NOT NULL DEFAULT '',
                     [Status] NVARCHAR(450) NOT NULL DEFAULT 'Active',
-                    [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    [AdminId] UNIQUEIDENTIFIER NULL,
+                    [AdminName] NVARCHAR(MAX) NULL
                 );
+            END
+
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Exhibitions]') AND type in (N'U'))
+               AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Exhibitions]') AND name = N'AdminId')
+            BEGIN
+                ALTER TABLE [dbo].[Exhibitions] ADD [AdminId] UNIQUEIDENTIFIER NULL;
+                ALTER TABLE [dbo].[Exhibitions] ADD [AdminName] NVARCHAR(MAX) NULL;
             END
 
             IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Exhibitions]') AND type in (N'U'))

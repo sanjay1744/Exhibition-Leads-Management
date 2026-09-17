@@ -176,7 +176,13 @@
 
               <!-- Organizer -->
               <td class="py-2.5 px-4 text-slate-700 font-semibold border-r border-slate-200/60">
-                {{ exhibition.organizer }}
+                <div>{{ exhibition.organizer }}</div>
+                @if (exhibition.adminName) {
+                  <div class="text-[10px] text-blue-700 font-semibold flex items-center gap-1 mt-0.5" title="Assigned Exhibition Admin">
+                    <span class="material-icons text-[11px] text-blue-600">shield</span>
+                    <span>Admin: {{ exhibition.adminName }}</span>
+                  </div>
+                }
               </td>
 
               <!-- Venue Location -->
@@ -438,6 +444,35 @@
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
+          </div>
+
+          <!-- Assigned Exhibition Admin (Matrix Row 20) -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-700 mb-0 flex items-center gap-1">
+                <span class="material-icons text-blue-600 text-xs">shield</span>
+                Assigned Exhibition Admin
+              </label>
+              @if (!canAssignExhibitionAdmin()) {
+                <span class="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold">
+                  Assigned by Super Admin only
+                </span>
+              }
+            </div>
+            <select 
+              [ngModel]="formAdminId" 
+              (ngModelChange)="onAdminChange($event)"
+              name="adminId" 
+              [disabled]="!canAssignExhibitionAdmin()"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <option value="">-- None / Select Exhibition Admin (Admins only) --</option>
+              @for (adm of adminUsers(); track adm.id) {
+                <option [value]="adm.id">
+                  {{ adm.fullName || adm.username }} ({{ adm.email }})
+                </option>
+              }
+            </select>
           </div>
 
           <!-- Start Date & Duration -->
@@ -774,6 +809,14 @@
               <div class="flex items-center gap-1.5 font-semibold text-slate-800">
                 <span class="material-icons text-sm text-slate-400">event_available</span>
                 {{ viewingExhibition()?.endDate ? (viewingExhibition()?.endDate | date:'mediumDate') : 'TBD' }}
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assigned Exhibition Admin</span>
+              <div class="flex items-center gap-1.5 font-semibold text-slate-800">
+                <span class="material-icons text-sm text-blue-600">shield</span>
+                {{ viewingExhibition()?.adminName || 'Unassigned' }}
               </div>
             </div>
 

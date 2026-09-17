@@ -15,4 +15,6 @@ public class Exhibition
     public string Description { get; set; } = string.Empty;
     public string Status { get; set; } = "Active"; // Upcoming, Active, Completed, Archived
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public Guid? AdminId { get; set; }
+    public string? AdminName { get; set; }
 }

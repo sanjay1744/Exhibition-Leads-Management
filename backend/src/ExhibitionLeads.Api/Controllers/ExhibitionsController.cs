@@ -29,7 +29,9 @@ public class ExhibitionsController : ControllerBase
         string Status,
         DateTime CreatedAt,
         int StallCount,
-        int LeadCount
+        int LeadCount,
+        Guid? AdminId = null,
+        string? AdminName = null
     );
 
     public record InlineStallRequest(
@@ -50,7 +52,9 @@ public class ExhibitionsController : ControllerBase
         int? DurationDays,
         string? Description,
         string? Status,
-        List<InlineStallRequest>? InitialStalls
+        List<InlineStallRequest>? InitialStalls,
+        Guid? AdminId = null,
+        string? AdminName = null
     );
 
     public record ExhibitionDetailDto(
@@ -97,7 +101,9 @@ public class ExhibitionsController : ControllerBase
                 e.Status,
                 e.CreatedAt,
                 quota,
-                leadCounts.TryGetValue(e.Id, out var lCount) ? lCount : 0
+                leadCounts.TryGetValue(e.Id, out var lCount) ? lCount : 0,
+                e.AdminId,
+                e.AdminName
             );
         });
 
@@ -164,7 +170,9 @@ public class ExhibitionsController : ControllerBase
             exhibition.Status,
             exhibition.CreatedAt,
             quota,
-            totalLeads
+            totalLeads,
+            exhibition.AdminId,
+            exhibition.AdminName
         );
 
         return Ok(new ExhibitionDetailDto(exhDto, stallDtos));
@@ -173,9 +181,12 @@ public class ExhibitionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Exhibition>> CreateExhibition([FromBody] CreateExhibitionRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
-        if (!string.IsNullOrEmpty(requestingRole) && !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        // Matrix: CREATE A EXHIBITION - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
+        if (!string.IsNullOrEmpty(requestingRole) && 
+            !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(requestingRole, "Admin", StringComparison.OrdinalIgnoreCase))
         {
-            return StatusCode(403, new { message = "Only Super Admin can create new exhibitions." });
+            return StatusCode(403, new { message = "Only Super Admin and Admin can create new exhibitions." });
         }
 
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -212,6 +223,15 @@ public class ExhibitionsController : ControllerBase
 
         var duration = request.DurationDays.HasValue && request.DurationDays.Value > 0 ? request.DurationDays.Value : 3;
 
+        // Matrix Row 20: ASSIGN A EXHIBITION ADMIN - Super Admin: TRUE, Admin: FALSE
+        Guid? assignedAdminId = null;
+        string? assignedAdminName = null;
+        if (string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(requestingRole))
+        {
+            assignedAdminId = request.AdminId;
+            assignedAdminName = request.AdminName;
+        }
+
         var exhibition = new Exhibition
         {
             Code = code,
@@ -222,7 +242,9 @@ public class ExhibitionsController : ControllerBase
             EndDate = request.EndDate ?? DateTime.UtcNow.Date.AddDays(duration),
             DurationDays = duration,
             Description = request.Description ?? string.Empty,
-            Status = !string.IsNullOrWhiteSpace(request.Status) ? request.Status : "Active"
+            Status = !string.IsNullOrWhiteSpace(request.Status) ? request.Status : "Active",
+            AdminId = assignedAdminId,
+            AdminName = assignedAdminName
         };
 
         _context.Exhibitions.Add(exhibition);
@@ -309,6 +331,13 @@ public class ExhibitionsController : ControllerBase
         if (request.Description != null) exhibition.Description = request.Description;
         if (!string.IsNullOrWhiteSpace(request.Status)) exhibition.Status = request.Status;
 
+        // Matrix Row 20: Only Super Admin can assign or change Exhibition Admin
+        if (string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(requestingRole))
+        {
+            if (request.AdminId.HasValue) exhibition.AdminId = request.AdminId.Value;
+            if (request.AdminName != null) exhibition.AdminName = request.AdminName;
+        }
+
         await _context.SaveChangesAsync();
 
         // Also update linked stalls' EventName, Organizer, Venue, and Dates if changed
@@ -330,9 +359,12 @@ public class ExhibitionsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteExhibition(Guid id, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
-        if (!string.IsNullOrEmpty(requestingRole) && !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        // Matrix: DELETE EXHIBITION - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
+        if (!string.IsNullOrEmpty(requestingRole) && 
+            !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(requestingRole, "Admin", StringComparison.OrdinalIgnoreCase))
         {
-            return StatusCode(403, new { message = "Only Super Admin can delete exhibitions." });
+            return StatusCode(403, new { message = "You do not have permission to delete exhibitions." });
         }
 
         var exhibition = await _context.Exhibitions.FindAsync(id);

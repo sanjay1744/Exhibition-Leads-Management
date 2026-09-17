@@ -135,8 +135,6 @@
                     >
                       <span class="material-icons text-base">edit</span>
                     </button>
-                  } @else {
-                    <span class="material-icons text-slate-300 text-sm" title="Edit Restricted">lock</span>
                   }
 
                   <!-- Delete Column -->
@@ -148,8 +146,6 @@
                     >
                       <span class="material-icons text-base">delete</span>
                     </button>
-                  } @else {
-                    <span class="material-icons text-slate-300 text-sm" title="Delete Restricted">lock</span>
                   }
                 </div>
               </td>
@@ -392,22 +388,30 @@
               </div>
             </div>
 
-            <!-- Row 7: Stall Owner Assignment from UMS Users -->
+            <!-- Row 7: Stall Owner Assignment from UMS Users (Matrix Row 26: Only Stall Owners can be assigned) -->
             <div>
-              <label class="form-label font-bold text-xs text-slate-700 mb-1 flex items-center gap-1">
-                <span class="material-icons text-blue-600 text-xs">person</span>
-                Assigned Stall Owner *
-              </label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="form-label font-bold text-xs text-slate-700 mb-0 flex items-center gap-1">
+                  <span class="material-icons text-blue-600 text-xs">person</span>
+                  Assigned Stall Owner *
+                </label>
+                @if (!canAssignStallOwner()) {
+                  <span class="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold">
+                    Assigned by Super Admin / Admin only
+                  </span>
+                }
+              </div>
               <select 
                 [(ngModel)]="formData.ownerId" 
                 (ngModelChange)="onOwnerChange($event)"
                 name="ownerId" 
-                class="form-control text-xs font-semibold bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-full p-2.5 outline-none cursor-pointer"
+                [disabled]="!canAssignStallOwner()"
+                class="form-control text-xs font-semibold bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-full p-2.5 outline-none disabled:bg-slate-100 disabled:cursor-not-allowed cursor-pointer"
               >
-                <option value="">-- Select Stall Owner from User Master --</option>
-                @for (user of users(); track user.id) {
+                <option value="">-- Select Stall Owner (Stall Owners only) --</option>
+                @for (user of stallOwnerUsers(); track user.id) {
                   <option [value]="user.id">
-                    {{ user.fullName || user.username }} ({{ user.role }}{{ user.userGroup ? ' • ' + user.userGroup : '' }})
+                    {{ user.fullName || user.username }} ({{ user.userGroup || 'Stall Owner' }})
                   </option>
                 }
                 @if (formData.ownerId && !isOwnerInList(formData.ownerId)) {

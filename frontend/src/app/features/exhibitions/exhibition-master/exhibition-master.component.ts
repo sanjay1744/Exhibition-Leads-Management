@@ -6,6 +6,7 @@ import { ExhibitionService, ExhibitionDto, CreateExhibitionRequest, InlineStallR
 import { StallService } from '../../../core/services/stall.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { UserService } from '../../../core/services/user.service';
 
 @Component({
   selector: 'app-exhibition-master',
@@ -20,8 +21,14 @@ export class ExhibitionMasterComponent implements OnInit {
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
   private router = inject(Router);
+  private userService = inject(UserService);
 
   exhibitions = this.exhibitionService.exhibitions;
+  users = this.userService.users;
+  adminUsers = computed(() => this.users().filter(u => u.role === 'Admin'));
+
+  formAdminId = '';
+  formAdminName = '';
 
   searchQuery = '';
   selectedStatusFilter = signal<string>('ALL');
@@ -137,6 +144,12 @@ export class ExhibitionMasterComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.userService.initUsers();
+    this.userService.getUsers().subscribe({
+      next: (res) => {
+        if (res) this.userService.users.set(res);
+      }
+    });
     this.exhibitionService.loadExhibitions().then(() => {
       this.autoCloseExpiredExhibitions();
     });
@@ -178,17 +191,33 @@ export class ExhibitionMasterComponent implements OnInit {
     return new Date(y, m, d, 0, 0, 0, 0);
   }
 
+  // Matrix Row 17: CREATE A EXHIBITION - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
   canCreateExhibition(): boolean {
-    return this.authService.currentUser()?.role === 'SuperAdmin';
+    const role = this.authService.currentUser()?.role;
+    return role === 'SuperAdmin' || role === 'Admin';
   }
 
+  // Matrix Row 19: DELETE EXHIBITION - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
   canDeleteExhibition(): boolean {
-    return this.authService.currentUser()?.role === 'SuperAdmin';
+    const role = this.authService.currentUser()?.role;
+    return role === 'SuperAdmin' || role === 'Admin';
   }
 
+  // Matrix Row 18: EDIT EXHIBITION - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
   canEditExhibition(): boolean {
     const role = this.authService.currentUser()?.role;
     return role === 'SuperAdmin' || role === 'Admin';
+  }
+
+  // Matrix Row 20: ASIGN A EXHIBITION ADMIN (ONLY ADMINS CAN BE ASSIGNED HERE) - Super Admin: TRUE, Admin: FALSE
+  canAssignExhibitionAdmin(): boolean {
+    return this.authService.currentUser()?.role === 'SuperAdmin';
+  }
+
+  onAdminChange(adminId: string): void {
+    this.formAdminId = adminId;
+    const found = this.users().find(u => u.id === adminId);
+    this.formAdminName = found ? (found.fullName || found.username) : '';
   }
 
   updateCodeForStall(stallNum: number): void {
@@ -232,6 +261,8 @@ export class ExhibitionMasterComponent implements OnInit {
     this.reviewBufferState = { isActive: false, isExpired: false, reviewEndDate: null, reviewEndDateFormatted: '', currentDay: 1 };
     this.inlineStalls = [];
     this.formStallNumber = 1;
+    this.formAdminId = '';
+    this.formAdminName = '';
 
     this.updateCodeForStall(1);
     this.isModalOpen.set(true);
@@ -253,6 +284,8 @@ export class ExhibitionMasterComponent implements OnInit {
     this.formDurationDays = exhibition.durationDays || 3;
     this.formDescription = exhibition.description || '';
     this.formStatus = exhibition.status || 'Active';
+    this.formAdminId = exhibition.adminId || '';
+    this.formAdminName = exhibition.adminName || '';
     this.formStallNumber = exhibition.stallCount || 1;
     this.inlineStalls = [];
     this.isDateAutomatedStatus = false;
@@ -477,7 +510,9 @@ export class ExhibitionMasterComponent implements OnInit {
       description: this.formDescription.trim(),
       status: this.formStatus,
       stallCount: this.formStallNumber || 1,
-      initialStalls: !this.isEditMode() ? this.inlineStalls : undefined
+      initialStalls: !this.isEditMode() ? this.inlineStalls : undefined,
+      adminId: this.formAdminId || undefined,
+      adminName: this.formAdminName || undefined
     };
 
     if (this.isEditMode() && this.editingId()) {
@@ -526,7 +561,7 @@ export class ExhibitionMasterComponent implements OnInit {
 
   promptDeleteExhibition(exhibition: ExhibitionDto): void {
     if (!this.canDeleteExhibition()) {
-      this.toastService.showError('Access Denied', 'Only Super Admin can delete exhibitions.');
+      this.toastService.showError('Access Denied', 'You do not have permission to delete exhibitions.');
       return;
     }
     this.selectedExhibitionForDelete.set(exhibition);
@@ -534,7 +569,7 @@ export class ExhibitionMasterComponent implements OnInit {
 
   confirmDeleteExhibition(): void {
     if (!this.canDeleteExhibition()) {
-      this.toastService.showError('Access Denied', 'Only Super Admin can delete exhibitions.');
+      this.toastService.showError('Access Denied', 'You do not have permission to delete exhibitions.');
       this.selectedExhibitionForDelete.set(null);
       return;
     }

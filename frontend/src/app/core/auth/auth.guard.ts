@@ -24,9 +24,9 @@ export const authGuard: CanActivateFn = (route, state) => {
     }
   }
 
-  // 2. Stall Owner cannot access User Master or Admin configuration
+  // 2. Stall Owner cannot access Exhibition Master or Admin configuration
   if (role === 'StallOwner') {
-    if (targetUrl.startsWith('/ums') || targetUrl.startsWith('/admin')) {
+    if (targetUrl.startsWith('/exhibitions') || targetUrl.startsWith('/admin')) {
       router.navigate(['/stalls']);
       return false;
     }

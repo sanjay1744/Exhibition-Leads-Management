@@ -106,9 +106,12 @@ public class StallsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Stall>> CreateStall([FromBody] CreateStallRequest request, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
-        if (string.Equals(requestingRole, "Marketing", StringComparison.OrdinalIgnoreCase))
+        // Matrix: CREATE STALL - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
+        if (!string.IsNullOrEmpty(requestingRole) && 
+            !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(requestingRole, "Admin", StringComparison.OrdinalIgnoreCase))
         {
-            return StatusCode(403, new { message = "Marketing Rep is restricted from creating stalls." });
+            return StatusCode(403, new { message = "Only Super Admin and Admin can create stalls." });
         }
 
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -228,7 +231,16 @@ public class StallsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(request.Location)) stall.Location = request.Location;
         if (!string.IsNullOrWhiteSpace(request.HallNumber)) stall.HallNumber = request.HallNumber;
         if (!string.IsNullOrWhiteSpace(request.BoothNumber)) stall.BoothNumber = request.BoothNumber;
-        if (!string.IsNullOrWhiteSpace(request.OwnerName)) stall.OwnerName = request.OwnerName;
+        
+        // Matrix Row 26: ASSIGN A STALL MASTER TO A STALL - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE
+        if (!string.Equals(requestingRole, "StallOwner", StringComparison.OrdinalIgnoreCase))
+        {
+            if (request.OwnerId != null && Guid.TryParse(request.OwnerId.ToString(), out var parsedOwnerGuid))
+            {
+                stall.OwnerId = parsedOwnerGuid;
+            }
+            if (!string.IsNullOrWhiteSpace(request.OwnerName)) stall.OwnerName = request.OwnerName;
+        }
 
         await _context.SaveChangesAsync();
         return Ok(stall);
@@ -237,9 +249,12 @@ public class StallsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteStall(Guid id, [FromHeader(Name = "X-User-Role")] string? requestingRole)
     {
-        if (string.Equals(requestingRole, "Marketing", StringComparison.OrdinalIgnoreCase))
+        // Matrix: DELETE STALL - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
+        if (!string.IsNullOrEmpty(requestingRole) && 
+            !string.Equals(requestingRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(requestingRole, "Admin", StringComparison.OrdinalIgnoreCase))
         {
-            return StatusCode(403, new { message = "Marketing Rep is restricted from deleting stalls." });
+            return StatusCode(403, new { message = "Only Super Admin and Admin can delete stalls." });
         }
 
         var stall = await _context.Stalls.FindAsync(id);

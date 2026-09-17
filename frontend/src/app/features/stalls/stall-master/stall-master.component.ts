@@ -120,20 +120,27 @@ export class StallMasterComponent implements OnInit {
 
   currentUser = this.auth.currentUser();
 
-  canCreateStall = computed(() => {
-    const role = this.currentUser?.role;
-    return role === 'SuperAdmin' || role === 'Admin' || role === 'StallOwner';
-  });
+  isSuperAdmin = computed(() => this.currentUser?.role === 'SuperAdmin');
+  isAdmin = computed(() => this.currentUser?.role === 'Admin');
+  isStallOwner = computed(() => this.currentUser?.role === 'StallOwner');
 
-  canEditStall = computed(() => {
-    const role = this.currentUser?.role;
-    return role === 'SuperAdmin' || role === 'Admin' || role === 'StallOwner';
-  });
+  // Matrix Row 22: CREATE STALL - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
+  canCreateStall = computed(() => this.isSuperAdmin() || this.isAdmin());
 
-  canDeleteStall = computed(() => {
-    const role = this.currentUser?.role;
-    return role === 'SuperAdmin' || role === 'Admin' || role === 'StallOwner';
-  });
+  // Matrix Row 23: VIEW STALL - Super Admin: TRUE, Admin: TRUE, Stall Owner: TRUE, Marketing: FALSE
+  canViewStall = computed(() => this.isSuperAdmin() || this.isAdmin() || this.isStallOwner());
+
+  // Matrix Row 24: EDIT STALL - Super Admin: TRUE, Admin: TRUE, Stall Owner: TRUE, Marketing: FALSE
+  canEditStall = computed(() => this.isSuperAdmin() || this.isAdmin() || this.isStallOwner());
+
+  // Matrix Row 25: DELETE STALL - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE, Marketing: FALSE
+  canDeleteStall = computed(() => this.isSuperAdmin() || this.isAdmin());
+
+  // Matrix Row 26: ASSIGN A STALL MASTER TO A STALL - Super Admin: TRUE, Admin: TRUE, Stall Owner: FALSE
+  canAssignStallOwner = computed(() => this.isSuperAdmin() || this.isAdmin());
+
+  // Strictly only users with StallOwner role can be assigned as Stall Owners
+  stallOwnerUsers = computed(() => this.users().filter(u => u.role === 'StallOwner'));
 
   ngOnInit(): void {
     this.exhibitionService.loadExhibitions();
@@ -259,6 +266,10 @@ export class StallMasterComponent implements OnInit {
   }
 
   openCreateModal(presetExhibitionId?: string): void {
+    if (!this.canCreateStall()) {
+      this.toast.showError('Access Denied', 'Only Super Admin and Admin can create stalls.');
+      return;
+    }
     this.isEditMode.set(false);
     this.editingStallId = null;
     this.http.get<{ code: string }>(`${this.apiUrl}/next-code`).subscribe({
@@ -390,10 +401,19 @@ export class StallMasterComponent implements OnInit {
 
   isOwnerInList(ownerId: string): boolean {
     if (!ownerId) return true;
-    return this.users().some((u) => u.id === ownerId);
+    return this.stallOwnerUsers().some((u) => u.id === ownerId);
   }
 
   saveStall(): void {
+    if (!this.isEditMode() && !this.canCreateStall()) {
+      this.toast.showError('Access Denied', 'Only Super Admin and Admin can create stalls.');
+      return;
+    }
+    if (this.isEditMode() && !this.canEditStall()) {
+      this.toast.showError('Access Denied', 'You do not have permission to edit stalls.');
+      return;
+    }
+
     if (!this.formData.name) {
       this.toast.showError('Stall Name is required.');
       return;
@@ -510,6 +530,10 @@ export class StallMasterComponent implements OnInit {
   selectedStallForDelete = signal<StallMasterDto | null>(null);
 
   deleteStall(stall: StallMasterDto): void {
+    if (!this.canDeleteStall()) {
+      this.toast.showError('Access Denied', 'Only Super Admin and Admin can delete stalls.');
+      return;
+    }
     this.selectedStallForDelete.set(stall);
   }
 
@@ -518,6 +542,11 @@ export class StallMasterComponent implements OnInit {
   }
 
   confirmDeleteStall(): void {
+    if (!this.canDeleteStall()) {
+      this.toast.showError('Access Denied', 'Only Super Admin and Admin can delete stalls.');
+      this.selectedStallForDelete.set(null);
+      return;
+    }
     const stall = this.selectedStallForDelete();
     if (!stall) return;
 

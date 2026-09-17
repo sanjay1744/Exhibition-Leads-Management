@@ -13,14 +13,14 @@
           Super Admin (Full User Master Control)
         </span>
       } @else if (isAdmin()) {
-        <span class="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1">
-          <span class="material-icons text-sm text-amber-600">info</span>
-          Admin Role (Adding Users Restricted to Super Admin)
+        <span class="text-xs bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1">
+          <span class="material-icons text-sm text-blue-600">shield</span>
+          Admin (Manage Stall Owners & Marketing Reps)
         </span>
       } @else if (isStallOwner()) {
-        <span class="text-xs bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1">
-          <span class="material-icons text-sm text-slate-600">lock</span>
-          Stall Owner (User Management Restricted)
+        <span class="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1">
+          <span class="material-icons text-sm text-emerald-600">storefront</span>
+          Stall Owner (Manage Marketing Reps)
         </span>
       }
 
@@ -109,18 +109,18 @@
                     <span class="material-icons text-base">visibility</span>
                   </button>
 
-                  @if (canEditUser()) {
+                  @if (canEditUser(user)) {
                     <button (click)="openEditModal(user)" class="text-blue-600 hover:text-blue-800 p-0.5 transition" title="Edit User">
                       <span class="material-icons text-base">edit</span>
                     </button>
                   }
-                  @if (canResetPassword()) {
+                  @if (canResetPassword(user)) {
                     <button (click)="openPasswordModal(user)" class="text-amber-600 hover:text-amber-800 p-0.5 transition" title="Reset Key">
                       <span class="material-icons text-base">vpn_key</span>
                     </button>
                   }
-                  @if (canDeleteUser()) {
-                    <button (click)="deleteUser(user)" class="text-rose-600 hover:text-rose-800 p-0.5 transition" title="Delete User (Super Admin Only)">
+                  @if (canDeleteUser(user)) {
+                    <button (click)="deleteUser(user)" class="text-rose-600 hover:text-rose-800 p-0.5 transition" title="Delete User">
                       <span class="material-icons text-base">delete</span>
                     </button>
                   }
@@ -220,12 +220,11 @@
             <div>
               <label class="form-label font-bold text-xs text-slate-700 mb-1">Role Hierarchy *</label>
               <select [(ngModel)]="formData.role" name="role" class="form-control font-semibold">
-                @if (isSuperAdmin()) {
-                  <option value="SuperAdmin">Super Admin (All Access & User Master Control)</option>
+                @for (roleOpt of availableRoles(); track roleOpt) {
+                  <option [value]="roleOpt">
+                    {{ roleOpt === 'SuperAdmin' ? 'Super Admin (All Access)' : roleOpt === 'Admin' ? 'Admin (Master & Management Access)' : roleOpt === 'StallOwner' ? 'Stall Owner (Manage Stalls & Marketing Reps)' : 'Marketing Rep (Leads Operations)' }}
+                  </option>
                 }
-                <option value="Admin">Admin (All Access, Cannot Add/Delete Exhibitions)</option>
-                <option value="StallOwner">Stall Owner (Can Add/Delete Stalls, Cannot Add/Delete Exhibitions)</option>
-                <option value="Marketing">Marketing Rep (Leads Only)</option>
               </select>
             </div>
 
@@ -421,7 +420,7 @@
           <button type="button" (click)="closeViewModal()" class="btn btn-outline-pill text-xs px-4 py-2">
             Close
           </button>
-          @if (canEditUser()) {
+          @if (viewingUser() && canEditUser(viewingUser()!)) {
             <button 
               type="button" 
               (click)="switchToEditFromView()" 
