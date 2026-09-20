@@ -23,6 +23,8 @@ export interface Stall {
   durationDays?: number;
   startDate?: string;
   endDate?: string;
+  marketingRepIds?: string;
+  marketingRepNames?: string;
   status?: string;
 }
 
@@ -54,6 +56,20 @@ export class StallService {
         );
       });
     }
+    if (user && user.role === 'Marketing') {
+      const myId = user.id?.toLowerCase();
+      const myUsername = user.username?.toLowerCase();
+      const myFullName = user.fullName?.toLowerCase();
+      return list.filter((s) => {
+        const repIds = s.marketingRepIds?.toLowerCase() || '';
+        const repNames = s.marketingRepNames?.toLowerCase() || '';
+        return (
+          (myId && repIds.includes(myId)) ||
+          (myUsername && repNames.includes(myUsername)) ||
+          (myFullName && repNames.includes(myFullName))
+        );
+      });
+    }
     return list;
   });
 
@@ -79,11 +95,21 @@ export class StallService {
     try {
       const cloudStalls = (await this.supabaseSync.getStallsFromSupabase()) as Stall[];
       if (cloudStalls && cloudStalls.length > 0) {
-        this.allStalls.set(cloudStalls);
+        const localStalls = await this.db.getAllStalls().catch(() => []);
+        const localMap = new Map<string, any>(localStalls.map((s: any) => [s.id?.toLowerCase(), s]));
+        const merged = cloudStalls.map((s) => {
+          const local = localMap.get(s.id?.toLowerCase());
+          return {
+            ...s,
+            marketingRepIds: s.marketingRepIds || local?.marketingRepIds || '',
+            marketingRepNames: s.marketingRepNames || local?.marketingRepNames || ''
+          };
+        });
+        this.allStalls.set(merged);
         this.ensureValidActiveStall();
 
         // Synchronize to local Dexie cache
-        for (const s of cloudStalls) {
+        for (const s of merged) {
           await this.db.saveStall(s);
         }
         return;
@@ -113,6 +139,8 @@ export class StallService {
           durationDays: s.durationDays || 3,
           startDate: s.startDate || '',
           endDate: s.endDate || '',
+          marketingRepIds: s.marketingRepIds || '',
+          marketingRepNames: s.marketingRepNames || '',
           status: s.status || 'Active'
         }));
         this.allStalls.set(mapped);
@@ -192,6 +220,8 @@ export class StallService {
       durationDays: data.durationDays || 3,
       startDate: data.startDate || new Date().toISOString(),
       endDate: data.endDate || new Date(Date.now() + 3 * 86400000).toISOString(),
+      marketingRepIds: data.marketingRepIds || '',
+      marketingRepNames: data.marketingRepNames || '',
       status: data.status || 'Active',
       createdAt: new Date().toISOString(),
     };

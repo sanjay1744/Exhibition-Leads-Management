@@ -22,6 +22,9 @@ public static class DbInitializer
         {
             try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Exhibitions ADD COLUMN AdminId TEXT;"); } catch { }
             try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Exhibitions ADD COLUMN AdminName TEXT;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Stalls ADD COLUMN MarketingRepIds TEXT;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Stalls ADD COLUMN MarketingRepNames TEXT;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Leads ADD COLUMN StallId TEXT;"); } catch { }
         }
     }
 
@@ -100,6 +103,13 @@ public static class DbInitializer
                 CREATE INDEX [IX_Stalls_ExhibitionId] ON [dbo].[Stalls]([ExhibitionId]);
             END
 
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Stalls]') AND type in (N'U'))
+               AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Stalls]') AND name = N'MarketingRepIds')
+            BEGIN
+                ALTER TABLE [dbo].[Stalls] ADD [MarketingRepIds] NVARCHAR(MAX) NULL;
+                ALTER TABLE [dbo].[Stalls] ADD [MarketingRepNames] NVARCHAR(MAX) NULL;
+            END
+
             IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Leads]') AND type in (N'U'))
             BEGIN
                 CREATE TABLE [dbo].[Leads] (
@@ -140,9 +150,21 @@ public static class DbInitializer
             END
 
             IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Leads]') AND type in (N'U'))
+               AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Leads]') AND name = N'StallId')
+            BEGIN
+                ALTER TABLE [dbo].[Leads] ADD [StallId] UNIQUEIDENTIFIER NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000';
+            END
+
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Leads]') AND type in (N'U'))
                AND NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_Leads_ExhibitionId' AND object_id = OBJECT_ID(N'[dbo].[Leads]'))
             BEGIN
                 CREATE INDEX [IX_Leads_ExhibitionId] ON [dbo].[Leads]([ExhibitionId]);
+            END
+
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Leads]') AND type in (N'U'))
+               AND NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_Leads_StallId' AND object_id = OBJECT_ID(N'[dbo].[Leads]'))
+            BEGIN
+                CREATE INDEX [IX_Leads_StallId] ON [dbo].[Leads]([StallId]);
             END
 
             IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type in (N'U'))

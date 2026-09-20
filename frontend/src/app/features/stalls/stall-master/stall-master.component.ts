@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -30,6 +30,8 @@ export interface StallMasterDto {
   createdAt: string;
   leadCount: number;
   exhibitionId?: string;
+  marketingRepIds?: string;
+  marketingRepNames?: string;
 }
 
 @Component({
@@ -102,6 +104,8 @@ export class StallMasterComponent implements OnInit {
     ownerId: string;
     ownerName: string;
     exhibitionId?: string;
+    marketingRepIds?: string;
+    marketingRepNames?: string;
   } = {
     name: '',
     code: '',
@@ -115,7 +119,9 @@ export class StallMasterComponent implements OnInit {
     boothNumber: '',
     ownerId: '',
     ownerName: '',
-    exhibitionId: ''
+    exhibitionId: '',
+    marketingRepIds: '',
+    marketingRepNames: ''
   };
 
   currentUser = this.auth.currentUser();
@@ -141,6 +147,72 @@ export class StallMasterComponent implements OnInit {
 
   // Strictly only users with StallOwner role can be assigned as Stall Owners
   stallOwnerUsers = computed(() => this.users().filter(u => u.role === 'StallOwner'));
+
+  // Strictly only users with Marketing role can be assigned as Marketing Reps
+  marketingUsers = computed(() => this.users().filter(u => u.role === 'Marketing'));
+
+  selectedMarketingRepIds = signal<string[]>([]);
+  isMarketingDropdownOpen = signal<boolean>(false);
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (this.isMarketingDropdownOpen() && !target.closest('.marketing-dropdown-container')) {
+      this.isMarketingDropdownOpen.set(false);
+    }
+  }
+
+  toggleMarketingDropdown(event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.isMarketingDropdownOpen.update((v) => !v);
+  }
+
+  closeMarketingDropdown(): void {
+    this.isMarketingDropdownOpen.set(false);
+  }
+
+  toggleMarketingRep(userId: string): void {
+    const current = this.selectedMarketingRepIds();
+    if (current.includes(userId)) {
+      this.selectedMarketingRepIds.set(current.filter(id => id !== userId));
+    } else {
+      this.selectedMarketingRepIds.set([...current, userId]);
+    }
+  }
+
+  isMarketingRepSelected(userId: string): boolean {
+    return this.selectedMarketingRepIds().includes(userId);
+  }
+
+  getSelectedMarketingRepNames(): string[] {
+    const ids = this.selectedMarketingRepIds();
+    return this.marketingUsers()
+      .filter(u => ids.includes(u.id))
+      .map(u => u.fullName || u.username);
+  }
+
+  getSelectedMarketingRepList() {
+    const ids = this.selectedMarketingRepIds();
+    return this.marketingUsers().filter((u) => ids.includes(u.id));
+  }
+
+  getSelectedMarketingRepsSummary(): string {
+    const names = this.getSelectedMarketingRepNames();
+    if (names.length === 0) {
+      return '-- Select Marketing Reps (Multiple) --';
+    }
+    if (names.length === 1) {
+      return `${names[0]} (1 Rep Selected)`;
+    }
+    return `${names.length} Reps Selected: ${names.join(', ')}`;
+  }
+
+  getRepNamesList(stall: StallMasterDto | null | undefined): string[] {
+    if (!stall?.marketingRepNames) return [];
+    return stall.marketingRepNames.split(',').map(s => s.trim()).filter(Boolean);
+  }
 
   ngOnInit(): void {
     this.exhibitionService.loadExhibitions();
@@ -176,13 +248,22 @@ export class StallMasterComponent implements OnInit {
   async fetchStalls(): Promise<void> {
     try {
       const localLeads = await this.db.getAllLeads();
+      const localStalls = await this.db.getAllStalls().catch(() => []);
+      const localMap = new Map<string, any>(localStalls.map((s: any) => [s.id?.toLowerCase(), s]));
+
       // 1. Fetch live authoritative stalls from Supabase
       const cloudStalls = await this.supabaseSync.getStallsFromSupabase();
       if (cloudStalls && cloudStalls.length > 0) {
         const updated = cloudStalls.map((s: any) => {
+          const local = localMap.get(s.id?.toLowerCase());
           const localCount = localLeads.filter((l) => l.exhibitionId === s.id).length;
           const totalCount = Math.max(s.leadCount || 0, localCount);
-          return { ...s, leadCount: totalCount };
+          return {
+            ...s,
+            marketingRepIds: s.marketingRepIds || local?.marketingRepIds || '',
+            marketingRepNames: s.marketingRepNames || local?.marketingRepNames || '',
+            leadCount: totalCount
+          };
         });
         this.stalls.set(updated);
         return;
@@ -288,6 +369,7 @@ export class StallMasterComponent implements OnInit {
     }
     this.isEditMode.set(false);
     this.editingStallId = null;
+    this.selectedMarketingRepIds.set([]);
     this.http.get<{ code: string }>(`${this.apiUrl}/next-code`).subscribe({
       next: (res) => {
         const nextCode = res.code || `STL-${new Date().getFullYear()}-002`;
@@ -309,7 +391,9 @@ export class StallMasterComponent implements OnInit {
           boothNumber: '',
           ownerId: matchedUser ? matchedUser.id : '',
           ownerName: matchedUser ? (matchedUser.fullName || matchedUser.username) : '',
-          exhibitionId: presetExhibitionId || ''
+          exhibitionId: presetExhibitionId || '',
+          marketingRepIds: '',
+          marketingRepNames: ''
         };
         if (this.formData.exhibitionId) {
           this.onExhibitionChange(this.formData.exhibitionId);
@@ -326,6 +410,8 @@ export class StallMasterComponent implements OnInit {
         this.formData.code = fallbackCode;
         this.formData.ownerId = matchedUser ? matchedUser.id : '';
         this.formData.ownerName = matchedUser ? (matchedUser.fullName || matchedUser.username) : '';
+        this.formData.marketingRepIds = '';
+        this.formData.marketingRepNames = '';
         if (presetExhibitionId) this.onExhibitionChange(presetExhibitionId);
         this.isModalOpen.set(true);
       }
@@ -357,6 +443,18 @@ export class StallMasterComponent implements OnInit {
              (stall.ownerName && (u.fullName?.toLowerCase() === stall.ownerName.toLowerCase() || u.username?.toLowerCase() === stall.ownerName.toLowerCase()))
     );
 
+    // Match marketing reps from stall
+    const repIdsFromStall = stall.marketingRepIds ? stall.marketingRepIds.split(',').map(s => s.trim()).filter(Boolean) : [];
+    if (repIdsFromStall.length === 0 && stall.marketingRepNames) {
+      const names = stall.marketingRepNames.toLowerCase().split(',').map(s => s.trim());
+      const matchedIds = this.marketingUsers()
+        .filter(u => names.includes(u.fullName?.toLowerCase() || '') || names.includes(u.username?.toLowerCase() || ''))
+        .map(u => u.id);
+      this.selectedMarketingRepIds.set(matchedIds);
+    } else {
+      this.selectedMarketingRepIds.set(repIdsFromStall);
+    }
+
     this.formData = {
       name: stall.name,
       code: stall.code,
@@ -370,7 +468,9 @@ export class StallMasterComponent implements OnInit {
       boothNumber: stall.boothNumber || '',
       ownerId: matchedUser ? matchedUser.id : (stall.ownerId || ''),
       ownerName: matchedUser ? (matchedUser.fullName || matchedUser.username) : (stall.ownerName || ''),
-      exhibitionId: stall.exhibitionId || ''
+      exhibitionId: stall.exhibitionId || '',
+      marketingRepIds: stall.marketingRepIds || '',
+      marketingRepNames: stall.marketingRepNames || ''
     };
     this.onDateChange();
     this.isModalOpen.set(true);
@@ -392,6 +492,7 @@ export class StallMasterComponent implements OnInit {
     this.isModalOpen.set(false);
     this.isEditMode.set(false);
     this.editingStallId = null;
+    this.isMarketingDropdownOpen.set(false);
   }
 
   getAssignedStallCount(exhibitionId: string): number {
@@ -481,6 +582,11 @@ export class StallMasterComponent implements OnInit {
       ? this.formData.exhibitionId.trim()
       : undefined;
 
+    const repIds = this.selectedMarketingRepIds().join(',');
+    const repNames = this.getSelectedMarketingRepNames().join(', ');
+    this.formData.marketingRepIds = repIds;
+    this.formData.marketingRepNames = repNames;
+
     const stallRecord: StallMasterDto = {
       id: stallId,
       name: this.formData.name.trim(),
@@ -498,7 +604,9 @@ export class StallMasterComponent implements OnInit {
       status: 'Active',
       leadCount: 0,
       createdAt: new Date().toISOString(),
-      exhibitionId: exhibitionIdVal
+      exhibitionId: exhibitionIdVal,
+      marketingRepIds: repIds,
+      marketingRepNames: repNames
     };
 
     // 1. Immediately update in-memory signals and Dexie so Exhibition Master changes from 0 to 1 in real time

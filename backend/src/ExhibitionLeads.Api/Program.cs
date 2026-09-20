@@ -79,6 +79,8 @@ else
 
 var app = builder.Build();
 
+app.UseDeveloperExceptionPage();
+
 // Enable CORS immediately as the first middleware
 app.UseCors("AllowAngularPwa");
 app.UseStaticFiles();

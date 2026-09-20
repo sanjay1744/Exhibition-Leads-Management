@@ -18,6 +18,8 @@ public class Stall
     public string BoothNumber { get; set; } = string.Empty; // e.g. "Booth 12"
     public Guid OwnerId { get; set; } // Stall Owner User Id
     public string OwnerName { get; set; } = string.Empty;
+    public string MarketingRepIds { get; set; } = string.Empty; // Comma-separated Marketing Rep User IDs
+    public string MarketingRepNames { get; set; } = string.Empty; // Comma-separated Marketing Rep names for display
     public string Status { get; set; } = "Active"; // Active, Closed, Upcoming
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

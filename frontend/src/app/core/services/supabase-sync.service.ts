@@ -149,11 +149,13 @@ export class SupabaseSyncService {
           lead.voiceBlob = audioUrl;
         }
 
-        const supabaseRecord = {
+        const isValidUuid = (val?: string | null) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+        const supabaseRecord: Record<string, any> = {
           id: lead.id,
           lead_number: lead.leadNumber,
-          exhibition_id: lead.exhibitionId || null,
-          rep_id: lead.repId || null,
+          exhibition_id: isValidUuid(lead.stallId || lead.exhibitionId) ? (lead.stallId || lead.exhibitionId) : null,
+          rep_id: isValidUuid(lead.repId) ? lead.repId : null,
           name: lead.name || '',
           company: lead.company || '',
           designation: lead.designation || '',
@@ -180,9 +182,9 @@ export class SupabaseSyncService {
         const { error } = await supabase.from(this.LEADS_TABLE).upsert(supabaseRecord, { onConflict: 'id' });
         if (error) {
           console.warn(`[SupabaseSyncService] Database write skipped or error for ${lead.leadNumber}:`, error.message);
+        } else {
+          syncedIds.push(lead.id);
         }
-
-        syncedIds.push(lead.id);
       } catch (leadErr) {
         console.error(`[SupabaseSyncService] Failed to sync lead ${lead.leadNumber}:`, leadErr);
       }
@@ -301,12 +303,14 @@ export class SupabaseSyncService {
     }
   }
 
+  private supabaseHasMarketingColumns: boolean | null = null;
+
   /**
    * Save or update a stall in Supabase
    */
   async saveStallToSupabase(stall: any): Promise<void> {
     try {
-      const record = {
+      const record: any = {
         id: stall.id,
         code: stall.code,
         name: stall.name,
@@ -325,9 +329,22 @@ export class SupabaseSyncService {
         updated_at: new Date().toISOString(),
       };
 
+      // Only attach marketing columns if remote Supabase table has these columns
+      if (this.supabaseHasMarketingColumns === true) {
+        record.marketing_rep_ids = stall.marketingRepIds || '';
+        record.marketing_rep_names = stall.marketingRepNames || '';
+      }
+
       const { error } = await supabase.from(this.STALLS_TABLE).upsert(record, { onConflict: 'id' });
       if (error) {
-        console.warn('[SupabaseSyncService] Error saving stall to Supabase:', error.message);
+        if (record.marketing_rep_ids !== undefined) {
+          delete record.marketing_rep_ids;
+          delete record.marketing_rep_names;
+          this.supabaseHasMarketingColumns = false;
+          await supabase.from(this.STALLS_TABLE).upsert(record, { onConflict: 'id' });
+        } else {
+          console.warn('[SupabaseSyncService] Error saving stall to Supabase:', error.message);
+        }
       }
     } catch (err) {
       console.error('[SupabaseSyncService] Exception saving stall:', err);
@@ -341,6 +358,9 @@ export class SupabaseSyncService {
     try {
       const { data, error } = await supabase.from(this.STALLS_TABLE).select('*');
       if (error || !data) return [];
+      if (data.length > 0) {
+        this.supabaseHasMarketingColumns = 'marketing_rep_ids' in data[0];
+      }
       return data.map((d: any) => ({
         id: d.id,
         code: d.code,
@@ -356,6 +376,8 @@ export class SupabaseSyncService {
         boothNumber: d.booth_number,
         ownerId: d.owner_id,
         ownerName: d.owner_name,
+        marketingRepIds: d.marketing_rep_ids || '',
+        marketingRepNames: d.marketing_rep_names || '',
         status: d.status,
         createdAt: d.created_at,
         updatedAt: d.updated_at,

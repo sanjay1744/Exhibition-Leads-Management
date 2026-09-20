@@ -13,29 +13,35 @@ using ExhibitionLeads.Api.Services;
 
 namespace ExhibitionLeads.Api.Controllers;
 
-public record SyncLeadDto(
-    Guid Id,
-    string? LeadNumber,
-    Guid ExhibitionId,
-    Guid RepId,
-    string Name,
-    string Company,
-    string? Designation,
-    string Phone,
-    string? Email,
-    string? Website,
-    string? Address,
-    string CaptureMethod,
-    string? PhotoDataUrl,
-    string InterestLevel,
-    string[] ProductCategory,
-    string Priority,
-    decimal? Budget,
-    string? PurchaseTimeline,
-    DateTimeOffset? FollowUpDate,
-    string? Remarks,
-    DateTimeOffset CreatedAt
-);
+public class SyncLeadDto
+{
+    public object? Id { get; set; }
+    public string? LeadNumber { get; set; }
+    public object? ExhibitionId { get; set; }
+    public object? RepId { get; set; }
+    public object? StallId { get; set; }
+    public object? CapturedByUserId { get; set; }
+    public string? Name { get; set; }
+    public string? Company { get; set; }
+    public string? Designation { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Website { get; set; }
+    public string? Address { get; set; }
+    public string? CaptureMethod { get; set; }
+    public string? PhotoDataUrl { get; set; }
+    public string? VoiceAudioUrl { get; set; }
+    public string? VoiceUrl { get; set; }
+    public string? VoiceNotesTranscript { get; set; }
+    public string? InterestLevel { get; set; }
+    public string[]? ProductCategory { get; set; }
+    public string? Priority { get; set; }
+    public decimal? Budget { get; set; }
+    public string? PurchaseTimeline { get; set; }
+    public DateTimeOffset? FollowUpDate { get; set; }
+    public string? Remarks { get; set; }
+    public DateTimeOffset? CreatedAt { get; set; }
+}
 
 public record SyncBatchRequestDto(
     List<SyncLeadDto> Leads
@@ -62,6 +68,14 @@ public class LeadsSyncController : ControllerBase
         _supabaseService = supabaseService;
     }
 
+    private static Guid ParseGuid(object? value)
+    {
+        if (value == null) return Guid.Empty;
+        var str = value.ToString()?.Trim();
+        if (string.IsNullOrEmpty(str)) return Guid.Empty;
+        return Guid.TryParse(str, out var parsed) ? parsed : Guid.Empty;
+    }
+
     [HttpPost("sync")]
     public async Task<IActionResult> BatchSync([FromBody] SyncBatchRequestDto request)
     {
@@ -73,95 +87,156 @@ public class LeadsSyncController : ControllerBase
         var syncedIds = new List<Guid>();
         var savedLeads = new List<Lead>();
 
-        foreach (var item in request.Leads)
+        try
         {
-            var existingLead = await _dbContext.Leads
-                .FirstOrDefaultAsync(l => l.Id == item.Id 
-                    || (!string.IsNullOrEmpty(item.LeadNumber) && l.LeadNumber == item.LeadNumber) 
-                    || (l.Phone == item.Phone && l.Email == item.Email));
-
-            var assignedLeadNumber = item.LeadNumber;
-            if (string.IsNullOrWhiteSpace(assignedLeadNumber))
+            foreach (var item in request.Leads)
             {
-                var count = await _dbContext.Leads.CountAsync() + 1;
-                assignedLeadNumber = $"S1L{count:D5}";
-            }
-
-            var savedPhotoUrl = SaveCardImageFromBase64(item.PhotoDataUrl, assignedLeadNumber);
-
-            if (existingLead != null)
-            {
-                // Deduplicate & Update existing record
-                if (!string.IsNullOrWhiteSpace(item.LeadNumber))
+                var leadId = ParseGuid(item.Id);
+                if (leadId == Guid.Empty)
                 {
-                    existingLead.LeadNumber = item.LeadNumber;
+                    leadId = Guid.NewGuid();
                 }
-                existingLead.Name = item.Name;
-                existingLead.Company = item.Company;
-                existingLead.Designation = item.Designation ?? existingLead.Designation;
-                existingLead.InterestLevel = item.InterestLevel;
-                existingLead.Priority = item.Priority;
-                existingLead.Remarks = item.Remarks ?? existingLead.Remarks;
-                if (!string.IsNullOrEmpty(savedPhotoUrl))
+
+                var assignedLeadNumber = item.LeadNumber;
+                if (string.IsNullOrWhiteSpace(assignedLeadNumber))
                 {
-                    existingLead.PhotoUrl = savedPhotoUrl;
+                    var count = await _dbContext.Leads.CountAsync() + 1;
+                    assignedLeadNumber = $"S1L{count:D5}";
                 }
-                existingLead.UpdatedAt = DateTimeOffset.UtcNow;
-                savedLeads.Add(existingLead);
-            }
-            else
-            {
-                // Insert new lead record
-                var newLead = new Lead
+
+                var stallId = ParseGuid(item.StallId);
+                var exhId = ParseGuid(item.ExhibitionId);
+                var repId = ParseGuid(item.RepId);
+                var capturedBy = ParseGuid(item.CapturedByUserId);
+
+                // If stallId is provided but exhibitionId is empty, look up stall's ExhibitionId
+                if (exhId == Guid.Empty && stallId != Guid.Empty)
                 {
-                    Id = item.Id == Guid.Empty ? Guid.NewGuid() : item.Id,
-                    LeadNumber = assignedLeadNumber,
-                    ExhibitionId = item.ExhibitionId,
-                    RepId = item.RepId,
-                    Name = item.Name,
-                    Company = item.Company,
-                    Designation = item.Designation,
-                    Phone = item.Phone,
-                    Email = item.Email,
-                    Website = item.Website,
-                    Address = item.Address,
-                    CaptureMethod = item.CaptureMethod,
-                    PhotoUrl = savedPhotoUrl,
-                    InterestLevel = item.InterestLevel,
-                    ProductCategory = item.ProductCategory ?? Array.Empty<string>(),
-                    Priority = item.Priority,
-                    Budget = item.Budget,
-                    PurchaseTimeline = item.PurchaseTimeline,
-                    FollowUpDate = item.FollowUpDate,
-                    Remarks = item.Remarks,
-                    CreatedAt = item.CreatedAt,
-                    UpdatedAt = DateTimeOffset.UtcNow
-                };
+                    var stall = await _dbContext.Stalls.AsNoTracking().FirstOrDefaultAsync(s => s.Id == stallId);
+                    if (stall != null && stall.ExhibitionId.HasValue)
+                    {
+                        exhId = stall.ExhibitionId.Value;
+                    }
+                }
 
-                await _dbContext.Leads.AddAsync(newLead);
-                savedLeads.Add(newLead);
+                // If exhibitionId was actually pointing to a stall (due to UI fallback), resolve stall
+                if (stallId == Guid.Empty && exhId != Guid.Empty)
+                {
+                    var stall = await _dbContext.Stalls.AsNoTracking().FirstOrDefaultAsync(s => s.Id == exhId);
+                    if (stall != null)
+                    {
+                        stallId = stall.Id;
+                        if (stall.ExhibitionId.HasValue)
+                        {
+                            exhId = stall.ExhibitionId.Value;
+                        }
+                    }
+                }
+
+                var existingLead = await _dbContext.Leads
+                    .FirstOrDefaultAsync(l => (leadId != Guid.Empty && l.Id == leadId) 
+                        || (!string.IsNullOrEmpty(item.LeadNumber) && l.LeadNumber == item.LeadNumber) 
+                        || (!string.IsNullOrEmpty(item.Phone) && l.Phone == item.Phone && l.Email == item.Email));
+
+                var savedPhotoUrl = SaveCardImageFromBase64(item.PhotoDataUrl, assignedLeadNumber);
+
+                if (existingLead != null)
+                {
+                    // Deduplicate & Update existing record
+                    if (!string.IsNullOrWhiteSpace(item.LeadNumber))
+                    {
+                        existingLead.LeadNumber = item.LeadNumber;
+                    }
+                    if (!string.IsNullOrWhiteSpace(item.Name)) existingLead.Name = item.Name;
+                    if (item.Company != null) existingLead.Company = item.Company;
+                    if (item.Designation != null) existingLead.Designation = item.Designation;
+                    if (!string.IsNullOrWhiteSpace(item.Phone)) existingLead.Phone = item.Phone;
+                    if (item.Email != null) existingLead.Email = item.Email;
+                    if (item.Website != null) existingLead.Website = item.Website;
+                    if (item.Address != null) existingLead.Address = item.Address;
+                    if (stallId != Guid.Empty) existingLead.StallId = stallId;
+                    if (exhId != Guid.Empty) existingLead.ExhibitionId = exhId;
+                    if (repId != Guid.Empty) existingLead.RepId = repId;
+                    if (!string.IsNullOrWhiteSpace(item.InterestLevel)) existingLead.InterestLevel = item.InterestLevel;
+                    if (!string.IsNullOrWhiteSpace(item.Priority)) existingLead.Priority = item.Priority;
+                    if (item.Remarks != null) existingLead.Remarks = item.Remarks;
+                    if (!string.IsNullOrEmpty(savedPhotoUrl))
+                    {
+                        existingLead.PhotoUrl = savedPhotoUrl;
+                    }
+                    if (!string.IsNullOrEmpty(item.VoiceAudioUrl ?? item.VoiceUrl))
+                    {
+                        existingLead.VoiceUrl = item.VoiceAudioUrl ?? item.VoiceUrl;
+                    }
+                    if (!string.IsNullOrEmpty(item.VoiceNotesTranscript))
+                    {
+                        existingLead.VoiceNotesTranscript = item.VoiceNotesTranscript;
+                    }
+                    existingLead.UpdatedAt = DateTimeOffset.UtcNow;
+                    savedLeads.Add(existingLead);
+                }
+                else
+                {
+                    // Insert new lead record
+                    var newLead = new Lead
+                    {
+                        Id = leadId,
+                        LeadNumber = assignedLeadNumber,
+                        ExhibitionId = exhId,
+                        RepId = repId,
+                        StallId = stallId,
+                        CapturedByUserId = capturedBy != Guid.Empty ? capturedBy : repId,
+                        Name = !string.IsNullOrWhiteSpace(item.Name) ? item.Name : "Visitor",
+                        Company = item.Company ?? string.Empty,
+                        Designation = item.Designation,
+                        Phone = item.Phone ?? string.Empty,
+                        Email = item.Email,
+                        Website = item.Website,
+                        Address = item.Address,
+                        CaptureMethod = item.CaptureMethod ?? "manual",
+                        PhotoUrl = savedPhotoUrl,
+                        VoiceUrl = item.VoiceAudioUrl ?? item.VoiceUrl,
+                        VoiceNotesTranscript = item.VoiceNotesTranscript,
+                        InterestLevel = !string.IsNullOrWhiteSpace(item.InterestLevel) ? item.InterestLevel : "Warm",
+                        ProductCategory = item.ProductCategory ?? Array.Empty<string>(),
+                        Priority = !string.IsNullOrWhiteSpace(item.Priority) ? item.Priority : "Medium",
+                        Budget = item.Budget,
+                        PurchaseTimeline = item.PurchaseTimeline,
+                        FollowUpDate = item.FollowUpDate,
+                        Remarks = item.Remarks,
+                        CreatedAt = item.CreatedAt ?? DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+
+                    await _dbContext.Leads.AddAsync(newLead);
+                    savedLeads.Add(newLead);
+                }
+
+                syncedIds.Add(leadId);
             }
 
-            syncedIds.Add(item.Id);
+            await _dbContext.SaveChangesAsync();
+
+            // Mirror saved leads to Supabase cloud database
+            foreach (var lead in savedLeads)
+            {
+                try
+                {
+                    await _supabaseService.SyncLeadAsync(lead);
+                }
+                catch {}
+            }
+
+            return Ok(new SyncBatchResponseDto(
+                Success: true,
+                SyncedCount: syncedIds.Count,
+                SyncedIds: syncedIds
+            ));
         }
-
-        await _dbContext.SaveChangesAsync();
-
-        // Mirror saved leads to Supabase cloud database
-        foreach (var lead in savedLeads)
+        catch (Exception ex)
         {
-            try
-            {
-                await _supabaseService.SyncLeadAsync(lead);
-            }
-            catch {}
+            return StatusCode(500, new { message = "Lead sync failed: " + ex.Message, details = ex.ToString() });
         }
-
-        return Ok(new SyncBatchResponseDto(
-            Success: true,
-            SyncedCount: syncedIds.Count,
-            SyncedIds: syncedIds
-        ));
     }
 
     [HttpPost("save-image-local")]

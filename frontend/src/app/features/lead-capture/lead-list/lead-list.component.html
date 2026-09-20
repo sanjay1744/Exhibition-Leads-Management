@@ -159,6 +159,25 @@
       <span class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider block shrink-0">LEAD INTEREST DASHBOARD:</span>
       
       <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <!-- All Leads Metric Button -->
+        <button 
+          type="button" 
+          (click)="filterInterest.set('ALL'); currentPage.set(1)" 
+          class="px-2.5 sm:px-4 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-between gap-1 sm:gap-2.5 shadow-2xs active:scale-95 cursor-pointer min-w-0"
+          [ngClass]="filterInterest() === 'ALL' ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
+        >
+          <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
+            <span class="text-xs sm:text-sm shrink-0">📋</span>
+            <span class="text-[11px] sm:text-xs font-extrabold truncate">All<span class="hidden sm:inline"> Leads</span></span>
+          </div>
+          <span 
+            class="w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 flex items-center justify-center text-center ml-1"
+            [ngClass]="filterInterest() === 'ALL' ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-800'"
+          >
+            {{ totalLeadsCount() }}
+          </span>
+        </button>
+
         <!-- Hot Leads Metric Button -->
         <button 
           type="button" 

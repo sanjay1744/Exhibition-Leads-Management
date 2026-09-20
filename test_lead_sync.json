@@ -1,0 +1,27 @@
+{
+  "leads": [
+    {
+      "id": "c1f72b22-83ee-4f36-a192-36c74ad63b11",
+      "leadNumber": "S1L00008",
+      "exhibitionId": "1d2a4c41-9be7-4aac-9f70-1c056b567890",
+      "repId": "2e545a9e-0be1-49e7-a783-91a528cf5adc",
+      "name": "Olivia Wilson",
+      "company": "",
+      "designation": "Real Estate Agent",
+      "phone": "+123-456-7890",
+      "email": null,
+      "website": null,
+      "address": null,
+      "captureMethod": "card_scan",
+      "photoDataUrl": null,
+      "interestLevel": "Warm",
+      "productCategory": ["Enterprise"],
+      "priority": "High",
+      "budget": null,
+      "purchaseTimeline": null,
+      "followUpDate": null,
+      "remarks": null,
+      "createdAt": "2026-09-20T14:05:00.000Z"
+    }
+  ]
+}

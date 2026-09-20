@@ -35,7 +35,7 @@ export class LeadListComponent implements OnInit {
 
   availableExhibitions = computed(() => {
     const list = this.exhibitionService.exhibitions();
-    if (this.auth.isStallOwner()) {
+    if (this.auth.isStallOwner() || this.auth.isMarketing()) {
       const myStallExhIds = new Set(this.stallService.stalls().map((s) => s.exhibitionId).filter(Boolean));
       return list.filter((e) => myStallExhIds.has(e.id));
     }
@@ -100,7 +100,7 @@ export class LeadListComponent implements OnInit {
   searchTerm = signal<string>('');
   filterDateFrom = signal<string>('');
   filterDateTo = signal<string>('');
-  filterInterest = signal<string>('Hot');
+  filterInterest = signal<string>('ALL');
   filterSyncStatus = signal<string>('ALL');
   filterHasMedia = signal<string>('ALL');
   showFilterSection = signal<boolean>(false);
@@ -501,10 +501,10 @@ export class LeadListComponent implements OnInit {
   dateAndStallFilteredLeads = computed(() => {
     let list = this.allLeads();
 
-    // If StallOwner, strictly filter all leads to only those belonging to this stall owner's mapped stalls
-    if (this.auth.isStallOwner()) {
+    // If StallOwner or Marketing, strictly filter all leads to only those belonging to their assigned/mapped stalls
+    if (this.auth.isStallOwner() || this.auth.isMarketing()) {
       const myStallIds = new Set(this.stallService.stalls().map((s) => s.id));
-      list = list.filter((l) => l.exhibitionId && myStallIds.has(l.exhibitionId));
+      list = list.filter((l) => (l.stallId && myStallIds.has(l.stallId)) || (l.exhibitionId && myStallIds.has(l.exhibitionId)));
     }
 
     const exhId = this.selectedExhibitionId();
@@ -517,6 +517,7 @@ export class LeadListComponent implements OnInit {
 
       list = list.filter((l) => {
         if (l.exhibitionId === exhId) return true;
+        if (l.stallId && stallsInExhibition.has(l.stallId)) return true;
         if (l.exhibitionId && stallsInExhibition.has(l.exhibitionId)) return true;
         return false;
       });
@@ -524,7 +525,7 @@ export class LeadListComponent implements OnInit {
 
     const stallId = this.selectedStallId();
     if (stallId && stallId !== 'ALL') {
-      list = list.filter((l) => l.exhibitionId === stallId);
+      list = list.filter((l) => (l.stallId && l.stallId === stallId) || l.exhibitionId === stallId);
     }
 
     const q = this.searchTerm().trim().toLowerCase();
@@ -576,6 +577,7 @@ export class LeadListComponent implements OnInit {
     return list;
   });
 
+  totalLeadsCount = computed(() => this.dateAndStallFilteredLeads().length);
   hotLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Hot').length);
   warmLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Warm').length);
   coldLeadsCount = computed(() => this.dateAndStallFilteredLeads().filter((l) => l.interestLevel === 'Cold').length);

@@ -167,7 +167,7 @@ export class LeadFormComponent implements OnInit {
 
   availableExhibitions = computed(() => {
     const list = this.exhibitionService.exhibitions();
-    if (this.auth.isStallOwner()) {
+    if (this.auth.isStallOwner() || this.auth.isMarketing()) {
       const myStallExhIds = new Set(this.stallService.stalls().map((s) => s.exhibitionId).filter(Boolean));
       return list.filter((e) => myStallExhIds.has(e.id));
     }
@@ -538,7 +538,17 @@ export class LeadFormComponent implements OnInit {
     this.showValidationErrors.set(false);
     this.showValidationModal.set(false);
 
-    const activeStallId = this.stallService.activeStall()?.id || '';
+    const activeStall = this.stallService.activeStall();
+    const stallIdFromUrl = this.route.snapshot.queryParamMap.get('stallId');
+    const exhibitionIdFromUrl = this.route.snapshot.queryParamMap.get('exhibitionId');
+
+    const stallIdToUse = activeStall?.id || stallIdFromUrl || '';
+    const exhibitionIdToUse = activeStall?.exhibitionId || exhibitionIdFromUrl || '';
+
+    const currentUser = this.auth.currentUser();
+    const currentUserId = currentUser?.id && currentUser.id.length === 36
+      ? currentUser.id
+      : '00000000-0000-0000-0000-000000000000';
 
     let leadNumberToUse = this.existingLeadNumber;
     if (!leadNumberToUse) {
@@ -565,10 +575,11 @@ export class LeadFormComponent implements OnInit {
     const leadToSave: LocalLead = {
       id: this.editingLeadId || crypto.randomUUID(),
       leadNumber: leadNumberToUse,
-      exhibitionId: activeStallId,
-      repId: 'REP_001',
+      stallId: stallIdToUse || undefined,
+      exhibitionId: exhibitionIdToUse || stallIdToUse,
+      repId: currentUserId,
       name: this.name,
-      company: this.company,
+      company: this.company || '',
       phone: this.phone,
       email: this.email,
       designation: this.designation,
@@ -615,8 +626,10 @@ export class LeadFormComponent implements OnInit {
           leads: [{
             id: leadToSave.id,
             leadNumber: leadToSave.leadNumber,
-            exhibitionId: leadToSave.exhibitionId,
-            repId: leadToSave.repId,
+            stallId: stallIdToUse || undefined,
+            exhibitionId: exhibitionIdToUse || stallIdToUse,
+            repId: currentUserId,
+            capturedByUserId: currentUserId,
             name: leadToSave.name,
             company: leadToSave.company,
             designation: leadToSave.designation,
@@ -626,6 +639,8 @@ export class LeadFormComponent implements OnInit {
             address: leadToSave.address,
             captureMethod: leadToSave.captureMethod,
             photoDataUrl: typeof leadToSave.photoBlob === 'string' ? leadToSave.photoBlob : undefined,
+            voiceAudioUrl: finalVoiceAudioUrl,
+            voiceNotesTranscript: leadToSave.voiceNotesTranscript,
             interestLevel: leadToSave.interestLevel,
             productCategory: leadToSave.productCategory,
             priority: leadToSave.priority,
@@ -636,7 +651,16 @@ export class LeadFormComponent implements OnInit {
             createdAt: leadToSave.createdAt
           }]
         })
-      }).catch(() => {});
+      }).then(async (res) => {
+        if (!res.ok) {
+          const errBody = await res.text();
+          console.error('[LeadForm] Backend sync failed with status:', res.status, errBody);
+        } else {
+          console.log('[LeadForm] Successfully synced lead to Backend DB.');
+        }
+      }).catch((err) => {
+        console.warn('[LeadForm] Backend API sync network warning:', err);
+      });
     } catch {}
     
     this.sessionLeads.update(list => [leadToSave, ...list.filter(l => l.id !== leadToSave.id)]);

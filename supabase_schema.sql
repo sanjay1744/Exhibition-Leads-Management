@@ -57,10 +57,16 @@ CREATE TABLE IF NOT EXISTS public.stalls (
     booth_number TEXT,
     owner_id TEXT,
     owner_name TEXT,
+    marketing_rep_ids TEXT,
+    marketing_rep_names TEXT,
     status TEXT DEFAULT 'Active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Quick migration for existing Supabase projects:
+ALTER TABLE public.stalls ADD COLUMN IF NOT EXISTS marketing_rep_ids TEXT;
+ALTER TABLE public.stalls ADD COLUMN IF NOT EXISTS marketing_rep_names TEXT;
 
 -- 4. Create LEADS table
 CREATE TABLE IF NOT EXISTS public.leads (

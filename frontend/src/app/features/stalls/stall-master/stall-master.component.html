@@ -43,6 +43,7 @@
             <th class="py-2.5 px-4 border-r border-white/20">Duration</th>
             <th class="py-2.5 px-4 border-r border-white/20">Venue & Hall / Booth</th>
             <th class="py-2.5 px-4 border-r border-white/20">Stall Owner</th>
+            <th class="py-2.5 px-4 border-r border-white/20">Marketing Reps</th>
             <th class="py-2.5 px-4 border-r border-white/20 text-center">Leads</th>
             <th class="py-2.5 px-4 border-r border-white/20 text-center">Status</th>
             <th class="py-2.5 px-4 text-center w-28">Actions</th>
@@ -98,6 +99,22 @@
                   </div>
                   {{ stall.ownerName }}
                 </div>
+              </td>
+
+              <!-- Assigned Marketing Reps -->
+              <td class="py-2.5 px-4 border-r border-slate-200/60">
+                @if (getRepNamesList(stall).length > 0) {
+                  <div class="flex flex-wrap gap-1 max-w-[200px]">
+                    @for (repName of getRepNamesList(stall); track repName) {
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
+                        <span class="material-icons text-[10px] text-indigo-500">person</span>
+                        {{ repName }}
+                      </span>
+                    }
+                  </div>
+                } @else {
+                  <span class="text-[11px] text-slate-400 italic">None</span>
+                }
               </td>
 
               <!-- Leads Captured Counter -->
@@ -420,6 +437,85 @@
               </select>
             </div>
 
+            <!-- Row 8: Assign Marketing Reps (Dropdown) -->
+            <div class="marketing-dropdown-container">
+              <div class="flex items-center justify-between mb-1">
+                <label class="form-label font-bold text-xs text-slate-700 mb-0 flex items-center gap-1">
+                  <span class="material-icons text-indigo-600 text-xs">group</span>
+                  Assign Marketing Reps
+                </label>
+                @if (selectedMarketingRepIds().length > 0) {
+                  <span class="text-[10px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-bold">
+                    {{ selectedMarketingRepIds().length }} Rep(s) Assigned
+                  </span>
+                }
+              </div>
+
+              <!-- Dropdown Trigger Box -->
+              <div 
+                (click)="toggleMarketingDropdown($event)"
+                class="form-control text-xs font-semibold bg-white border border-slate-300 rounded-lg w-full p-2.5 outline-none cursor-pointer flex items-center justify-between transition-all"
+                [ngClass]="isMarketingDropdownOpen() ? 'border-indigo-500 ring-2 ring-indigo-100' : 'hover:border-slate-400'"
+              >
+                <div class="flex items-center gap-2 truncate">
+                  <span class="material-icons text-slate-400 text-sm">assignment_ind</span>
+                  <span [ngClass]="selectedMarketingRepIds().length === 0 ? 'text-slate-400 font-normal' : 'text-slate-800 font-semibold'">
+                    {{ getSelectedMarketingRepsSummary() }}
+                  </span>
+                </div>
+                <span class="material-icons text-slate-400 text-base transition-transform duration-200" [ngClass]="isMarketingDropdownOpen() ? 'rotate-180 text-indigo-600' : ''">
+                  expand_more
+                </span>
+              </div>
+
+              <!-- Dropdown Panel (In-Flow, expands modal scroll naturally) -->
+              @if (isMarketingDropdownOpen()) {
+                <div class="mt-1.5 bg-slate-50 border border-indigo-200 rounded-xl shadow-inner p-2.5 marketing-dropdown-panel">
+                  <div class="flex items-center justify-between px-2 py-1.5 border-b border-slate-200 mb-1.5">
+                    <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Marketing Reps</span>
+                    @if (selectedMarketingRepIds().length > 0) {
+                      <button 
+                        type="button" 
+                        (click)="selectedMarketingRepIds.set([])"
+                        class="text-[10px] text-red-600 hover:text-red-700 font-bold hover:underline cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    }
+                  </div>
+
+                  @if (marketingUsers().length === 0) {
+                    <div class="p-3 text-center text-xs text-slate-400 italic">
+                      No users with Marketing role found.
+                    </div>
+                  }
+
+                  <div class="space-y-1 marketing-rep-scroll-list pr-1">
+                    @for (rep of marketingUsers(); track rep.id) {
+                      <label 
+                        class="flex items-center justify-between px-2.5 h-[36px] rounded-lg text-xs font-semibold cursor-pointer transition-colors bg-white border border-slate-200 hover:border-indigo-300 shadow-xs select-none"
+                        [ngClass]="isMarketingRepSelected(rep.id) ? 'bg-indigo-50/90 border-indigo-400 text-indigo-900 ring-1 ring-indigo-200' : 'text-slate-700 hover:bg-slate-100'"
+                      >
+                        <div class="flex items-center gap-2 truncate">
+                          <input 
+                            type="checkbox" 
+                            [checked]="isMarketingRepSelected(rep.id)" 
+                            (change)="toggleMarketingRep(rep.id)"
+                            class="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer shrink-0"
+                          />
+                          <span class="truncate">{{ rep.fullName || rep.username }}</span>
+                          <span class="text-[10px] text-slate-400 font-normal shrink-0">({{ rep.username }})</span>
+                        </div>
+                        @if (isMarketingRepSelected(rep.id)) {
+                          <span class="material-icons text-indigo-600 text-sm shrink-0">check</span>
+                        }
+                      </label>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
           </div>
 
           <!-- Action Bar (Fixed at bottom) -->
@@ -575,6 +671,23 @@
                 </div>
                 <span class="font-semibold text-slate-800">{{ viewingStall()?.ownerName || '—' }}</span>
               </div>
+            </div>
+
+            <!-- Assigned Marketing Reps in View Modal -->
+            <div class="col-span-1 sm:col-span-2 p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Assigned Marketing Reps</span>
+              @if (getRepNamesList(viewingStall()).length > 0) {
+                <div class="flex flex-wrap gap-1.5 mt-1">
+                  @for (rep of getRepNamesList(viewingStall()); track rep) {
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                      <span class="material-icons text-xs text-indigo-600">person</span>
+                      {{ rep }}
+                    </span>
+                  }
+                </div>
+              } @else {
+                <span class="text-xs text-slate-400 italic">No marketing reps assigned to this stall yet.</span>
+              }
             </div>
 
             <div class="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
