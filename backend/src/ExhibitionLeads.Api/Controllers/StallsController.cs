@@ -127,6 +127,7 @@ public class StallsController : ControllerBase
     }
 
     public record CreateStallRequest(
+        object? Id,
         string Name,
         string? Code,
         string? EventName,
@@ -160,19 +161,18 @@ public class StallsController : ControllerBase
             return BadRequest(new { message = "Stall Name is required." });
         }
 
-        var code = request.Code;
+        Guid stallId = Guid.NewGuid();
+        if (request.Id != null && Guid.TryParse(request.Id.ToString(), out var parsedStallGuid) && parsedStallGuid != Guid.Empty)
+        {
+            stallId = parsedStallGuid;
+        }
+
+        var code = request.Code?.Trim();
         if (string.IsNullOrWhiteSpace(code))
         {
             var year = DateTime.UtcNow.Year;
             var count = await _context.Stalls.CountAsync() + 1;
             code = $"STL-{year}-{count:D3}";
-        }
-
-        if (await _context.Stalls.AnyAsync(s => s.Code == code))
-        {
-            var year = DateTime.UtcNow.Year;
-            var count = await _context.Stalls.CountAsync() + 1;
-            code = $"STL-{year}-{count:D3}-{Guid.NewGuid().ToString()[..4]}";
         }
 
         Guid ownerGuid = Guid.NewGuid();
@@ -185,26 +185,51 @@ public class StallsController : ControllerBase
         if (request.ExhibitionId.HasValue && request.ExhibitionId.Value != Guid.Empty)
         {
             exh = await _context.Exhibitions.FindAsync(request.ExhibitionId.Value);
-            if (exh != null)
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(exh.Code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                int maxAllowed = match.Success && int.TryParse(match.Groups[1].Value, out var parsedLimit) ? parsedLimit : 1;
-                var currentCount = await _context.Stalls.CountAsync(s => s.ExhibitionId == exh.Id);
-                if (currentCount >= maxAllowed)
-                {
-                    return BadRequest(new { 
-                        message = $"Exhibition '{exh.Name}' has reached its maximum stall quota of {maxAllowed} stall(s) ({currentCount} already assigned). Please edit the exhibition in Exhibition Master to increase 'No of stalls'." 
-                    });
-                }
-            }
         }
 
         var duration = request.DurationDays.HasValue && request.DurationDays.Value > 0 
             ? request.DurationDays.Value 
             : (exh?.DurationDays ?? 4);
 
+        // Check if stall with same ID or Code already exists (upsert instead of conflict)
+        var existing = await _context.Stalls.FirstOrDefaultAsync(s => s.Id == stallId || (!string.IsNullOrEmpty(code) && s.Code == code));
+        if (existing != null)
+        {
+            existing.Name = request.Name.Trim();
+            if (!string.IsNullOrWhiteSpace(code)) existing.Code = code;
+            existing.ExhibitionId = exh?.Id ?? request.ExhibitionId;
+            existing.EventName = exh != null ? exh.Name : (!string.IsNullOrWhiteSpace(request.EventName) ? request.EventName.Trim() : request.Name.Trim());
+            existing.Organizer = exh != null ? exh.Organizer : (!string.IsNullOrWhiteSpace(request.Organizer) ? request.Organizer.Trim() : string.Empty);
+            existing.DurationDays = duration;
+            existing.StartDate = exh != null ? exh.StartDate : (request.StartDate ?? DateTime.UtcNow.Date);
+            existing.EndDate = exh != null ? exh.EndDate : (request.EndDate ?? DateTime.UtcNow.Date.AddDays(duration));
+            existing.Location = exh != null ? exh.Venue : (!string.IsNullOrWhiteSpace(request.Location) ? request.Location.Trim() : string.Empty);
+            existing.HallNumber = !string.IsNullOrWhiteSpace(request.HallNumber) ? request.HallNumber.Trim() : string.Empty;
+            existing.BoothNumber = !string.IsNullOrWhiteSpace(request.BoothNumber) ? request.BoothNumber.Trim() : string.Empty;
+            existing.OwnerId = ownerGuid;
+            existing.OwnerName = !string.IsNullOrWhiteSpace(request.OwnerName) ? request.OwnerName.Trim() : string.Empty;
+            existing.MarketingRepIds = !string.IsNullOrWhiteSpace(request.MarketingRepIds) ? request.MarketingRepIds.Trim() : string.Empty;
+            existing.MarketingRepNames = !string.IsNullOrWhiteSpace(request.MarketingRepNames) ? request.MarketingRepNames.Trim() : string.Empty;
+            await _context.SaveChangesAsync();
+            return Ok(existing);
+        }
+
+        if (exh != null)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(exh.Code, @"EXH-STL(\d+)-", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            int maxAllowed = match.Success && int.TryParse(match.Groups[1].Value, out var parsedLimit) ? parsedLimit : 1;
+            var currentCount = await _context.Stalls.CountAsync(s => s.ExhibitionId == exh.Id);
+            if (currentCount >= maxAllowed)
+            {
+                return BadRequest(new { 
+                    message = $"Exhibition '{exh.Name}' has reached its maximum stall quota of {maxAllowed} stall(s) ({currentCount} already assigned). Please edit the exhibition in Exhibition Master to increase 'No of stalls'." 
+                });
+            }
+        }
+
         var stall = new Stall
         {
+            Id = stallId,
             Name = request.Name.Trim(),
             Code = code,
             ExhibitionId = exh?.Id ?? request.ExhibitionId,

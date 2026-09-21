@@ -329,21 +329,35 @@ export class SupabaseSyncService {
         updated_at: new Date().toISOString(),
       };
 
+      // If a stall with this code already exists in Supabase, match its ID to prevent unique constraint 409 Conflict
+      if (stall.code) {
+        const { data: existing } = await supabase
+          .from(this.STALLS_TABLE)
+          .select('id')
+          .eq('code', stall.code)
+          .maybeSingle();
+        if (existing?.id) {
+          record.id = existing.id;
+        }
+      }
+
       // Only attach marketing columns if remote Supabase table has these columns
       if (this.supabaseHasMarketingColumns === true) {
         record.marketing_rep_ids = stall.marketingRepIds || '';
         record.marketing_rep_names = stall.marketingRepNames || '';
       }
 
-      const { error } = await supabase.from(this.STALLS_TABLE).upsert(record, { onConflict: 'id' });
+      let { error } = await supabase.from(this.STALLS_TABLE).upsert(record, { onConflict: 'id' });
       if (error) {
         if (record.marketing_rep_ids !== undefined) {
           delete record.marketing_rep_ids;
           delete record.marketing_rep_names;
           this.supabaseHasMarketingColumns = false;
-          await supabase.from(this.STALLS_TABLE).upsert(record, { onConflict: 'id' });
-        } else {
-          console.warn('[SupabaseSyncService] Error saving stall to Supabase:', error.message);
+          const retry = await supabase.from(this.STALLS_TABLE).upsert(record, { onConflict: 'id' });
+          error = retry.error;
+        }
+        if (error) {
+          console.warn('[SupabaseSyncService] Notice saving stall to Supabase:', error.message);
         }
       }
     } catch (err) {

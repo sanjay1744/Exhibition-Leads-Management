@@ -25,6 +25,12 @@ public static class DbInitializer
             try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Stalls ADD COLUMN MarketingRepIds TEXT;"); } catch { }
             try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Stalls ADD COLUMN MarketingRepNames TEXT;"); } catch { }
             try { dbContext.Database.ExecuteSqlRaw("ALTER TABLE Leads ADD COLUMN StallId TEXT;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("UPDATE Stalls SET Location = '' WHERE Location IS NULL;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("UPDATE Stalls SET HallNumber = '' WHERE HallNumber IS NULL;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("UPDATE Stalls SET BoothNumber = '' WHERE BoothNumber IS NULL;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("UPDATE Stalls SET OwnerName = '' WHERE OwnerName IS NULL;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("UPDATE Stalls SET MarketingRepIds = '' WHERE MarketingRepIds IS NULL;"); } catch { }
+            try { dbContext.Database.ExecuteSqlRaw("UPDATE Stalls SET MarketingRepNames = '' WHERE MarketingRepNames IS NULL;"); } catch { }
         }
     }
 

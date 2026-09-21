@@ -638,7 +638,6 @@ export class StallMasterComponent implements OnInit {
         next: (updated) => {
           if (updated) {
             this.stallService.addOrUpdateStallInMemory(updated as any);
-            this.supabaseSync.saveStallToSupabase(updated);
           }
           this.toast.showSuccess(`Stall project "${updated?.name || this.formData.name}" updated successfully.`);
           this.closeModal();
@@ -653,7 +652,6 @@ export class StallMasterComponent implements OnInit {
         next: (created) => {
           if (created) {
             this.stallService.addOrUpdateStallInMemory(created as any);
-            this.supabaseSync.saveStallToSupabase(created);
           }
           this.toast.showSuccess(`Stall project "${created?.name || this.formData.name}" created successfully.`);
           this.closeModal();
