@@ -1,12 +1,13 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ApplicationDatabase } from '../../../core/services/db.service';
 import { LocalLead } from '../../../core/models/lead.model';
 import { NetworkService } from '../../../core/services/network.service';
 import { StallService, Stall } from '../../../core/services/stall.service';
+import { ExhibitionService } from '../../../core/services/exhibition.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SyncService } from '../../../core/services/sync.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -27,12 +28,34 @@ export class SalesDashboardComponent implements OnInit {
   private syncService = inject(SyncService);
   private toastService = inject(ToastService);
   private supabaseSync = inject(SupabaseSyncService);
+  private router = inject(Router);
   stallService = inject(StallService);
+  exhibitionService = inject(ExhibitionService);
   network = inject(NetworkService);
 
   allLeads = signal<LocalLead[]>([]);
   isCreateStallModalOpen = signal(false);
   isSyncing = signal(false);
+
+  // Target Exhibition & Stall Modal for New Lead
+  isTargetModalOpen = signal<boolean>(false);
+  targetExhibitionId = signal<string>('');
+  targetStallId = signal<string>('');
+
+  availableExhibitions = computed(() => {
+    const list = this.exhibitionService.exhibitions();
+    if (this.auth.isStallOwner() || this.auth.isMarketing()) {
+      const myStallExhIds = new Set(this.stallService.stalls().map((s) => s.exhibitionId).filter(Boolean));
+      return list.filter((e) => myStallExhIds.has(e.id));
+    }
+    return list;
+  });
+
+  targetStalls = computed(() => {
+    const exhId = this.targetExhibitionId();
+    if (!exhId) return [];
+    return this.stallService.stalls().filter((s) => s.exhibitionId === exhId);
+  });
 
   newStallData = {
     name: '',
@@ -57,6 +80,8 @@ export class SalesDashboardComponent implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    this.exhibitionService.loadExhibitions();
+    this.stallService.loadStalls();
     try {
       const cloudLeads = await this.supabaseSync.getAllLeadsFromSupabase();
       if (cloudLeads && cloudLeads.length > 0) {
@@ -68,6 +93,46 @@ export class SalesDashboardComponent implements OnInit {
 
     const list = await this.db.getAllLeads();
     this.allLeads.set(list);
+  }
+
+  openTargetSelectionModal(): void {
+    this.exhibitionService.loadExhibitions();
+    this.stallService.loadStalls();
+
+    const activeStall = this.stallService.activeStall();
+    const available = this.availableExhibitions();
+    if (activeStall?.exhibitionId && available.some((e) => e.id === activeStall.exhibitionId)) {
+      this.targetExhibitionId.set(activeStall.exhibitionId);
+    } else {
+      this.targetExhibitionId.set(available[0]?.id || '');
+    }
+    this.targetStallId.set('');
+    this.isTargetModalOpen.set(true);
+  }
+
+  selectTargetExhibition(exhId: string): void {
+    this.targetExhibitionId.set(exhId);
+    this.targetStallId.set('');
+  }
+
+  closeTargetSelectionModal(): void {
+    this.isTargetModalOpen.set(false);
+  }
+
+  proceedToCaptureLead(): void {
+    const stall = this.stallService.stalls().find((s) => s.id === this.targetStallId());
+    if (stall) {
+      this.stallService.setActiveStall(stall);
+    }
+    const exhId = this.targetExhibitionId();
+    if (exhId) {
+      const exh = this.exhibitionService.exhibitions().find((e) => e.id === exhId);
+      if (exh) {
+        this.exhibitionService.setActiveExhibition(exh);
+      }
+    }
+    this.isTargetModalOpen.set(false);
+    this.router.navigate(['/capture'], { queryParams: { stallId: this.targetStallId(), exhibitionId: exhId } });
   }
 
   onStallChange(stallId: string): void {

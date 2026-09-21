@@ -1,15 +1,18 @@
-import { Component, inject, signal, HostListener, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { NetworkService } from './core/services/network.service';
 import { SyncService } from './core/services/sync.service';
 import { AuthService } from './core/services/auth.service';
 import { ToastService } from './core/services/toast.service';
+import { StallService } from './core/services/stall.service';
+import { ExhibitionService } from './core/services/exhibition.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, FormsModule],
   template: `
     @if (auth.isAuthenticated()) {
       <div class="app-container relative">
@@ -167,7 +170,12 @@ import { ToastService } from './core/services/toast.service';
                     <span class="material-icons nav-icon text-sm">list_alt</span>
                     <span class="nav-text">Lead</span>
                   </a>
-                  <a routerLink="/capture" (click)="closeSidebarOnMobile()" routerLinkActive="active" class="nav-item-link py-2 text-xs">
+                  <a 
+                    routerLink="/capture" 
+                    (click)="$event.preventDefault(); openTargetSelectionModal()" 
+                    routerLinkActive="active" 
+                    class="nav-item-link py-2 text-xs cursor-pointer"
+                  >
                     <span class="material-icons nav-icon text-sm">add_circle_outline</span>
                     <span class="nav-text">New Lead</span>
                   </a>
@@ -339,6 +347,97 @@ import { ToastService } from './core/services/toast.service';
             <router-outlet></router-outlet>
           </main>
         </div>
+
+        <!-- Modal: Select Target Exhibition & Stall for New Lead Entry -->
+        @if (isTargetModalOpen()) {
+          <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+            <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+              
+              <!-- Modal Header -->
+              <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/70">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                    <span class="material-icons text-lg">person_add_alt</span>
+                  </div>
+                  <div>
+                    <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wide">SELECT TARGET EXHIBITION & STALL</h2>
+                    <p class="text-[11px] text-slate-500 font-medium">Select event and stall destination to capture lead</p>
+                  </div>
+                </div>
+                <button type="button" (click)="closeTargetSelectionModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/60 transition cursor-pointer">
+                  <span class="material-icons text-base">close</span>
+                </button>
+              </div>
+
+              <!-- Scrollable Body -->
+              <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                <!-- Dropdown 1: Select Exhibition -->
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                    1. Select Exhibition *
+                  </label>
+                  <select 
+                    [ngModel]="targetExhibitionId()" 
+                    (ngModelChange)="selectTargetExhibition($event)"
+                    class="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl outline-none focus:border-blue-600 bg-white shadow-2xs"
+                  >
+                    <option value="">-- Select Exhibition Event --</option>
+                    @for (exh of availableExhibitions(); track exh.id) {
+                      <option [value]="exh.id">{{ exh.name }} ({{ exh.code }})</option>
+                    }
+                  </select>
+                </div>
+
+                <!-- Dropdown 2: Select Stall (Blocked/Disabled until Exhibition selected) -->
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                    2. Select Stall *
+                  </label>
+                  <select 
+                    [(ngModel)]="targetStallId" 
+                    [disabled]="!targetExhibitionId()" 
+                    class="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl outline-none focus:border-blue-600 bg-white shadow-2xs disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border-slate-200"
+                  >
+                    <option value="">
+                      {{ !targetExhibitionId() ? '-- Select Exhibition First --' : '-- Select Stall Project --' }}
+                    </option>
+                    @for (stall of targetStalls(); track stall.id) {
+                      <option [value]="stall.id">{{ stall.name }} ({{ stall.code }})</option>
+                    }
+                  </select>
+                  @if (!targetExhibitionId()) {
+                    <p class="text-[11px] text-amber-600 font-semibold mt-1 flex items-center gap-1">
+                      <span class="material-icons text-xs text-amber-500">info</span>
+                      Stall selection is blocked until an exhibition is selected.
+                    </p>
+                  }
+                </div>
+              </div>
+
+              <!-- Modal Action Footer -->
+              <div class="flex items-center justify-end gap-2.5 px-6 py-3.5 border-t border-slate-100 bg-slate-50 shrink-0">
+                <button 
+                  type="button" 
+                  (click)="closeTargetSelectionModal()" 
+                  class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                
+                <button 
+                  type="button" 
+                  (click)="proceedToCaptureLead()" 
+                  [disabled]="!targetExhibitionId() || !targetStallId()"
+                  class="px-5 py-2.5 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <span>Proceed to Capture Lead</span>
+                  <span class="material-icons text-sm">arrow_forward</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        }
       </div>
     } @else {
       <!-- Unauthenticated View (Login Form) -->
@@ -352,6 +451,69 @@ export class AppComponent implements AfterViewInit {
   toastService = inject(ToastService);
   private sync = inject(SyncService);
   private router = inject(Router);
+  stallService = inject(StallService);
+  exhibitionService = inject(ExhibitionService);
+
+  // Target Exhibition & Stall Modal for New Lead
+  isTargetModalOpen = signal<boolean>(false);
+  targetExhibitionId = signal<string>('');
+  targetStallId = signal<string>('');
+
+  availableExhibitions = computed(() => {
+    const list = this.exhibitionService.exhibitions();
+    if (this.auth.isStallOwner() || this.auth.isMarketing()) {
+      const myStallExhIds = new Set(this.stallService.stalls().map((s) => s.exhibitionId).filter(Boolean));
+      return list.filter((e) => myStallExhIds.has(e.id));
+    }
+    return list;
+  });
+
+  targetStalls = computed(() => {
+    const exhId = this.targetExhibitionId();
+    if (!exhId) return [];
+    return this.stallService.stalls().filter((s) => s.exhibitionId === exhId);
+  });
+
+  openTargetSelectionModal(): void {
+    this.closeSidebarOnMobile();
+    this.exhibitionService.loadExhibitions();
+    this.stallService.loadStalls();
+
+    const activeStall = this.stallService.activeStall();
+    const available = this.availableExhibitions();
+    if (activeStall?.exhibitionId && available.some((e) => e.id === activeStall.exhibitionId)) {
+      this.targetExhibitionId.set(activeStall.exhibitionId);
+    } else {
+      this.targetExhibitionId.set(available[0]?.id || '');
+    }
+    this.targetStallId.set('');
+    this.isTargetModalOpen.set(true);
+  }
+
+  selectTargetExhibition(exhId: string): void {
+    this.targetExhibitionId.set(exhId);
+    this.targetStallId.set('');
+  }
+
+  closeTargetSelectionModal(): void {
+    this.isTargetModalOpen.set(false);
+  }
+
+  proceedToCaptureLead(): void {
+    const stall = this.stallService.stalls().find((s) => s.id === this.targetStallId());
+    if (stall) {
+      this.stallService.setActiveStall(stall);
+    }
+    const exhId = this.targetExhibitionId();
+    if (exhId) {
+      const exh = this.exhibitionService.exhibitions().find((e) => e.id === exhId);
+      if (exh) {
+        this.exhibitionService.setActiveExhibition(exh);
+      }
+    }
+    this.isTargetModalOpen.set(false);
+    this.router.navigate(['/capture'], { queryParams: { stallId: this.targetStallId(), exhibitionId: exhId } });
+  }
 
   @ViewChild('sidebarScrollContainer') sidebarScrollContainer?: ElementRef<HTMLDivElement>;
 
