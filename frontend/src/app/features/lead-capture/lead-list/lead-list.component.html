@@ -24,7 +24,7 @@
   </div>
 
   <!-- Combined Control Header: Active Stall + Multi-Column Filter Bar -->
-  <div class="bg-white border border-slate-200/80 rounded-2xl mb-6 shadow-sm divide-y divide-slate-100 relative">
+  <div class="bg-white border border-slate-200/80 rounded-2xl mb-6 shadow-sm divide-y divide-slate-100 relative z-30">
     
     <!-- Top Section: Exhibition Selector + Active Stall Selector + Owner -->
     <div class="p-3.5 sm:p-4 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3 rounded-t-2xl">
@@ -50,38 +50,41 @@
               </div>
 
               @if (showExhibitionDropdown()) {
-                <div class="absolute left-0 top-full mt-1.5 z-50 w-72 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xl backdrop-blur-md">
-                  <div class="fixed inset-0 z-[-1]" (click)="showExhibitionDropdown.set(false)"></div>
+                <!-- Full-screen backdrop to dismiss dropdown on outside click -->
+                <div class="fixed inset-0 z-40 cursor-default" (click)="showExhibitionDropdown.set(false)"></div>
 
-                  <button 
-                    type="button"
-                    (click)="onExhibitionFilterChange('ALL'); showExhibitionDropdown.set(false)"
-                    class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
-                    [ngClass]="selectedExhibitionId() === 'ALL' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
-                  >
-                    <span>All Exhibitions</span>
-                    @if (selectedExhibitionId() === 'ALL') {
-                      <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    }
-                  </button>
-
-                  @for (exh of availableExhibitions(); track exh.id) {
+                <div class="absolute left-0 top-full mt-1.5 z-50 w-72 sm:w-80 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xl">
+                  <div class="max-h-64 overflow-y-auto space-y-0.5">
                     <button 
                       type="button"
-                      (click)="onExhibitionFilterChange(exh.id); showExhibitionDropdown.set(false)"
+                      (click)="onExhibitionFilterChange('ALL'); showExhibitionDropdown.set(false)"
                       class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
-                      [ngClass]="selectedExhibitionId() === exh.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
+                      [ngClass]="selectedExhibitionId() === 'ALL' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
                     >
-                      <span class="truncate">{{ exh.name }} ({{ exh.code }})</span>
-                      @if (selectedExhibitionId() === exh.id) {
+                      <span>All Exhibitions</span>
+                      @if (selectedExhibitionId() === 'ALL') {
                         <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
                         </svg>
                       }
                     </button>
-                  }
+
+                    @for (exh of availableExhibitions(); track exh.id) {
+                      <button 
+                        type="button"
+                        (click)="onExhibitionFilterChange(exh.id); showExhibitionDropdown.set(false)"
+                        class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                        [ngClass]="selectedExhibitionId() === exh.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
+                      >
+                        <span class="truncate">{{ exh.name }} ({{ exh.code }})</span>
+                        @if (selectedExhibitionId() === exh.id) {
+                          <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        }
+                      </button>
+                    }
+                  </div>
                 </div>
               }
             </div>
@@ -108,38 +111,41 @@
               </div>
 
               @if (showStallDropdown()) {
-                <div class="absolute left-0 top-full mt-1.5 z-50 w-72 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xl backdrop-blur-md">
-                  <div class="fixed inset-0 z-[-1]" (click)="showStallDropdown.set(false)"></div>
+                <!-- Full-screen backdrop to dismiss dropdown on outside click -->
+                <div class="fixed inset-0 z-40 cursor-default" (click)="showStallDropdown.set(false)"></div>
 
-                  <button 
-                    type="button"
-                    (click)="onStallFilterChange('ALL'); showStallDropdown.set(false)"
-                    class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
-                    [ngClass]="selectedStallId() === 'ALL' ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
-                  >
-                    <span>All Stalls (All Leads)</span>
-                    @if (selectedStallId() === 'ALL') {
-                      <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    }
-                  </button>
-
-                  @for (stall of dropdownStalls(); track stall.id) {
+                <div class="absolute left-0 top-full mt-1.5 z-50 w-72 sm:w-80 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xl">
+                  <div class="max-h-64 overflow-y-auto space-y-0.5">
                     <button 
                       type="button"
-                      (click)="onStallFilterChange(stall.id); showStallDropdown.set(false)"
+                      (click)="onStallFilterChange('ALL'); showStallDropdown.set(false)"
                       class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
-                      [ngClass]="selectedStallId() === stall.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                      [ngClass]="selectedStallId() === 'ALL' ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
                     >
-                      <span class="truncate">{{ stall.name }} ({{ stall.code }})</span>
-                      @if (selectedStallId() === stall.id) {
+                      <span>All Stalls (All Leads)</span>
+                      @if (selectedStallId() === 'ALL') {
                         <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
                         </svg>
                       }
                     </button>
-                  }
+
+                    @for (stall of dropdownStalls(); track stall.id) {
+                      <button 
+                        type="button"
+                        (click)="onStallFilterChange(stall.id); showStallDropdown.set(false)"
+                        class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                        [ngClass]="selectedStallId() === stall.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                      >
+                        <span class="truncate">{{ stall.name }} ({{ stall.code }})</span>
+                        @if (selectedStallId() === stall.id) {
+                          <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        }
+                      </button>
+                    }
+                  </div>
                 </div>
               }
             </div>

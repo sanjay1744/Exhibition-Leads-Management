@@ -1,115 +1,719 @@
 <div>
-  <!-- Stall / Project Active Selector Bar -->
-  <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold">
-        <span class="material-icons text-lg">storefront</span>
+  <!-- Top Hero: Exhibition & Stall Command Banner -->
+  <div class="bg-white border border-slate-200/90 rounded-2xl shadow-xs mb-6 relative z-30">
+    <div class="h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 w-full rounded-t-2xl"></div>
+    
+    <div class="p-5 md:p-6">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        
+        <!-- Left Column: Dual Filter (Exhibition & Active Stall) + Exhibition Metadata -->
+        <div class="space-y-3 flex-1 min-w-0">
+          
+          <!-- Dual Filter Bar (Exact Match to Screenshot) -->
+          <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+            
+            <!-- 1. Exhibition Filter Dropdown -->
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                <span class="material-icons text-lg">event_available</span>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase font-extrabold text-slate-700 tracking-wider">EXHIBITION</div>
+                <div class="relative">
+                  <div 
+                    (click)="openExhibitionDropdown()" 
+                    class="border border-slate-300 rounded-xl px-3.5 py-1.5 text-xs font-bold text-slate-800 bg-white outline-none hover:border-slate-400 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-2.5 min-w-[200px]"
+                    [ngClass]="showExhibitionDropdown() ? 'border-indigo-600 ring-2 ring-indigo-500/20' : ''"
+                  >
+                    <span class="truncate text-slate-900 font-bold">{{ getSelectedExhibitionName() }}</span>
+                    <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showExhibitionDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </div>
+
+                  @if (showExhibitionDropdown()) {
+                    <!-- Backdrop overlay to dismiss dropdown on outside click -->
+                    <div class="fixed inset-0 z-40 cursor-default" (click)="showExhibitionDropdown.set(false)"></div>
+
+                    <div class="absolute left-0 top-full mt-1.5 z-50 w-72 sm:w-80 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xl">
+                      <div class="max-h-64 overflow-y-auto space-y-0.5">
+                        <button 
+                          type="button"
+                          (click)="onExhibitionFilterChange('ALL'); showExhibitionDropdown.set(false)"
+                          class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                          [ngClass]="selectedExhibitionId() === 'ALL' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
+                        >
+                          <span>All Exhibitions</span>
+                          @if (selectedExhibitionId() === 'ALL') {
+                            <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          }
+                        </button>
+
+                        @for (exh of availableExhibitions(); track exh.id) {
+                          <button 
+                            type="button"
+                            (click)="onExhibitionFilterChange(exh.id); showExhibitionDropdown.set(false)"
+                            class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                            [ngClass]="selectedExhibitionId() === exh.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
+                          >
+                            <span class="truncate">{{ exh.name }} ({{ exh.code }})</span>
+                            @if (selectedExhibitionId() === exh.id) {
+                              <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                            }
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Active Stall Selector Dropdown -->
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                <span class="material-icons text-lg">storefront</span>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase font-extrabold text-slate-700 tracking-wider">ACTIVE STALL</div>
+                <div class="relative">
+                  <div 
+                    (click)="openStallDropdown()" 
+                    class="border border-slate-300 rounded-xl px-3.5 py-1.5 text-xs font-bold text-slate-800 bg-white outline-none hover:border-slate-400 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-2.5 min-w-[200px]"
+                    [ngClass]="showStallDropdown() ? 'border-blue-600 ring-2 ring-blue-500/20' : ''"
+                  >
+                    <span class="truncate text-slate-900 font-bold">{{ getSelectedStallName() }}</span>
+                    <svg class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200" [ngClass]="{'rotate-180': showStallDropdown()}" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </div>
+
+                  @if (showStallDropdown()) {
+                    <!-- Backdrop overlay to dismiss dropdown on outside click -->
+                    <div class="fixed inset-0 z-40 cursor-default" (click)="showStallDropdown.set(false)"></div>
+
+                    <div class="absolute left-0 top-full mt-1.5 z-50 w-72 sm:w-80 bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xl">
+                      <div class="max-h-64 overflow-y-auto space-y-0.5">
+                        <button 
+                          type="button"
+                          (click)="onStallFilterChange('ALL'); showStallDropdown.set(false)"
+                          class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                          [ngClass]="selectedStallId() === 'ALL' ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                        >
+                          <span>All Stalls (All Leads)</span>
+                          @if (selectedStallId() === 'ALL') {
+                            <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          }
+                        </button>
+
+                        @for (stall of dropdownStalls(); track stall.id) {
+                          <button 
+                            type="button"
+                            (click)="onStallFilterChange(stall.id); showStallDropdown.set(false)"
+                            class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
+                            [ngClass]="selectedStallId() === stall.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'"
+                          >
+                            <span class="truncate">{{ stall.name }} ({{ stall.code }})</span>
+                            @if (selectedStallId() === stall.id) {
+                              <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                            }
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Live Status Badge -->
+            <div class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Active Exhibition</span>
+            </div>
+          </div>
+
+          <!-- Exhibition Name & Location Specs -->
+          <div class="text-xs text-slate-600 flex flex-wrap items-center gap-x-3 gap-y-1">
+            @if (parentExhibition(); as exh) {
+              <span class="font-bold text-slate-800 flex items-center gap-1">
+                <span class="material-icons text-xs text-indigo-600">event</span>
+                {{ exh.name }} ({{ exh.code }})
+              </span>
+              <span class="text-slate-300">•</span>
+              <span class="flex items-center gap-1">
+                <span class="material-icons text-xs text-slate-400">location_on</span>
+                {{ exh.venue || 'Exhibition Center' }}
+              </span>
+              <span class="text-slate-300">•</span>
+            } @else if (selectedExhibitionId() === 'ALL') {
+              <span class="font-bold text-slate-800 flex items-center gap-1">
+                <span class="material-icons text-xs text-indigo-600">public</span>
+                All Registered Exhibitions ({{ availableExhibitions().length }})
+              </span>
+              <span class="text-slate-300">•</span>
+            }
+
+            @if (selectedStallId() !== 'ALL') {
+              <span class="font-semibold text-slate-700 flex items-center gap-1">
+                <span class="material-icons text-xs text-slate-400">meeting_room</span>
+                Hall: <strong class="text-slate-900">{{ stallService.activeStall()?.hallNumber || 'Main Hall' }}</strong>
+              </span>
+              <span class="text-slate-300">•</span>
+              <span class="font-semibold text-slate-700 flex items-center gap-1">
+                <span class="material-icons text-xs text-slate-400">grid_view</span>
+                Booth: <strong class="text-slate-900">{{ stallService.activeStall()?.boothNumber || 'Standard' }}</strong>
+              </span>
+            } @else {
+              <span class="font-semibold text-slate-700 flex items-center gap-1">
+                <span class="material-icons text-xs text-slate-400">storefront</span>
+                Viewing: <strong class="text-slate-900">{{ dropdownStalls().length }} Stalls (Aggregated)</strong>
+              </span>
+            }
+          </div>
+
+          <!-- Team Attribution & Rep Tags -->
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <div class="inline-flex items-center gap-1 text-[11px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-medium border border-slate-200">
+              <span class="material-icons text-xs text-slate-500">verified_user</span>
+              Owner: <strong class="text-slate-900">{{ selectedStallId() === 'ALL' ? 'All Owners' : (stallService.activeStall()?.ownerName || 'Unassigned') }}</strong>
+            </div>
+
+            @for (rep of activeStallReps(); track rep) {
+              <div class="inline-flex items-center gap-1 text-[11px] bg-blue-50/70 text-blue-700 px-2 py-0.5 rounded-md font-semibold border border-blue-200/60">
+                <span class="material-icons text-[10px] text-blue-500">person</span>
+                {{ rep }}
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Right Column: Quick Action Bar -->
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          @if (canCreateStall()) {
+            <button 
+              type="button" 
+              (click)="openCreateStallModal()" 
+              class="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl shadow-2xs flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <span class="material-icons text-sm text-blue-600">add_business</span>
+              <span>New Stall</span>
+            </button>
+          }
+
+          <button 
+            type="button" 
+            (click)="exportStallLeadsCsv()" 
+            class="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl shadow-2xs flex items-center gap-1.5 transition cursor-pointer"
+            title="Download CSV export of current stall leads"
+          >
+            <span class="material-icons text-sm text-emerald-600">file_download</span>
+            <span>Export CSV</span>
+          </button>
+
+          <button 
+            type="button" 
+            (click)="manualSync()" 
+            [disabled]="isSyncing()" 
+            class="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl shadow-2xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+            title="Synchronize offline leads to Supabase cloud"
+          >
+            <span class="material-icons text-sm text-blue-600" [class.animate-spin]="isSyncing()">sync</span>
+            <span>{{ isSyncing() ? 'Syncing...' : 'Sync Cloud' }}</span>
+          </button>
+
+          <button 
+            type="button" 
+            (click)="openTargetSelectionModal()" 
+            class="px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-sm hover:shadow-md flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <span class="material-icons text-sm">add</span>
+            <span>New Lead</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 6-Card Executive KPI Command Deck -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+    <!-- Card 1: Stall Total Leads -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Leads</span>
+        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <span class="material-icons text-lg">groups</span>
+        </div>
       </div>
       <div>
-        <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ACTIVE STALL</div>
-        <div class="flex items-center gap-2">
-          <select 
-            [ngModel]="stallService.activeStall()?.id" 
-            (ngModelChange)="onStallChange($event)" 
-            class="border border-slate-300 rounded-md px-3 py-1 text-xs font-bold text-slate-800 bg-slate-50 outline-none focus:border-blue-600"
-          >
-            @for (stall of stallService.stalls(); track stall.id) {
-              <option [value]="stall.id">{{ stall.name }} ({{ stall.code }})</option>
-            }
-          </select>
+        <div class="text-2xl font-black text-slate-900">{{ totalLeads() }}</div>
+        <div class="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 mt-1">
+          <span class="material-icons text-xs">trending_up</span>
+          <span>+{{ todayLeadsCount() }} captured today</span>
         </div>
       </div>
     </div>
 
-    <!-- Stall Action Controls -->
-    <div class="flex items-center gap-2">
-      @if (canCreateStall()) {
-        <button (click)="openCreateStallModal()" class="btn btn-outline-pill text-xs px-3 py-1.5 font-semibold text-slate-700 flex items-center gap-1">
-          <span class="material-icons text-sm text-blue-600">add_business</span>
-          Create New Stall
+    <!-- Card 2: Hot Opportunities -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Hot Buyers</span>
+        <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+          <span class="material-icons text-lg">local_fire_department</span>
+        </div>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-rose-600">{{ hotLeads() }}</div>
+        <div class="text-[11px] font-semibold text-slate-500 mt-1">
+          <span>High-intent priority</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Warm Prospects -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Warm Prospects</span>
+        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+          <span class="material-icons text-lg">thumb_up</span>
+        </div>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-amber-600">{{ warmLeads() }}</div>
+        <div class="text-[11px] font-semibold text-slate-500 mt-1">
+          <span>Follow-up & Demo</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Cold / General Inquiries -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Discovery Stage</span>
+        <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+          <span class="material-icons text-lg">explore</span>
+        </div>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-700">{{ coldLeads() }}</div>
+        <div class="text-[11px] font-semibold text-slate-500 mt-1">
+          <span>Catalog & Info only</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 5: AI Multimodal Captures -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">AI Automation</span>
+        <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+          <span class="material-icons text-lg">auto_awesome</span>
+        </div>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-purple-700">{{ aiCapturesCount() }}</div>
+        <div class="text-[11px] font-semibold text-purple-600 mt-1">
+          <span>{{ aiCapturesPercentage() }}% OCR & Voice</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 6: Supabase Sync Health -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Cloud Sync</span>
+        <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <span class="material-icons text-lg">cloud_done</span>
+        </div>
+      </div>
+      <div>
+        <div class="text-2xl font-black" [ngClass]="pendingSync() > 0 ? 'text-amber-600' : 'text-blue-700'">
+          {{ syncedPercentage() }}%
+        </div>
+        <div class="text-[11px] font-semibold mt-1" [ngClass]="pendingSync() > 0 ? 'text-amber-600' : 'text-slate-500'">
+          <span>{{ pendingSync() > 0 ? (pendingSync() + ' Pending Sync') : 'All synchronized' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analytics Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+    
+    <!-- Left Column (7 cols): Pipeline Funnel & Acquisition Channels -->
+    <div class="lg:col-span-7 space-y-6">
+      
+      <!-- Lead Qualification & Temperature Distribution -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+              <span class="material-icons text-base">filter_alt</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Lead Temperature & Qualification Pipeline</h3>
+              <p class="text-[11px] text-slate-500 font-medium">Distribution by buyer readiness</p>
+            </div>
+          </div>
+          <div class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg text-xs font-black">
+            {{ pipelineStages().conversionRate }}% Converted
+          </div>
+        </div>
+
+        <!-- Stacked Horizontal Temperature Bar -->
+        <div class="mb-4">
+          <div class="h-3 w-full rounded-full bg-slate-100 flex overflow-hidden shadow-inner">
+            <div 
+              class="bg-rose-500 transition-all duration-500" 
+              [style.width.%]="totalLeads() > 0 ? (hotLeads() / totalLeads() * 100) : 0"
+              title="Hot: {{ hotLeads() }}"
+            ></div>
+            <div 
+              class="bg-amber-400 transition-all duration-500" 
+              [style.width.%]="totalLeads() > 0 ? (warmLeads() / totalLeads() * 100) : 0"
+              title="Warm: {{ warmLeads() }}"
+            ></div>
+            <div 
+              class="bg-slate-300 transition-all duration-500" 
+              [style.width.%]="totalLeads() > 0 ? (coldLeads() / totalLeads() * 100) : 0"
+              title="Cold: {{ coldLeads() }}"
+            ></div>
+          </div>
+
+          <!-- Temperature Legend -->
+          <div class="flex items-center justify-between text-xs font-bold pt-2 px-1 text-slate-600">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              <span>Hot: <strong>{{ hotLeads() }}</strong> ({{ totalLeads() > 0 ? Math.round(hotLeads() / totalLeads() * 100) : 0 }}%)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              <span>Warm: <strong>{{ warmLeads() }}</strong> ({{ totalLeads() > 0 ? Math.round(warmLeads() / totalLeads() * 100) : 0 }}%)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+              <span>Cold: <strong>{{ coldLeads() }}</strong> ({{ totalLeads() > 0 ? Math.round(coldLeads() / totalLeads() * 100) : 0 }}%)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Stage Funnel Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+          <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-center">
+            <div class="text-[10px] font-black uppercase text-slate-400">1. New Capture</div>
+            <div class="text-base font-black text-slate-800 mt-0.5">{{ pipelineStages().new.count }}</div>
+            <div class="text-[10px] text-slate-500 font-semibold">{{ pipelineStages().new.pct }}% total</div>
+          </div>
+          <div class="bg-blue-50/60 border border-blue-200/80 rounded-xl p-2.5 text-center">
+            <div class="text-[10px] font-black uppercase text-blue-500">2. Qualified</div>
+            <div class="text-base font-black text-blue-800 mt-0.5">{{ pipelineStages().qualified.count }}</div>
+            <div class="text-[10px] text-blue-600 font-semibold">{{ pipelineStages().qualified.pct }}% total</div>
+          </div>
+          <div class="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-2.5 text-center">
+            <div class="text-[10px] font-black uppercase text-emerald-600">3. Converted</div>
+            <div class="text-base font-black text-emerald-800 mt-0.5">{{ pipelineStages().converted.count }}</div>
+            <div class="text-[10px] text-emerald-600 font-semibold">{{ pipelineStages().converted.pct }}% total</div>
+          </div>
+          <div class="bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-center">
+            <div class="text-[10px] font-black uppercase text-slate-500">4. Closed</div>
+            <div class="text-base font-black text-slate-800 mt-0.5">{{ pipelineStages().closed.count }}</div>
+            <div class="text-[10px] text-slate-500 font-semibold">{{ pipelineStages().closed.pct }}% total</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acquisition Channels / Capture Methods -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <span class="material-icons text-base">hub</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Acquisition Channels & Tool Utilization</h3>
+              <p class="text-[11px] text-slate-500 font-medium">How visitor details are captured at stall</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          @for (m of methodStats(); track m.key) {
+            <div class="border rounded-xl p-3.5 flex flex-col justify-between transition hover:shadow-2xs" [ngClass]="m.border">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white bg-gradient-to-r shadow-2xs" [ngClass]="m.gradient">
+                    <span class="material-icons text-sm">{{ m.icon }}</span>
+                  </div>
+                  <span class="text-xs font-bold text-slate-800">{{ m.name }}</span>
+                </div>
+                <span class="text-xs font-black text-slate-900">{{ m.count }}</span>
+              </div>
+              <div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden mb-1">
+                  <div class="h-2 rounded-full bg-gradient-to-r transition-all duration-500" [ngClass]="m.gradient" [style.width.%]="m.pct"></div>
+                </div>
+                <div class="flex justify-between text-[11px] font-semibold text-slate-500">
+                  <span>Usage share</span>
+                  <span class="font-bold text-slate-700">{{ m.pct }}%</span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column (5 cols): Hourly Footfall & Team Attribution -->
+    <div class="lg:col-span-5 space-y-6">
+      
+      <!-- Hourly Footfall Velocity Pattern -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <span class="material-icons text-base">speed</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Visitor Flow & Footfall Velocity</h3>
+              <p class="text-[11px] text-slate-500 font-medium">Stall activity throughout the day</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          @for (slot of velocityByTimeOfDay(); track slot.label) {
+            <div>
+              <div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                <span>{{ slot.label }}</span>
+                <span class="text-slate-900">{{ slot.count }} leads <span class="text-slate-400 font-normal">({{ slot.pct }}%)</span></span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div 
+                  class="bg-gradient-to-r from-blue-500 to-indigo-600 h-2.5 rounded-full transition-all duration-500" 
+                  [style.width.%]="slot.barHeight"
+                ></div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Stall Team Lead Attribution -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+              <span class="material-icons text-base">leaderboard</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Team Performance Attribution</h3>
+              <p class="text-[11px] text-slate-500 font-medium">Leads recorded by rep</p>
+            </div>
+          </div>
+        </div>
+
+        @if (repAttribution().length === 0) {
+          <div class="text-center py-6 text-slate-400 text-xs">
+            <span class="material-icons text-2xl text-slate-300 mb-1">group_off</span>
+            <p>No individual rep attribution recorded yet.</p>
+          </div>
+        } @else {
+          <div class="space-y-3">
+            @for (rep of repAttribution(); track rep.name) {
+              <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                    {{ getInitials(rep.name) }}
+                  </div>
+                  <div class="truncate">
+                    <div class="text-xs font-bold text-slate-800 truncate">{{ rep.name }}</div>
+                    <div class="text-[10px] text-slate-500 font-medium">{{ rep.pct }}% of stall total</div>
+                  </div>
+                </div>
+                <div class="text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-lg shrink-0">
+                  {{ rep.count }} leads
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Recent Leads Live Stream Section -->
+  <div class="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <span class="material-icons text-base">schedule</span>
+        </div>
+        <div>
+          <h2 class="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Live Stream: Recent Stall Leads</h2>
+          <p class="text-[11px] text-slate-500 font-medium">Latest visitors captured at {{ stallService.activeStall()?.name || 'this stall' }}</p>
+        </div>
+      </div>
+
+      <a 
+        routerLink="/leads" 
+        class="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+      >
+        <span>View Full Leads Directory ({{ totalLeads() }})</span>
+        <span class="material-icons text-sm">arrow_forward</span>
+      </a>
+    </div>
+
+    @if (recentLeads().length === 0) {
+      <div class="text-center py-12 px-4">
+        <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center mx-auto mb-3">
+          <span class="material-icons text-3xl">post_add</span>
+        </div>
+        <h3 class="text-sm font-bold text-slate-800">No leads captured for this stall yet</h3>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Start capturing visitor details at your booth using AI Business Card OCR, QR Badge Scan, or Voice Notes.</p>
+        <button 
+          type="button" 
+          (click)="openTargetSelectionModal()" 
+          class="btn btn-primary text-xs px-4 py-2"
+        >
+          <span class="material-icons text-sm">add</span>
+          Capture First Lead
         </button>
-      }
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-slate-100 bg-slate-50/80 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+              <th class="py-3 px-4">Lead #</th>
+              <th class="py-3 px-4">Visitor & Company</th>
+              <th class="py-3 px-4">Contact</th>
+              <th class="py-3 px-4">Method</th>
+              <th class="py-3 px-4">Interest</th>
+              <th class="py-3 px-4">Sync Status</th>
+              <th class="py-3 px-4">Captured</th>
+              <th class="py-3 px-4 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (lead of recentLeads(); track lead.id) {
+              <tr class="hover:bg-slate-50/80 transition-colors group">
+                <!-- Lead # -->
+                <td class="py-3 px-4 font-mono font-bold text-slate-700">
+                  {{ lead.leadNumber || ('L-' + lead.id.slice(0, 6)) }}
+                </td>
 
-      <div class="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium border">
-        Owner: <strong>{{ stallService.activeStall()?.ownerName || 'Unassigned' }}</strong>
-      </div>
-    </div>
-  </div>
+                <!-- Visitor & Company -->
+                <td class="py-3 px-4">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0">
+                      {{ getInitials(lead.name) }}
+                    </div>
+                    <div>
+                      <div class="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                        {{ lead.name || 'Unnamed Visitor' }}
+                      </div>
+                      <div class="text-[11px] text-slate-500 font-medium">
+                        {{ lead.company || 'Direct Buyer' }} {{ lead.designation ? ('• ' + lead.designation) : '' }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
 
-  <!-- Page Title & Actions Header Bar -->
-  <div class="page-title-bar">
-    <div>
-      <h1 class="page-title">Dashboard Overview</h1>
-      <p class="page-subtitle">Exhibition Analytics for {{ stallService.activeStall()?.name || 'Current Stall' }}</p>
-    </div>
+                <!-- Contact -->
+                <td class="py-3 px-4">
+                  @if (lead.phone) {
+                    <a [href]="'tel:' + lead.phone" class="font-semibold text-slate-700 hover:text-blue-600 flex items-center gap-1">
+                      <span class="material-icons text-xs text-slate-400">call</span>
+                      {{ lead.phone }}
+                    </a>
+                  }
+                  @if (lead.email) {
+                    <div class="text-[11px] text-slate-500 truncate max-w-[140px]">{{ lead.email }}</div>
+                  }
+                </td>
 
-    <div class="page-actions flex items-center gap-2">
-      <button 
-        (click)="manualSync()" 
-        [disabled]="isSyncing()" 
-        class="btn bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 px-3.5 py-2 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-        title="Sync offline leads to Supabase Database and Storage"
-      >
-        <span class="material-icons text-base text-blue-600" [class.animate-spin]="isSyncing()">sync</span>
-        {{ isSyncing() ? 'Syncing...' : 'Sync to Supabase' }}
-      </button>
+                <!-- Method -->
+                <td class="py-3 px-4">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border"
+                    [ngClass]="{
+                      'bg-blue-50 text-blue-700 border-blue-200': lead.captureMethod === 'card_ocr',
+                      'bg-emerald-50 text-emerald-700 border-emerald-200': lead.captureMethod === 'qr_scan',
+                      'bg-rose-50 text-rose-700 border-rose-200': lead.captureMethod === 'voice_note',
+                      'bg-purple-50 text-purple-700 border-purple-200': !lead.captureMethod || lead.captureMethod === 'manual'
+                    }"
+                  >
+                    <span class="material-icons text-xs">
+                      {{ lead.captureMethod === 'card_ocr' ? 'badge' : lead.captureMethod === 'qr_scan' ? 'qr_code_scanner' : lead.captureMethod === 'voice_note' ? 'mic' : 'edit_note' }}
+                    </span>
+                    {{ lead.captureMethod === 'card_ocr' ? 'OCR' : lead.captureMethod === 'qr_scan' ? 'QR' : lead.captureMethod === 'voice_note' ? 'Voice' : 'Manual' }}
+                  </span>
+                </td>
 
-      <button 
-        type="button" 
-        (click)="openTargetSelectionModal()" 
-        class="btn btn-primary flex items-center gap-1.5 cursor-pointer"
-      >
-        <span class="material-icons text-sm">add</span>
-        New Lead
-      </button>
-    </div>
-  </div>
+                <!-- Interest -->
+                <td class="py-3 px-4">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide border"
+                    [ngClass]="{
+                      'bg-rose-50 text-rose-700 border-rose-200': lead.interestLevel === 'Hot',
+                      'bg-amber-50 text-amber-700 border-amber-200': lead.interestLevel === 'Warm',
+                      'bg-slate-100 text-slate-600 border-slate-200': lead.interestLevel === 'Cold' || !lead.interestLevel
+                    }"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full"
+                      [ngClass]="{
+                        'bg-rose-500': lead.interestLevel === 'Hot',
+                        'bg-amber-500': lead.interestLevel === 'Warm',
+                        'bg-slate-400': lead.interestLevel === 'Cold' || !lead.interestLevel
+                      }"
+                    ></span>
+                    {{ lead.interestLevel || 'Warm' }}
+                  </span>
+                </td>
 
-  <!-- KPI Metrics Cards Grid -->
-  <div class="kpi-grid mb-6">
-    <!-- Card 1: Total Leads -->
-    <div class="kpi-card">
-      <div class="kpi-icon-box green">
-        <span class="material-icons">attach_money</span>
-      </div>
-      <div class="kpi-content">
-        <span class="kpi-label">Stall Total Leads</span>
-        <span class="kpi-value">{{ totalLeads() }}</span>
-      </div>
-    </div>
+                <!-- Sync -->
+                <td class="py-3 px-4">
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold"
+                    [ngClass]="lead.syncStatus === 'Synced' ? 'text-emerald-600' : 'text-amber-600'"
+                  >
+                    <span class="material-icons text-xs">
+                      {{ lead.syncStatus === 'Synced' ? 'cloud_done' : 'cloud_upload' }}
+                    </span>
+                    {{ lead.syncStatus || 'Pending' }}
+                  </span>
+                </td>
 
-    <!-- Card 2: Hot Leads -->
-    <div class="kpi-card">
-      <div class="kpi-icon-box blue">
-        <span class="material-icons">person_add</span>
-      </div>
-      <div class="kpi-content">
-        <span class="kpi-label">Hot Opportunities</span>
-        <span class="kpi-value">{{ hotLeads() }}</span>
-      </div>
-    </div>
+                <!-- Captured time -->
+                <td class="py-3 px-4 text-slate-500 font-medium">
+                  {{ formatRelativeTime(lead.createdAt) }}
+                </td>
 
-    <!-- Card 3: Pending Sync -->
-    <div class="kpi-card">
-      <div class="kpi-icon-box orange">
-        <span class="material-icons">pending_actions</span>
+                <!-- Action -->
+                <td class="py-3 px-4 text-right">
+                  <button 
+                    type="button" 
+                    (click)="openQuickView(lead)" 
+                    class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                    title="Quick preview lead details"
+                  >
+                    <span class="material-icons text-base">visibility</span>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-      <div class="kpi-content">
-        <span class="kpi-label">Pending CRM Sync</span>
-        <span class="kpi-value">{{ pendingSync() }}</span>
-      </div>
-    </div>
-
-    <!-- Card 4: Synced Rate -->
-    <div class="kpi-card">
-      <div class="kpi-icon-box purple">
-        <span class="material-icons">cloud_done</span>
-      </div>
-      <div class="kpi-content">
-        <span class="kpi-label">Stall Sync Rate %</span>
-        <span class="kpi-value">{{ syncedPercentage() }}%</span>
-      </div>
-    </div>
+    }
   </div>
 
   <!-- Exact Rich Create Stall (Project) Modal -->
@@ -368,6 +972,157 @@
             <span>Proceed to Capture Lead</span>
             <span class="material-icons text-sm">arrow_forward</span>
           </button>
+        </div>
+
+      </div>
+    </div>
+  }
+
+  <!-- Quick View Lead Modal -->
+  @if (selectedLeadForQuickView(); as lead) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/80">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shadow-2xs">
+              {{ getInitials(lead.name) }}
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-extrabold text-slate-900">{{ lead.name || 'Unnamed Lead' }}</h3>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700 font-bold">
+                  {{ lead.leadNumber || ('L-' + lead.id.slice(0, 6)) }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-500 font-medium">{{ lead.company || 'Direct Contact' }} {{ lead.designation ? ('• ' + lead.designation) : '' }}</p>
+            </div>
+          </div>
+          <button type="button" (click)="closeQuickView()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/60 transition cursor-pointer">
+            <span class="material-icons text-base">close</span>
+          </button>
+        </div>
+
+        <!-- Scrollable Modal Content -->
+        <div class="p-6 overflow-y-auto flex-1 space-y-4 text-xs">
+          
+          <!-- Badges Bar -->
+          <div class="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-100">
+            <span class="px-2.5 py-1 rounded-lg text-xs font-extrabold border"
+              [ngClass]="{
+                'bg-rose-50 text-rose-700 border-rose-200': lead.interestLevel === 'Hot',
+                'bg-amber-50 text-amber-700 border-amber-200': lead.interestLevel === 'Warm',
+                'bg-slate-100 text-slate-600 border-slate-200': lead.interestLevel === 'Cold' || !lead.interestLevel
+              }"
+            >
+              Interest: {{ lead.interestLevel || 'Warm' }}
+            </span>
+
+            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+              Method: {{ lead.captureMethod || 'manual' }}
+            </span>
+
+            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold border"
+              [ngClass]="lead.syncStatus === 'Synced' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
+            >
+              Sync: {{ lead.syncStatus || 'Pending' }}
+            </span>
+          </div>
+
+          <!-- Contact Fields -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+            <div>
+              <div class="text-[10px] font-bold uppercase text-slate-400">Mobile Phone</div>
+              <a [href]="'tel:' + lead.phone" class="font-bold text-blue-600 hover:underline flex items-center gap-1 mt-0.5">
+                <span class="material-icons text-xs">call</span>
+                {{ lead.phone || '-' }}
+              </a>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold uppercase text-slate-400">Email Address</div>
+              <a [href]="'mailto:' + lead.email" class="font-bold text-blue-600 hover:underline flex items-center gap-1 mt-0.5 truncate">
+                <span class="material-icons text-xs">email</span>
+                {{ lead.email || '-' }}
+              </a>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold uppercase text-slate-400">Website</div>
+              <div class="font-semibold text-slate-700 truncate mt-0.5">{{ lead.website || '-' }}</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold uppercase text-slate-400">Location / Address</div>
+              <div class="font-semibold text-slate-700 truncate mt-0.5">{{ lead.address || '-' }}</div>
+            </div>
+          </div>
+
+          <!-- Remarks -->
+          @if (lead.remarks) {
+            <div>
+              <div class="text-[11px] font-extrabold uppercase tracking-wide text-slate-600 mb-1">Remarks & Notes</div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-700 leading-relaxed font-medium">
+                {{ lead.remarks }}
+              </div>
+            </div>
+          }
+
+          <!-- Business Card Image if available -->
+          @if (lead.cardImageUrl || lead.photoBlob) {
+            <div>
+              <div class="text-[11px] font-extrabold uppercase tracking-wide text-slate-600 mb-1 flex items-center gap-1">
+                <span class="material-icons text-xs text-blue-600">badge</span>
+                Captured Business Card Image
+              </div>
+              <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-900/5 max-h-48 flex items-center justify-center p-2">
+                <img 
+                  [src]="lead.cardImageUrl || lead.photoBlob" 
+                  alt="Business Card" 
+                  class="max-h-44 object-contain rounded-lg shadow-xs"
+                />
+              </div>
+            </div>
+          }
+
+          <!-- Voice Note Transcript / Audio if available -->
+          @if (lead.voiceAudioUrl || lead.voiceBlob || lead.voiceNotesTranscript) {
+            <div>
+              <div class="text-[11px] font-extrabold uppercase tracking-wide text-slate-600 mb-1 flex items-center gap-1">
+                <span class="material-icons text-xs text-rose-600">mic</span>
+                Voice Note Audio & Transcript
+              </div>
+              @if (lead.voiceAudioUrl) {
+                <audio [src]="lead.voiceAudioUrl" controls class="w-full h-9 mb-2"></audio>
+              }
+              @if (lead.voiceNotesTranscript) {
+                <div class="bg-rose-50/60 p-2.5 rounded-xl border border-rose-200/60 text-slate-700 text-xs italic">
+                  "{{ lead.voiceNotesTranscript }}"
+                </div>
+              }
+            </div>
+          }
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+          <span class="text-[11px] text-slate-400 font-medium">Captured {{ lead.createdAt ? (lead.createdAt | date:'medium') : 'recently' }}</span>
+          <div class="flex items-center gap-2">
+            <button 
+              type="button" 
+              (click)="closeQuickView()" 
+              class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/60 rounded-xl transition cursor-pointer"
+            >
+              Close
+            </button>
+            <a 
+              [routerLink]="['/capture', lead.id]" 
+              (click)="closeQuickView()"
+              class="btn btn-primary text-xs px-4 py-2 cursor-pointer"
+            >
+              <span class="material-icons text-sm">edit</span>
+              <span>Edit Lead</span>
+            </a>
+          </div>
         </div>
 
       </div>
