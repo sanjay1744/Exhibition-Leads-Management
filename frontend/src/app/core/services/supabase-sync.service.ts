@@ -213,6 +213,7 @@ export class SupabaseSyncService {
         id: d.id,
         leadNumber: d.lead_number,
         exhibitionId: d.exhibition_id,
+        stallId: d.stall_id || d.exhibition_id,
         repId: d.rep_id,
         name: d.name,
         company: d.company,
@@ -249,7 +250,7 @@ export class SupabaseSyncService {
    */
   async saveExhibitionToSupabase(exhibition: any): Promise<void> {
     try {
-      const record = {
+      const record: any = {
         id: exhibition.id,
         code: exhibition.code,
         name: exhibition.name,
@@ -260,6 +261,8 @@ export class SupabaseSyncService {
         duration_days: exhibition.durationDays || 3,
         description: exhibition.description || '',
         status: exhibition.status || 'Active',
+        admin_id: exhibition.adminId || null,
+        admin_name: exhibition.adminName || '',
         updated_at: new Date().toISOString(),
       };
 
@@ -294,6 +297,8 @@ export class SupabaseSyncService {
           description: d.description,
           status: d.status,
           stallCount: d.stall_count !== undefined ? d.stall_count : codeStallCount,
+          adminId: d.admin_id || d.adminId,
+          adminName: d.admin_name || d.adminName,
           createdAt: d.created_at,
           updatedAt: d.updated_at,
         };

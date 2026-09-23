@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, ActivatedRoute } from '@angular/router';
+import { firstValueFrom, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth.service';
 import { StallService } from '../../../core/services/stall.service';
 import { ExhibitionService, ExhibitionDto } from '../../../core/services/exhibition.service';
@@ -247,48 +249,80 @@ export class StallMasterComponent implements OnInit {
 
   async fetchStalls(): Promise<void> {
     try {
-      const localLeads = await this.db.getAllLeads();
+      const localLeads = await this.db.getAllLeads().catch(() => []);
       const localStalls = await this.db.getAllStalls().catch(() => []);
-      const localMap = new Map<string, any>(localStalls.map((s: any) => [s.id?.toLowerCase(), s]));
+      const [cloudStalls, apiStalls] = await Promise.all([
+        this.supabaseSync.getStallsFromSupabase().catch(() => [] as any[]),
+        firstValueFrom(this.http.get<StallMasterDto[]>(this.apiUrl).pipe(catchError(() => of([]))))
+      ]);
 
-      // 1. Fetch live authoritative stalls from Supabase
-      const cloudStalls = await this.supabaseSync.getStallsFromSupabase();
-      if (cloudStalls && cloudStalls.length > 0) {
-        const updated = cloudStalls.map((s: any) => {
-          const local = localMap.get(s.id?.toLowerCase());
-          const localCount = localLeads.filter((l) => l.exhibitionId === s.id).length;
-          const totalCount = Math.max(s.leadCount || 0, localCount);
-          return {
-            ...s,
-            marketingRepIds: s.marketingRepIds || local?.marketingRepIds || '',
-            marketingRepNames: s.marketingRepNames || local?.marketingRepNames || '',
-            leadCount: totalCount
-          };
-        });
-        this.stalls.set(updated);
-        return;
+      const apiMapById = new Map<string, any>();
+      const apiMapByCode = new Map<string, any>();
+      for (const a of (apiStalls || [])) {
+        if (a.id) apiMapById.set(a.id.toLowerCase(), a);
+        if (a.code) {
+          apiMapByCode.set(a.code.toLowerCase(), a);
+          const baseCode = a.code.split('-').slice(0, 3).join('-').toLowerCase();
+          if (!apiMapByCode.has(baseCode)) apiMapByCode.set(baseCode, a);
+        }
       }
 
-      // 2. Query backend
-      this.http.get<StallMasterDto[]>(this.apiUrl).subscribe({
-        next: (res) => {
-          if (res) {
-            const updated = res.map((s) => {
-              const localCount = localLeads.filter((l) => l.exhibitionId === s.id).length;
-              const totalCount = Math.max(s.leadCount || 0, localCount);
-              return { ...s, leadCount: totalCount };
-            });
-            this.stalls.set(updated);
-            // Synchronize backend stalls to Supabase
-            for (const st of res) {
-              this.supabaseSync.saveStallToSupabase(st);
-            }
-          }
-        },
-        error: () => {
-          this.stalls.set([]);
+      const localMap = new Map<string, any>(localStalls.map((s: any) => [s.id?.toLowerCase(), s]));
+      const stallMap = new Map<string, StallMasterDto>();
+
+      const processRecord = (s: any) => {
+        if (!s.id) return;
+        const idKey = s.id.toLowerCase();
+        const codeKey = (s.code || '').toLowerCase();
+        const baseCodeKey = (s.code || '').split('-').slice(0, 3).join('-').toLowerCase();
+
+        const apiMatch = apiMapById.get(idKey) || apiMapByCode.get(codeKey) || apiMapByCode.get(baseCodeKey);
+        const local = localMap.get(idKey);
+
+        const localCount = localLeads.filter((l: any) => l.exhibitionId === s.id || l.stallId === s.id).length;
+        const totalCount = Math.max(s.leadCount || 0, apiMatch?.leadCount || 0, localCount);
+
+        const full: StallMasterDto = {
+          id: s.id,
+          name: s.name || apiMatch?.name || 'Unnamed Stall',
+          code: s.code || apiMatch?.code || '',
+          eventName: s.eventName || apiMatch?.eventName || '',
+          organizer: s.organizer || apiMatch?.organizer || '',
+          durationDays: s.durationDays || apiMatch?.durationDays || 3,
+          startDate: s.startDate || apiMatch?.startDate || '',
+          endDate: s.endDate || apiMatch?.endDate || '',
+          location: s.location || apiMatch?.location || '',
+          hallNumber: s.hallNumber || apiMatch?.hallNumber || '',
+          boothNumber: s.boothNumber || apiMatch?.boothNumber || '',
+          ownerId: s.ownerId || apiMatch?.ownerId || local?.ownerId || '',
+          ownerName: s.ownerName || apiMatch?.ownerName || local?.ownerName || '',
+          status: s.status || apiMatch?.status || 'Active',
+          leadCount: totalCount,
+          createdAt: s.createdAt || apiMatch?.createdAt || new Date().toISOString(),
+          exhibitionId: s.exhibitionId || apiMatch?.exhibitionId || undefined,
+          marketingRepIds: s.marketingRepIds || apiMatch?.marketingRepIds || local?.marketingRepIds || '',
+          marketingRepNames: s.marketingRepNames || apiMatch?.marketingRepNames || local?.marketingRepNames || ''
+        };
+
+        stallMap.set(idKey, full);
+      };
+
+      for (const cs of (cloudStalls || [])) {
+        processRecord(cs);
+      }
+      for (const as of (apiStalls || [])) {
+        if (!stallMap.has((as.id || '').toLowerCase())) {
+          processRecord(as);
         }
-      });
+      }
+
+      const merged = Array.from(stallMap.values());
+      this.stalls.set(merged);
+
+      // Cache locally
+      for (const st of merged) {
+        await this.db.saveStall(st as any);
+      }
     } catch {
       this.stalls.set([]);
     }

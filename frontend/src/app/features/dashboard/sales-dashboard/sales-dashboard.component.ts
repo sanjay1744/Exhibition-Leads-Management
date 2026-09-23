@@ -12,7 +12,29 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SyncService } from '../../../core/services/sync.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { SupabaseSyncService } from '../../../core/services/supabase-sync.service';
+import { UserService } from '../../../core/services/user.service';
+import { AppUser } from '../../../core/models/user.model';
 import { getApiUrl } from '../../../core/config/api.config';
+
+export interface AgentLeadMetric {
+  agentId: string;
+  name: string;
+  username?: string;
+  email?: string;
+  role: string;
+  totalLeads: number;
+  pctOfTotal: number;
+  hotCount: number;
+  warmCount: number;
+  coldCount: number;
+  ocrCount: number;
+  qrCount: number;
+  voiceCount: number;
+  manualCount: number;
+  latestLeadTime?: string;
+  rank: number;
+  initials: string;
+}
 
 @Component({
   selector: 'app-sales-dashboard',
@@ -32,6 +54,7 @@ export class SalesDashboardComponent implements OnInit {
   private router = inject(Router);
   stallService = inject(StallService);
   exhibitionService = inject(ExhibitionService);
+  userService = inject(UserService);
   network = inject(NetworkService);
 
   allLeads = signal<LocalLead[]>([]);
@@ -43,12 +66,51 @@ export class SalesDashboardComponent implements OnInit {
   targetExhibitionId = signal<string>('');
   targetStallId = signal<string>('');
 
+  // Role Detection Signals
+  isSuperAdmin = computed(() => this.auth.currentUser()?.role === 'SuperAdmin');
+  isAdmin = computed(() => this.auth.currentUser()?.role === 'Admin');
+  isStallOwner = computed(() => this.auth.currentUser()?.role === 'StallOwner');
+  isMarketing = computed(() => this.auth.currentUser()?.role === 'Marketing');
+
+  hasAdminAssignedExhibition = computed(() => {
+    if (!this.isAdmin()) return true;
+    return this.availableExhibitions().length > 0;
+  });
+
   availableExhibitions = computed(() => {
     const list = this.exhibitionService.exhibitions();
-    if (this.auth.isStallOwner() || this.auth.isMarketing()) {
+    const user = this.auth.currentUser();
+    if (!user) return [];
+
+    // 1. SuperAdmin: can see the entire every details and every info
+    if (user.role === 'SuperAdmin') {
+      return list;
+    }
+
+    // 2. Admin: only details of the exhibition(s) that they have been assigned
+    if (user.role === 'Admin') {
+      const myId = user.id?.toLowerCase();
+      const myUsername = user.username?.toLowerCase();
+      const myFullName = user.fullName?.toLowerCase();
+
+      return list.filter(e => {
+        const adminId = e.adminId?.toLowerCase();
+        const adminName = e.adminName?.toLowerCase();
+        return (
+          (adminId && myId && adminId === myId) ||
+          (adminName && myUsername && adminName === myUsername) ||
+          (adminName && myFullName && adminName === myFullName) ||
+          ((user as any).assignedExhibitionId && (user as any).assignedExhibitionId === e.id)
+        );
+      });
+    }
+
+    // 3. StallOwner & 4. Marketing: only exhibitions containing their assigned stalls
+    if (user.role === 'StallOwner' || user.role === 'Marketing') {
       const myStallExhIds = new Set(this.stallService.stalls().map((s) => s.exhibitionId).filter(Boolean));
       return list.filter((e) => myStallExhIds.has(e.id));
     }
+
     return list;
   });
 
@@ -76,13 +138,14 @@ export class SalesDashboardComponent implements OnInit {
   currentUser = this.auth.currentUser();
 
   canCreateStall = computed(() => {
-    const role = this.currentUser?.role;
-    return role === 'SuperAdmin' || role === 'Admin' || role === 'StallOwner';
+    const role = this.auth.currentUser()?.role;
+    return role === 'SuperAdmin' || role === 'Admin';
   });
 
   async ngOnInit(): Promise<void> {
-    this.exhibitionService.loadExhibitions();
-    this.stallService.loadStalls();
+    await this.exhibitionService.loadExhibitions();
+    await this.stallService.loadStalls();
+    await this.userService.initUsers();
     try {
       const cloudLeads = await this.supabaseSync.getAllLeadsFromSupabase();
       if (cloudLeads && cloudLeads.length > 0) {
@@ -94,6 +157,16 @@ export class SalesDashboardComponent implements OnInit {
 
     const list = await this.db.getAllLeads();
     this.allLeads.set(list);
+
+    // Auto-select initial exhibition and stall for non-SuperAdmins if they have single assignment
+    const available = this.availableExhibitions();
+    if (available.length === 1 && this.selectedExhibitionId() === 'ALL') {
+      this.selectedExhibitionId.set(available[0].id);
+    }
+    const myStalls = this.stallService.stalls();
+    if (myStalls.length === 1 && this.selectedStallId() === 'ALL') {
+      this.selectedStallId.set(myStalls[0].id);
+    }
   }
 
   openTargetSelectionModal(): void {
@@ -151,13 +224,17 @@ export class SalesDashboardComponent implements OnInit {
   });
 
   getSelectedExhibitionName(): string {
-    if (this.selectedExhibitionId() === 'ALL') return 'All Exhibitions';
+    if (this.selectedExhibitionId() === 'ALL') {
+      return this.isSuperAdmin() ? 'All Exhibitions' : (this.availableExhibitions().length === 1 ? `${this.availableExhibitions()[0].name} (${this.availableExhibitions()[0].code})` : 'All My Exhibitions');
+    }
     const found = this.availableExhibitions().find((e) => e.id === this.selectedExhibitionId());
-    return found ? `${found.name} (${found.code})` : 'All Exhibitions';
+    return found ? `${found.name} (${found.code})` : (this.isSuperAdmin() ? 'All Exhibitions' : 'All My Exhibitions');
   }
 
   getSelectedStallName(): string {
-    if (this.selectedStallId() === 'ALL') return 'All Stalls (All Leads)';
+    if (this.selectedStallId() === 'ALL') {
+      return this.isSuperAdmin() ? 'All Stalls (All Leads)' : (this.dropdownStalls().length === 1 ? `${this.dropdownStalls()[0].name} (${this.dropdownStalls()[0].code})` : 'All My Stalls');
+    }
     const found = this.stallService.stalls().find((s) => s.id === this.selectedStallId());
     return found ? `${found.name} (${found.code})` : 'All Stalls (All Leads)';
   }
@@ -215,16 +292,41 @@ export class SalesDashboardComponent implements OnInit {
 
   filteredStallLeads = computed(() => {
     let list = this.allLeads();
+    const user = this.auth.currentUser();
     const exhId = this.selectedExhibitionId();
     const stallId = this.selectedStallId();
 
-    // 1. Filter by Exhibition if not ALL
+    // 1. Strict Role Scoping
+    if (user) {
+      if (user.role === 'Admin') {
+        const myExhIds = new Set(this.availableExhibitions().map(e => e.id));
+        const myStallIds = new Set(this.stallService.stalls().map(s => s.id));
+        list = list.filter(l => 
+          (l.exhibitionId && myExhIds.has(l.exhibitionId)) || 
+          (l.stallId && myStallIds.has(l.stallId))
+        );
+      } else if (user.role === 'StallOwner') {
+        const myStallIds = new Set(this.stallService.stalls().map(s => s.id));
+        list = list.filter(l => 
+          (l.stallId && myStallIds.has(l.stallId)) || 
+          (l.exhibitionId && myStallIds.has(l.exhibitionId))
+        );
+      } else if (user.role === 'Marketing') {
+        const myStallIds = new Set(this.stallService.stalls().map(s => s.id));
+        list = list.filter(l => 
+          (l.stallId && myStallIds.has(l.stallId)) || 
+          (l.exhibitionId && myStallIds.has(l.exhibitionId))
+        );
+      }
+    }
+
+    // 2. Filter by Exhibition if not ALL
     if (exhId && exhId !== 'ALL') {
       const stallsInExh = new Set(this.stallService.stalls().filter(s => s.exhibitionId === exhId).map(s => s.id));
       list = list.filter(l => l.exhibitionId === exhId || (l.stallId && stallsInExh.has(l.stallId)) || (!l.stallId && stallsInExh.has(l.exhibitionId)));
     }
 
-    // 2. Filter by Stall if not ALL
+    // 3. Filter by Stall if not ALL
     if (stallId && stallId !== 'ALL') {
       list = list.filter(l => l.stallId === stallId || l.exhibitionId === stallId);
     }
@@ -237,6 +339,9 @@ export class SalesDashboardComponent implements OnInit {
     if (exhId && exhId !== 'ALL') {
       return this.availableExhibitions().find(e => e.id === exhId) || null;
     }
+    if (this.availableExhibitions().length === 1) {
+      return this.availableExhibitions()[0];
+    }
     const activeStall = this.stallService.activeStall();
     if (this.selectedStallId() !== 'ALL' && activeStall?.exhibitionId) {
       return this.availableExhibitions().find(e => e.id === activeStall.exhibitionId) || null;
@@ -245,6 +350,12 @@ export class SalesDashboardComponent implements OnInit {
   });
 
   activeStallReps = computed<string[]>(() => {
+    const user = this.auth.currentUser();
+    // Requirement 4: Marketing reps should only have stall details and NOT other co-marketing reps details!
+    if (user && user.role === 'Marketing') {
+      return [user.fullName || user.username];
+    }
+
     if (this.selectedStallId() === 'ALL') {
       const set = new Set<string>();
       for (const s of this.dropdownStalls()) {
@@ -405,32 +516,329 @@ export class SalesDashboardComponent implements OnInit {
     ];
   });
 
-  // Recent leads live stream (last 6 leads)
-  recentLeads = computed(() => {
-    const copy = [...this.filteredStallLeads()];
-    copy.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    return copy.slice(0, 6);
-  });
+  // Agent Search & Filtering Signals
+  agentSearchQuery = signal<string>('');
+  selectedAgentFilter = signal<string>('ALL');
 
-  // Stall Team Attribution
-  repAttribution = computed(() => {
-    const leads = this.filteredStallLeads();
-    const total = leads.length || 1;
-    const map = new Map<string, number>();
+  /**
+   * Resolves a repId into a human-readable agent profile with role and contact info
+   */
+  resolveAgentInfo(repId?: string): { id: string; name: string; username?: string; email?: string; role: string } {
+    const users = this.userService.users();
+    const raw = (repId || '').trim();
 
-    for (const l of leads) {
-      const rep = l.repId || 'Stall Rep';
-      map.set(rep, (map.get(rep) || 0) + 1);
+    // 1. Match by user ID
+    if (raw) {
+      const byId = users.find(u => u.id === raw);
+      if (byId) {
+        return {
+          id: byId.id,
+          name: byId.fullName || byId.username,
+          username: byId.username,
+          email: byId.email,
+          role: byId.role || byId.userGroup || 'Marketing'
+        };
+      }
+
+      // 2. Match by username (case insensitive)
+      const byUsername = users.find(u => u.username && u.username.toLowerCase() === raw.toLowerCase());
+      if (byUsername) {
+        return {
+          id: byUsername.id,
+          name: byUsername.fullName || byUsername.username,
+          username: byUsername.username,
+          email: byUsername.email,
+          role: byUsername.role || byUsername.userGroup || 'Marketing'
+        };
+      }
+
+      // 3. Match by email
+      const byEmail = users.find(u => u.email && u.email.toLowerCase() === raw.toLowerCase());
+      if (byEmail) {
+        return {
+          id: byEmail.id,
+          name: byEmail.fullName || byEmail.username,
+          username: byEmail.username,
+          email: byEmail.email,
+          role: byEmail.role || byEmail.userGroup || 'Marketing'
+        };
+      }
+
+      // 4. Match by full name
+      const byName = users.find(u => u.fullName && u.fullName.toLowerCase() === raw.toLowerCase());
+      if (byName) {
+        return {
+          id: byName.id,
+          name: byName.fullName,
+          username: byName.username,
+          email: byName.email,
+          role: byName.role || byName.userGroup || 'Marketing'
+        };
+      }
     }
 
-    const items: { name: string; count: number; pct: number }[] = [];
-    map.forEach((count, name) => {
-      items.push({ name, count, pct: Math.round((count / total) * 100) });
+    // 5. Current logged in user fallback
+    const cur = this.auth.currentUser();
+    if (cur && (raw === cur.id || (raw && (raw.toLowerCase() === cur.username?.toLowerCase() || raw.toLowerCase() === cur.fullName?.toLowerCase())))) {
+      return {
+        id: cur.id || cur.username,
+        name: cur.fullName || cur.username,
+        username: cur.username,
+        email: cur.email,
+        role: cur.role
+      };
+    }
+
+    // 6. Check if 00000000-0000-0000-0000-000000000000 or empty
+    if (!raw || raw === '00000000-0000-0000-0000-000000000000') {
+      if (cur) {
+        return {
+          id: cur.id || 'admin',
+          name: cur.fullName || cur.username || 'System Admin',
+          username: cur.username,
+          email: cur.email,
+          role: cur.role || 'Admin'
+        };
+      }
+      const admin = users.find(u => u.role === 'SuperAdmin' || u.role === 'Admin');
+      if (admin) {
+        return {
+          id: admin.id,
+          name: admin.fullName || admin.username,
+          username: admin.username,
+          email: admin.email,
+          role: admin.role
+        };
+      }
+      return {
+        id: 'default-admin',
+        name: 'Primary Administrator',
+        role: 'Admin'
+      };
+    }
+
+    // 7. If it's a readable name string (not a raw uuid)
+    if (!raw.includes('-') || raw.length < 20) {
+      return {
+        id: raw.toLowerCase().replace(/\s+/g, '-'),
+        name: raw,
+        role: 'Field Agent'
+      };
+    }
+
+    // 8. UUID that doesn't match any known user
+    return {
+      id: raw,
+      name: `Agent (${raw.slice(0, 8)})`,
+      role: 'Field Rep'
+    };
+  }
+
+  // All agents who have created at least one lead for the selected view
+  agentMetrics = computed<AgentLeadMetric[]>(() => {
+    const user = this.auth.currentUser();
+    const leads = this.filteredStallLeads();
+    const total = leads.length || 1;
+
+    // Requirement 4: Marketing reps should only have stall details and NOT other co-marketing reps details!
+    if (user && user.role === 'Marketing') {
+      const myInfo = this.resolveAgentInfo(user.id);
+      const myId = user.id?.toLowerCase().trim();
+      const myUsername = user.username?.toLowerCase().trim();
+      const myFullName = user.fullName?.toLowerCase().trim();
+
+      // Filter to leads personally captured by this marketing rep for their personal attribution card
+      const myLeads = leads.filter((l) => {
+        const rep = (l.repId || '').toLowerCase().trim();
+        return (
+          (myId && rep === myId) ||
+          (myUsername && rep === myUsername) ||
+          (myFullName && rep === myFullName)
+        );
+      });
+
+      const count = myLeads.length;
+      const hotCount = myLeads.filter(l => l.interestLevel === 'Hot').length;
+      const warmCount = myLeads.filter(l => l.interestLevel === 'Warm').length;
+      const coldCount = myLeads.filter(l => l.interestLevel === 'Cold' || !l.interestLevel).length;
+
+      const ocrCount = myLeads.filter(l => l.captureMethod === 'card_ocr').length;
+      const qrCount = myLeads.filter(l => l.captureMethod === 'qr_scan').length;
+      const voiceCount = myLeads.filter(l => l.captureMethod === 'voice_note').length;
+      const manualCount = myLeads.filter(l => l.captureMethod === 'manual').length;
+
+      let latestTime: string | undefined = undefined;
+      if (myLeads.length > 0) {
+        const sorted = [...myLeads].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        latestTime = sorted[0].createdAt;
+      }
+
+      return [{
+        agentId: myInfo.id,
+        name: myInfo.name,
+        username: myInfo.username,
+        email: myInfo.email,
+        role: 'Marketing Rep',
+        totalLeads: count,
+        pctOfTotal: total > 0 ? Math.min(100, Math.round((count / total) * 100)) : 100,
+        hotCount,
+        warmCount,
+        coldCount,
+        ocrCount,
+        qrCount,
+        voiceCount,
+        manualCount,
+        latestLeadTime: latestTime,
+        rank: 1,
+        initials: this.getInitials(myInfo.name)
+      }];
+    }
+
+    const map = new Map<string, {
+      info: { id: string; name: string; username?: string; email?: string; role: string };
+      leads: LocalLead[];
+    }>();
+
+    for (const l of leads) {
+      const info = this.resolveAgentInfo(l.repId);
+      if (!map.has(info.id)) {
+        map.set(info.id, { info, leads: [] });
+      }
+      map.get(info.id)!.leads.push(l);
+    }
+
+    const list: AgentLeadMetric[] = [];
+
+    map.forEach(({ info, leads: agentLeads }) => {
+      // Requirement 3: Stall owners should only have details related to their stalls and the marketing rep associated to that stalls
+      if (user && user.role === 'StallOwner') {
+        const myStallRepNames = new Set<string>();
+        for (const s of this.stallService.stalls()) {
+          if (s.ownerName) myStallRepNames.add(s.ownerName.toLowerCase());
+          if (s.marketingRepNames) {
+            s.marketingRepNames.split(',').forEach(r => myStallRepNames.add(r.trim().toLowerCase()));
+          }
+        }
+        const isAssociated = myStallRepNames.has(info.name.toLowerCase()) || 
+                             (info.username && myStallRepNames.has(info.username.toLowerCase())) ||
+                             info.id === user.id;
+        if (!isAssociated) return;
+      }
+
+      const count = agentLeads.length;
+      const hotCount = agentLeads.filter(l => l.interestLevel === 'Hot').length;
+      const warmCount = agentLeads.filter(l => l.interestLevel === 'Warm').length;
+      const coldCount = agentLeads.filter(l => l.interestLevel === 'Cold' || !l.interestLevel).length;
+
+      const ocrCount = agentLeads.filter(l => l.captureMethod === 'card_ocr').length;
+      const qrCount = agentLeads.filter(l => l.captureMethod === 'qr_scan').length;
+      const voiceCount = agentLeads.filter(l => l.captureMethod === 'voice_note').length;
+      const manualCount = agentLeads.filter(l => l.captureMethod === 'manual').length;
+
+      let latestTime: string | undefined = undefined;
+      if (agentLeads.length > 0) {
+        const sorted = [...agentLeads].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        latestTime = sorted[0].createdAt;
+      }
+
+      list.push({
+        agentId: info.id,
+        name: info.name,
+        username: info.username,
+        email: info.email,
+        role: info.role,
+        totalLeads: count,
+        pctOfTotal: Math.round((count / total) * 100),
+        hotCount,
+        warmCount,
+        coldCount,
+        ocrCount,
+        qrCount,
+        voiceCount,
+        manualCount,
+        latestLeadTime: latestTime,
+        rank: 0,
+        initials: this.getInitials(info.name)
+      });
     });
 
-    items.sort((a, b) => b.count - a.count);
-    return items.slice(0, 4);
+    list.sort((a, b) => b.totalLeads - a.totalLeads);
+
+    list.forEach((item, index) => {
+      item.rank = index + 1;
+    });
+
+    return list;
   });
+
+  filteredAgentMetrics = computed<AgentLeadMetric[]>(() => {
+    const query = this.agentSearchQuery().toLowerCase().trim();
+    const list = this.agentMetrics();
+    if (!query) return list;
+    return list.filter(a => 
+      a.name.toLowerCase().includes(query) || 
+      (a.email && a.email.toLowerCase().includes(query)) ||
+      (a.username && a.username.toLowerCase().includes(query)) ||
+      a.role.toLowerCase().includes(query)
+    );
+  });
+
+  topAgent = computed<AgentLeadMetric | null>(() => {
+    const list = this.agentMetrics();
+    return list.length > 0 ? list[0] : null;
+  });
+
+  assignedRepsWithNoLeads = computed<string[]>(() => {
+    // Marketing reps must NOT see other co-marketing reps details!
+    if (this.isMarketing()) return [];
+
+    const activeReps = this.activeStallReps();
+    if (activeReps.length === 0) return [];
+    const activeNames = new Set(this.agentMetrics().map(a => a.name.toLowerCase()));
+    return activeReps.filter(r => !activeNames.has(r.toLowerCase()));
+  });
+
+  // Stall Team Attribution for sidebar widget (using clean human names)
+  repAttribution = computed(() => {
+    return this.agentMetrics().map(a => ({
+      name: a.name,
+      count: a.totalLeads,
+      pct: a.pctOfTotal,
+      role: a.role,
+      initials: a.initials
+    })).slice(0, 5);
+  });
+
+  // Recent leads live stream (filtered by agent if an agent is selected)
+  recentLeads = computed(() => {
+    const copy = [...this.filteredStallLeads()];
+    const agentFilter = this.selectedAgentFilter();
+    let result = copy;
+    if (agentFilter && agentFilter !== 'ALL') {
+      result = copy.filter(l => this.resolveAgentInfo(l.repId).id === agentFilter);
+    }
+    result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return result.slice(0, 8);
+  });
+
+  getAgentName(repId?: string): string {
+    return this.resolveAgentInfo(repId).name;
+  }
+
+  toggleAgentFilter(agentId: string): void {
+    if (this.selectedAgentFilter() === agentId) {
+      this.selectedAgentFilter.set('ALL');
+    } else {
+      this.selectedAgentFilter.set(agentId);
+    }
+  }
+
+  getSelectedAgentName(): string {
+    const filter = this.selectedAgentFilter();
+    if (filter === 'ALL') return 'All Agents';
+    const found = this.agentMetrics().find(a => a.agentId === filter);
+    return found ? found.name : 'Selected Agent';
+  }
 
   // Selected lead for quick view modal
   selectedLeadForQuickView = signal<LocalLead | null>(null);

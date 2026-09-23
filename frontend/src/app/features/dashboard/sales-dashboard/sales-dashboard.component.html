@@ -1,4 +1,19 @@
 <div>
+  <!-- Unassigned Admin Notice Banner -->
+  @if (isAdmin() && !hasAdminAssignedExhibition()) {
+    <div class="mb-6 p-5 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-start gap-4 shadow-xs">
+      <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+        <span class="material-icons text-xl">warning_amber</span>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-sm font-black text-amber-900 uppercase tracking-wide">No Exhibition Assigned Yet</h3>
+        <p class="text-xs text-amber-800 mt-1 leading-relaxed font-medium">
+          Your Admin account is currently not assigned to any exhibition. A SuperAdmin can assign you to an exhibition in the Exhibitions section. Once assigned, you will see all stall details, stall owners, marketing reps, and leads for that exhibition here.
+        </p>
+      </div>
+    </div>
+  }
+
   <!-- Top Hero: Exhibition & Stall Command Banner -->
   <div class="bg-white border border-slate-200/90 rounded-2xl shadow-xs mb-6 relative z-30">
     <div class="h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 w-full rounded-t-2xl"></div>
@@ -43,7 +58,7 @@
                           class="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-between"
                           [ngClass]="selectedExhibitionId() === 'ALL' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'"
                         >
-                          <span>All Exhibitions</span>
+                          <span>{{ isSuperAdmin() ? 'All Exhibitions' : 'All My Exhibitions (' + availableExhibitions().length + ')' }}</span>
                           @if (selectedExhibitionId() === 'ALL') {
                             <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
@@ -190,7 +205,7 @@
             @for (rep of activeStallReps(); track rep) {
               <div class="inline-flex items-center gap-1 text-[11px] bg-blue-50/70 text-blue-700 px-2 py-0.5 rounded-md font-semibold border border-blue-200/60">
                 <span class="material-icons text-[10px] text-blue-500">person</span>
-                {{ rep }}
+                {{ rep }} {{ isMarketing() ? '(You)' : '' }}
               </div>
             }
           </div>
@@ -530,14 +545,18 @@
         } @else {
           <div class="space-y-3">
             @for (rep of repAttribution(); track rep.name) {
-              <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+              <div 
+                (click)="toggleAgentFilter(rep.name)"
+                class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all cursor-pointer group"
+                [ngClass]="selectedAgentFilter() === rep.name ? 'ring-2 ring-indigo-500/30 bg-indigo-50/50 border-indigo-300' : ''"
+              >
                 <div class="flex items-center gap-2.5 min-w-0">
                   <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-xs flex items-center justify-center shrink-0">
-                    {{ getInitials(rep.name) }}
+                    {{ rep.initials }}
                   </div>
                   <div class="truncate">
-                    <div class="text-xs font-bold text-slate-800 truncate">{{ rep.name }}</div>
-                    <div class="text-[10px] text-slate-500 font-medium">{{ rep.pct }}% of stall total</div>
+                    <div class="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors truncate">{{ rep.name }}</div>
+                    <div class="text-[10px] text-slate-500 font-medium">{{ rep.pct }}% of stall total • <span class="capitalize">{{ rep.role }}</span></div>
                   </div>
                 </div>
                 <div class="text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-lg shrink-0">
@@ -552,6 +571,423 @@
     </div>
   </div>
 
+  @if (isMarketing()) {
+    <!-- Marketing Rep Personal Performance & Contribution View -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden mb-8">
+      <div class="p-5 md:p-6 border-b border-slate-100 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+            <span class="material-icons text-xl">badge</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-black text-slate-900 uppercase tracking-wide">My Lead Capture Performance & Contribution</h2>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
+                Assigned Booth Representative
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">
+              Your personal visitor acquisition volume, conversion pipeline readiness, and capture tool utilization at {{ stallService.activeStall()?.name || 'your stall' }}
+            </p>
+          </div>
+        </div>
+
+        <button 
+          type="button" 
+          (click)="openTargetSelectionModal()" 
+          class="px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer self-start md:self-auto"
+        >
+          <span class="material-icons text-xs">add</span>
+          <span>Capture Lead Now</span>
+        </button>
+      </div>
+
+      <!-- Marketing Rep Personal Metrics Showcase Grid -->
+      @if (agentMetrics().length > 0) {
+        @let me = agentMetrics()[0];
+        <div class="p-5 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Total Captured Card -->
+          <div class="bg-gradient-to-br from-indigo-50/70 via-white to-blue-50/40 rounded-2xl border border-indigo-100 p-5 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black uppercase tracking-wider text-indigo-700">Total Leads Captured</span>
+              <span class="material-icons text-indigo-400 text-lg">auto_awesome</span>
+            </div>
+            <div class="my-3">
+              <div class="text-3xl font-black text-slate-900">{{ me.totalLeads }}</div>
+              <div class="text-[11px] text-slate-500 font-semibold mt-1">
+                {{ me.totalLeads > 0 ? 'Last capture ' + formatRelativeTime(me.latestLeadTime) : 'Ready to capture your first visitor' }}
+              </div>
+            </div>
+            <div class="pt-2 border-t border-indigo-100/80 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500 font-bold">Stall Contribution</span>
+              <span class="font-extrabold text-indigo-700">100% of your targets</span>
+            </div>
+          </div>
+
+          <!-- Quality Breakdown Card -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-5 flex flex-col justify-between shadow-2xs">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black uppercase tracking-wider text-slate-700">Lead Quality Pipeline</span>
+              <span class="material-icons text-amber-500 text-lg">local_fire_department</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 my-3 text-center">
+              <div class="p-2.5 rounded-xl bg-red-50/80 border border-red-100">
+                <div class="text-lg font-black text-red-700">{{ me.hotCount }}</div>
+                <div class="text-[10px] font-extrabold text-red-600 uppercase">🔥 Hot</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-amber-50/80 border border-amber-100">
+                <div class="text-lg font-black text-amber-700">{{ me.warmCount }}</div>
+                <div class="text-[10px] font-extrabold text-amber-600 uppercase">⚡ Warm</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-blue-50/80 border border-blue-100">
+                <div class="text-lg font-black text-blue-700">{{ me.coldCount }}</div>
+                <div class="text-[10px] font-extrabold text-blue-600 uppercase">❄️ Cold</div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium">
+              High intent conversions ready for immediate CRM follow-up
+            </div>
+          </div>
+
+          <!-- Capture Tool Usage Card -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-5 flex flex-col justify-between shadow-2xs">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black uppercase tracking-wider text-slate-700">Capture Tools Used</span>
+              <span class="material-icons text-emerald-500 text-lg">devices</span>
+            </div>
+            <div class="flex flex-wrap gap-2 my-3">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/80">
+                📇 OCR: {{ me.ocrCount }}
+              </span>
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                📱 QR: {{ me.qrCount }}
+              </span>
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/80">
+                🎙️ Voice: {{ me.voiceCount }}
+              </span>
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/80">
+                ✍️ Form: {{ me.manualCount }}
+              </span>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium">
+              AI-powered multi-modal intake channels active
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- Dedicated Agents Lead Generation Directory & Leaderboard Section -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden mb-8">
+      
+      <!-- Header with Search & Metrics -->
+      <div class="p-5 md:p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200/60 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+            <span class="material-icons text-xl">groups</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-black text-slate-900 uppercase tracking-wide">
+                {{ isStallOwner() ? 'Stall Team Lead Generation Directory' : isAdmin() ? 'Exhibition Team & Stall Reps Directory' : 'Agents Lead Generation Directory' }}
+              </h2>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800">
+                {{ agentMetrics().length }} Active Creators
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">
+              {{ isStallOwner() ? 'Marketing representatives assigned to your stalls and their lead generation metrics' : isAdmin() ? 'Marketing representatives and stall owners within your assigned exhibition' : 'Complete list of all agents who have captured leads, their total creation volume, and conversion readiness' }}
+            </p>
+          </div>
+        </div>
+
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Search Agent Input -->
+        <div class="relative min-w-[200px] sm:min-w-[240px]">
+          <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">search</span>
+          <input 
+            [(ngModel)]="agentSearchQuery" 
+            type="text" 
+            placeholder="Search agent name or role..." 
+            class="w-full bg-white pl-8 pr-3 py-1.5 text-xs font-semibold text-slate-800 placeholder-slate-400 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-2xs"
+          />
+        </div>
+
+        <!-- Active Filter Indicator & Reset -->
+        @if (selectedAgentFilter() !== 'ALL') {
+          <button 
+            type="button"
+            (click)="selectedAgentFilter.set('ALL')"
+            class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 font-extrabold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <span>Filter: {{ getSelectedAgentName() }}</span>
+            <span class="material-icons text-xs">close</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Top 3 Podium Highlights (if >= 1 agent has captured leads) -->
+    @if (filteredAgentMetrics().length > 0) {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5 md:p-6 bg-gradient-to-b from-slate-50/60 via-white to-white border-b border-slate-100">
+        @for (agent of filteredAgentMetrics().slice(0, 3); track agent.agentId) {
+          <div 
+            class="rounded-2xl border p-4.5 transition-all shadow-xs relative overflow-hidden flex flex-col justify-between"
+            [ngClass]="{
+              'border-amber-300/90 bg-gradient-to-br from-amber-50/40 via-white to-amber-50/20': agent.rank === 1,
+              'border-slate-300/90 bg-gradient-to-br from-slate-50/40 via-white to-slate-50/20': agent.rank === 2,
+              'border-orange-300/80 bg-gradient-to-br from-orange-50/30 via-white to-orange-50/10': agent.rank === 3
+            }"
+          >
+            <!-- Rank Header Badge -->
+            <div class="flex items-center justify-between mb-3">
+              <div class="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg"
+                [ngClass]="{
+                  'bg-amber-100 text-amber-900 border border-amber-300': agent.rank === 1,
+                  'bg-slate-200 text-slate-800 border border-slate-300': agent.rank === 2,
+                  'bg-orange-100 text-orange-900 border border-orange-300': agent.rank === 3
+                }"
+              >
+                <span>{{ agent.rank === 1 ? '🥇 #1 Top Producer' : agent.rank === 2 ? '🥈 #2 Producer' : '🥉 #3 Producer' }}</span>
+              </div>
+
+              <span class="text-[11px] font-bold text-slate-500">
+                {{ agent.pctOfTotal }}% of total
+              </span>
+            </div>
+
+            <!-- Agent Info & Big Leads Count -->
+            <div class="flex items-start justify-between gap-3 mb-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <div 
+                  class="w-11 h-11 rounded-2xl text-white font-black text-sm flex items-center justify-center shrink-0 shadow-xs"
+                  [ngClass]="{
+                    'bg-gradient-to-br from-amber-500 to-yellow-600': agent.rank === 1,
+                    'bg-gradient-to-br from-slate-600 to-slate-800': agent.rank === 2,
+                    'bg-gradient-to-br from-orange-500 to-amber-700': agent.rank === 3
+                  }"
+                >
+                  {{ agent.initials }}
+                </div>
+                <div class="min-w-0">
+                  <div class="text-sm font-extrabold text-slate-900 truncate">{{ agent.name }}</div>
+                  <div class="text-[11px] font-bold text-indigo-600 truncate">{{ agent.role }}</div>
+                  @if (agent.email) {
+                    <div class="text-[10px] text-slate-400 truncate">{{ agent.email }}</div>
+                  }
+                </div>
+              </div>
+
+              <div class="text-right shrink-0">
+                <div class="text-2xl font-black text-slate-900 tracking-tight leading-none">{{ agent.totalLeads }}</div>
+                <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mt-0.5">Leads</div>
+              </div>
+            </div>
+
+            <!-- Quality Breakdown Chips & Action -->
+            <div class="space-y-3 pt-2 border-t border-slate-100">
+              <!-- Lead Quality Distribution -->
+              <div class="flex items-center justify-between text-[11px] font-bold">
+                <span class="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded-md">
+                  🔥 {{ agent.hotCount }} Hot
+                </span>
+                <span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-md">
+                  ⚡ {{ agent.warmCount }} Warm
+                </span>
+                <span class="inline-flex items-center gap-1 text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                  ❄️ {{ agent.coldCount }} Cold
+                </span>
+              </div>
+
+              <!-- Interactive Filter Button -->
+              <button 
+                type="button"
+                (click)="toggleAgentFilter(agent.agentId)"
+                class="w-full text-xs font-bold py-1.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                [ngClass]="selectedAgentFilter() === agent.agentId ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'"
+              >
+                <span class="material-icons text-xs">{{ selectedAgentFilter() === agent.agentId ? 'check_circle' : 'filter_alt' }}</span>
+                <span>{{ selectedAgentFilter() === agent.agentId ? 'Viewing Leads (Click to Reset)' : 'View This Agent\'s Leads' }}</span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Complete Agents Table -->
+    @if (filteredAgentMetrics().length === 0) {
+      <div class="text-center py-12 px-4">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto mb-3">
+          <span class="material-icons text-2xl">person_search</span>
+        </div>
+        <h3 class="text-xs font-bold text-slate-800">No agent lead activity found</h3>
+        <p class="text-[11px] text-slate-500 max-w-sm mx-auto mt-1">
+          {{ agentSearchQuery() ? 'No agent matching "' + agentSearchQuery() + '". Clear the search to see all agents.' : 'No leads have been recorded by agents for this exhibition/stall selection yet.' }}
+        </p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-slate-100 bg-slate-50/80 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+              <th class="py-3 px-4 w-14 text-center">Rank</th>
+              <th class="py-3 px-4">Agent / Creator</th>
+              <th class="py-3 px-4">Role</th>
+              <th class="py-3 px-4">Leads Created & Share</th>
+              <th class="py-3 px-4">Lead Quality Funnel</th>
+              <th class="py-3 px-4">Capture Tools</th>
+              <th class="py-3 px-4">Latest Capture</th>
+              <th class="py-3 px-4 text-right">Quick Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (agent of filteredAgentMetrics(); track agent.agentId) {
+              <tr 
+                class="hover:bg-indigo-50/30 transition-colors group"
+                [ngClass]="selectedAgentFilter() === agent.agentId ? 'bg-indigo-50/40' : ''"
+              >
+                <!-- Rank -->
+                <td class="py-3.5 px-4 text-center font-black">
+                  @if (agent.rank === 1) {
+                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs">🥇</span>
+                  } @else if (agent.rank === 2) {
+                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-800 border border-slate-300 text-xs">🥈</span>
+                  } @else if (agent.rank === 3) {
+                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-900 border border-orange-300 text-xs">🥉</span>
+                  } @else {
+                    <span class="text-xs text-slate-400">#{{ agent.rank }}</span>
+                  }
+                </td>
+
+                <!-- Agent / Creator -->
+                <td class="py-3.5 px-4">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                      {{ agent.initials }}
+                    </div>
+                    <div>
+                      <div class="font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                        {{ agent.name }}
+                      </div>
+                      <div class="text-[10px] text-slate-400 font-medium truncate max-w-[160px]">
+                        {{ agent.email || agent.username || 'System Account' }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Role -->
+                <td class="py-3.5 px-4">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold border"
+                    [ngClass]="{
+                      'bg-purple-50 text-purple-700 border-purple-200': agent.role === 'SuperAdmin' || agent.role === 'Admin',
+                      'bg-blue-50 text-blue-700 border-blue-200': agent.role === 'StallOwner',
+                      'bg-emerald-50 text-emerald-700 border-emerald-200': agent.role === 'Marketing' || !agent.role
+                    }"
+                  >
+                    {{ agent.role }}
+                  </span>
+                </td>
+
+                <!-- Total Leads & Share -->
+                <td class="py-3.5 px-4">
+                  <div class="flex items-center gap-3">
+                    <div>
+                      <span class="text-sm font-black text-slate-900">{{ agent.totalLeads }}</span>
+                      <span class="text-[11px] text-slate-500 font-bold ml-1">leads</span>
+                    </div>
+                    <div class="w-24 bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" [style.width.%]="agent.pctOfTotal"></div>
+                    </div>
+                    <span class="text-[10px] font-extrabold text-slate-500 w-8">{{ agent.pctOfTotal }}%</span>
+                  </div>
+                </td>
+
+                <!-- Lead Quality -->
+                <td class="py-3.5 px-4">
+                  <div class="inline-flex items-center gap-1.5 text-[10px] font-bold">
+                    <span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/60" title="Hot Leads">
+                      🔥 {{ agent.hotCount }}
+                    </span>
+                    <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200/60" title="Warm Leads">
+                      ⚡ {{ agent.warmCount }}
+                    </span>
+                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200" title="Cold Leads">
+                      ❄️ {{ agent.coldCount }}
+                    </span>
+                  </div>
+                </td>
+
+                <!-- Capture Tools -->
+                <td class="py-3.5 px-4">
+                  <div class="flex flex-wrap items-center gap-1 text-[10px] font-bold text-slate-600">
+                    @if (agent.ocrCount > 0) {
+                      <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200" title="Business Card OCR">
+                        📇 {{ agent.ocrCount }}
+                      </span>
+                    }
+                    @if (agent.qrCount > 0) {
+                      <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200" title="QR Scan">
+                        📱 {{ agent.qrCount }}
+                      </span>
+                    }
+                    @if (agent.voiceCount > 0) {
+                      <span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200" title="Voice Audio">
+                        🎙️ {{ agent.voiceCount }}
+                      </span>
+                    }
+                    @if (agent.manualCount > 0) {
+                      <span class="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200" title="Manual Entry">
+                        ✍️ {{ agent.manualCount }}
+                      </span>
+                    }
+                  </div>
+                </td>
+
+                <!-- Latest Lead -->
+                <td class="py-3.5 px-4 text-slate-500 font-semibold text-[11px]">
+                  {{ formatRelativeTime(agent.latestLeadTime) }}
+                </td>
+
+                <!-- Quick Action -->
+                <td class="py-3.5 px-4 text-right">
+                  <button 
+                    type="button"
+                    (click)="toggleAgentFilter(agent.agentId)"
+                    class="text-xs px-2.5 py-1 rounded-lg font-extrabold transition-colors cursor-pointer"
+                    [ngClass]="selectedAgentFilter() === agent.agentId ? 'bg-indigo-600 text-white' : 'text-indigo-600 hover:bg-indigo-50 border border-indigo-200'"
+                  >
+                    {{ selectedAgentFilter() === agent.agentId ? 'Filtered ✓' : 'Filter Leads' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- Assigned Team Members without Leads Notice -->
+    @if (assignedRepsWithNoLeads().length > 0) {
+      <div class="px-6 py-3.5 bg-slate-50/80 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2 text-slate-600">
+          <span class="material-icons text-slate-400 text-sm">info</span>
+          <span class="font-bold text-slate-700">Assigned Team Members Pending First Capture:</span>
+          <div class="flex flex-wrap gap-1.5">
+            @for (rep of assignedRepsWithNoLeads(); track rep) {
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-bold text-[11px]">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                {{ rep }} (0 leads)
+              </span>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+  }
+
   <!-- Recent Leads Live Stream Section -->
   <div class="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden mb-8">
     <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
@@ -560,8 +996,20 @@
           <span class="material-icons text-base">schedule</span>
         </div>
         <div>
-          <h2 class="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Live Stream: Recent Stall Leads</h2>
-          <p class="text-[11px] text-slate-500 font-medium">Latest visitors captured at {{ stallService.activeStall()?.name || 'this stall' }}</p>
+          <div class="flex items-center gap-2">
+            <h2 class="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
+              {{ isMarketing() ? 'My Captured Leads Live Stream' : 'Live Stream: Recent Leads' }}
+            </h2>
+            @if (selectedAgentFilter() !== 'ALL') {
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800">
+                Filtered: {{ getSelectedAgentName() }}
+                <button type="button" (click)="selectedAgentFilter.set('ALL')" class="hover:text-indigo-900 cursor-pointer ml-0.5">✕</button>
+              </span>
+            }
+          </div>
+          <p class="text-[11px] text-slate-500 font-medium">
+            {{ isMarketing() ? 'Visitors captured by you at ' + (stallService.activeStall()?.name || 'this stall') : (selectedAgentFilter() !== 'ALL' ? 'Showing leads created by ' + getSelectedAgentName() : 'Latest visitors captured at ' + (stallService.activeStall()?.name || 'this stall')) }}
+          </p>
         </div>
       </div>
 
@@ -579,7 +1027,7 @@
         <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center mx-auto mb-3">
           <span class="material-icons text-3xl">post_add</span>
         </div>
-        <h3 class="text-sm font-bold text-slate-800">No leads captured for this stall yet</h3>
+        <h3 class="text-sm font-bold text-slate-800">No leads captured yet</h3>
         <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Start capturing visitor details at your booth using AI Business Card OCR, QR Badge Scan, or Voice Notes.</p>
         <button 
           type="button" 
@@ -598,6 +1046,7 @@
               <th class="py-3 px-4">Lead #</th>
               <th class="py-3 px-4">Visitor & Company</th>
               <th class="py-3 px-4">Contact</th>
+              <th class="py-3 px-4">Captured By</th>
               <th class="py-3 px-4">Method</th>
               <th class="py-3 px-4">Interest</th>
               <th class="py-3 px-4">Sync Status</th>
@@ -641,6 +1090,16 @@
                   @if (lead.email) {
                     <div class="text-[11px] text-slate-500 truncate max-w-[140px]">{{ lead.email }}</div>
                   }
+                </td>
+
+                <!-- Captured By -->
+                <td class="py-3 px-4">
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-5 h-5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-black flex items-center justify-center shrink-0 border border-indigo-200/60">
+                      {{ getInitials(getAgentName(lead.repId)) }}
+                    </div>
+                    <span class="font-bold text-slate-800 truncate max-w-[130px]">{{ getAgentName(lead.repId) }} {{ isMarketing() ? '(You)' : '' }}</span>
+                  </div>
                 </td>
 
                 <!-- Method -->

@@ -35,7 +35,28 @@ export class LeadListComponent implements OnInit {
 
   availableExhibitions = computed(() => {
     const list = this.exhibitionService.exhibitions();
-    if (this.auth.isStallOwner() || this.auth.isMarketing()) {
+    const user = this.auth.currentUser();
+    if (!user) return list;
+    if (user.role === 'SuperAdmin') return list;
+
+    if (user.role === 'Admin') {
+      const myId = user.id?.toLowerCase().trim();
+      const myUsername = user.username?.toLowerCase().trim();
+      const myFullName = user.fullName?.toLowerCase().trim();
+
+      return list.filter((e) => {
+        const adminId = e.adminId?.toLowerCase().trim();
+        const adminName = e.adminName?.toLowerCase().trim();
+        return (
+          (adminId && myId && adminId === myId) ||
+          (adminName && myUsername && adminName === myUsername) ||
+          (adminName && myFullName && adminName === myFullName) ||
+          ((user as any).assignedExhibitionId && (user as any).assignedExhibitionId === e.id)
+        );
+      });
+    }
+
+    if (user.role === 'StallOwner' || user.role === 'Marketing') {
       const myStallExhIds = new Set(this.stallService.stalls().map((s) => s.exhibitionId).filter(Boolean));
       return list.filter((e) => myStallExhIds.has(e.id));
     }
@@ -501,8 +522,15 @@ export class LeadListComponent implements OnInit {
   dateAndStallFilteredLeads = computed(() => {
     let list = this.allLeads();
 
-    // If StallOwner or Marketing, strictly filter all leads to only those belonging to their assigned/mapped stalls
-    if (this.auth.isStallOwner() || this.auth.isMarketing()) {
+    // Strict Role Scoping
+    if (this.auth.isAdmin()) {
+      const myExhIds = new Set(this.availableExhibitions().map((e) => e.id));
+      const myStallIds = new Set(this.stallService.stalls().map((s) => s.id));
+      list = list.filter((l) =>
+        (l.exhibitionId && myExhIds.has(l.exhibitionId)) ||
+        (l.stallId && myStallIds.has(l.stallId))
+      );
+    } else if (this.auth.isStallOwner() || this.auth.isMarketing()) {
       const myStallIds = new Set(this.stallService.stalls().map((s) => s.id));
       list = list.filter((l) => (l.stallId && myStallIds.has(l.stallId)) || (l.exhibitionId && myStallIds.has(l.exhibitionId)));
     }

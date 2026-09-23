@@ -6,6 +6,7 @@ import { ApplicationDatabase } from './db.service';
 import { SupabaseSyncService } from './supabase-sync.service';
 import { getApiUrl } from '../config/api.config';
 import { AuthService } from './auth.service';
+import { ExhibitionService } from './exhibition.service';
 
 export interface Stall {
   id: string;
@@ -36,19 +37,48 @@ export class StallService {
   private supabaseSync = inject(SupabaseSyncService);
   private http = inject(HttpClient);
   private auth = inject(AuthService);
+  private exhibitionService = inject(ExhibitionService);
 
   allStalls = signal<Stall[]>([]);
 
   stalls = computed<Stall[]>(() => {
     const list = this.allStalls();
     const user = this.auth.currentUser();
-    if (user && user.role === 'StallOwner') {
+    if (!user) return list;
+    if (user.role === 'SuperAdmin') return list;
+
+    // Admin role: Only stalls in exhibitions assigned to this admin
+    if (user.role === 'Admin') {
       const myId = user.id?.toLowerCase();
       const myUsername = user.username?.toLowerCase();
       const myFullName = user.fullName?.toLowerCase();
+
+      const assignedExhIds = new Set(
+        this.exhibitionService.exhibitions()
+          .filter(e => {
+            const adminId = e.adminId?.toLowerCase();
+            const adminName = e.adminName?.toLowerCase();
+            return (
+              (adminId && myId && adminId === myId) ||
+              (adminName && myUsername && adminName === myUsername) ||
+              (adminName && myFullName && adminName === myFullName) ||
+              ((user as any).assignedExhibitionId && (user as any).assignedExhibitionId === e.id)
+            );
+          })
+          .map(e => e.id)
+      );
+
+      return list.filter(s => s.exhibitionId && assignedExhIds.has(s.exhibitionId));
+    }
+
+    // StallOwner role: Only stalls owned by this user
+    if (user.role === 'StallOwner') {
+      const myId = user.id?.toLowerCase().trim();
+      const myUsername = user.username?.toLowerCase().trim();
+      const myFullName = user.fullName?.toLowerCase().trim();
       return list.filter((s) => {
-        const ownerId = s.ownerId?.toLowerCase();
-        const ownerName = s.ownerName?.toLowerCase();
+        const ownerId = s.ownerId?.toLowerCase().trim();
+        const ownerName = s.ownerName?.toLowerCase().trim();
         return (
           (ownerId && myId && ownerId === myId) ||
           (ownerName && myUsername && ownerName === myUsername) ||
@@ -56,18 +86,27 @@ export class StallService {
         );
       });
     }
-    if (user && user.role === 'Marketing') {
-      const myId = user.id?.toLowerCase();
-      const myUsername = user.username?.toLowerCase();
-      const myFullName = user.fullName?.toLowerCase();
+
+    // Marketing role: Only stalls assigned to this marketing rep
+    if (user.role === 'Marketing') {
+      const myId = user.id?.toLowerCase().trim();
+      const myUsername = user.username?.toLowerCase().trim();
+      const myFullName = user.fullName?.toLowerCase().trim();
       return list.filter((s) => {
-        const repIds = s.marketingRepIds?.toLowerCase() || '';
-        const repNames = s.marketingRepNames?.toLowerCase() || '';
-        return (
-          (myId && repIds.includes(myId)) ||
-          (myUsername && repNames.includes(myUsername)) ||
-          (myFullName && repNames.includes(myFullName))
-        );
+        const repIdsList = (s.marketingRepIds || '')
+          .split(',')
+          .map((x) => x.trim().toLowerCase())
+          .filter(Boolean);
+        const repNamesList = (s.marketingRepNames || '')
+          .split(',')
+          .map((x) => x.trim().toLowerCase())
+          .filter(Boolean);
+
+        const matchesId = !!myId && repIdsList.includes(myId);
+        const matchesUsername = !!myUsername && repNamesList.includes(myUsername);
+        const matchesFullName = !!myFullName && repNamesList.includes(myFullName);
+
+        return matchesId || matchesUsername || matchesFullName;
       });
     }
     return list;
@@ -91,81 +130,100 @@ export class StallService {
   }
 
   async loadStalls(): Promise<void> {
-    // 1. Fetch live authoritative stalls from Supabase (Primary DB)
     try {
-      const cloudStalls = (await this.supabaseSync.getStallsFromSupabase()) as Stall[];
-      if (cloudStalls && cloudStalls.length > 0) {
-        const localStalls = await this.db.getAllStalls().catch(() => []);
-        const localMap = new Map<string, any>(localStalls.map((s: any) => [s.id?.toLowerCase(), s]));
-        const merged = cloudStalls.map((s) => {
-          const local = localMap.get(s.id?.toLowerCase());
-          return {
-            ...s,
-            marketingRepIds: s.marketingRepIds || local?.marketingRepIds || '',
-            marketingRepNames: s.marketingRepNames || local?.marketingRepNames || ''
-          };
-        });
-        this.allStalls.set(merged);
-        this.ensureValidActiveStall();
+      const [cloudStalls, apiStalls, localStalls] = await Promise.all([
+        this.supabaseSync.getStallsFromSupabase().catch(() => [] as any[]),
+        firstValueFrom(this.http.get<any[]>(`${getApiUrl()}/stalls`).pipe(catchError(() => of([])))),
+        this.db.getAllStalls().catch(() => [] as any[])
+      ]);
 
-        // Synchronize to local Dexie cache
-        for (const s of merged) {
-          await this.db.saveStall(s);
+      const apiMapById = new Map<string, any>();
+      const apiMapByCode = new Map<string, any>();
+      for (const a of (apiStalls || [])) {
+        if (a.id) apiMapById.set(a.id.toLowerCase(), a);
+        if (a.code) {
+          apiMapByCode.set(a.code.toLowerCase(), a);
+          const baseCode = a.code.split('-').slice(0, 3).join('-').toLowerCase();
+          if (!apiMapByCode.has(baseCode)) {
+            apiMapByCode.set(baseCode, a);
+          }
         }
-        return;
       }
-    } catch (cloudErr) {
-      console.warn('[StallService] Supabase stalls fetch notice, falling back:', cloudErr);
-    }
 
-    // 2. Fetch live stalls from Backend SQL Server / Render API
-    try {
-      const apiUrl = `${getApiUrl()}/stalls`;
-      const apiStalls = await firstValueFrom(this.http.get<any[]>(apiUrl).pipe(catchError(() => of([]))));
-      if (apiStalls && apiStalls.length > 0) {
-        const mapped: Stall[] = apiStalls.map((s) => ({
-          id: s.id,
-          name: s.name,
-          code: s.code,
-          location: s.location || '',
-          ownerId: s.ownerId || '',
-          ownerName: s.ownerName || '',
-          createdAt: s.createdAt || new Date().toISOString(),
-          exhibitionId: s.exhibitionId || '',
-          hallNumber: s.hallNumber || '',
-          boothNumber: s.boothNumber || '',
-          eventName: s.eventName || '',
-          organizer: s.organizer || '',
-          durationDays: s.durationDays || 3,
-          startDate: s.startDate || '',
-          endDate: s.endDate || '',
-          marketingRepIds: s.marketingRepIds || '',
-          marketingRepNames: s.marketingRepNames || '',
-          status: s.status || 'Active'
-        }));
-        this.allStalls.set(mapped);
+      const localMapById = new Map<string, any>();
+      const localMapByCode = new Map<string, any>();
+      for (const l of (localStalls || [])) {
+        if (l.id) localMapById.set(l.id.toLowerCase(), l);
+        if (l.code) localMapByCode.set(l.code.toLowerCase(), l);
+      }
+
+      const stallMap = new Map<string, Stall>();
+
+      const processCandidate = (candidate: any) => {
+        const id = candidate.id;
+        if (!id) return;
+        const idKey = id.toLowerCase();
+        const codeKey = (candidate.code || '').toLowerCase();
+        const baseCodeKey = (candidate.code || '').split('-').slice(0, 3).join('-').toLowerCase();
+
+        const apiMatch = apiMapById.get(idKey) || apiMapByCode.get(codeKey) || apiMapByCode.get(baseCodeKey);
+        const localMatch = localMapById.get(idKey) || localMapByCode.get(codeKey);
+
+        const repIds = candidate.marketingRepIds || apiMatch?.marketingRepIds || localMatch?.marketingRepIds || '';
+        const repNames = candidate.marketingRepNames || apiMatch?.marketingRepNames || localMatch?.marketingRepNames || '';
+        const ownerId = candidate.ownerId || apiMatch?.ownerId || localMatch?.ownerId || '';
+        const ownerName = candidate.ownerName || apiMatch?.ownerName || localMatch?.ownerName || '';
+        const exhibitionId = candidate.exhibitionId || apiMatch?.exhibitionId || localMatch?.exhibitionId || '';
+
+        const fullStall: Stall = {
+          id: candidate.id,
+          name: candidate.name || apiMatch?.name || localMatch?.name || 'Unnamed Stall',
+          code: candidate.code || apiMatch?.code || localMatch?.code || '',
+          location: candidate.location || apiMatch?.location || localMatch?.location || '',
+          ownerId: ownerId,
+          ownerName: ownerName,
+          createdAt: candidate.createdAt || apiMatch?.createdAt || localMatch?.createdAt || new Date().toISOString(),
+          exhibitionId: exhibitionId,
+          hallNumber: candidate.hallNumber || apiMatch?.hallNumber || localMatch?.hallNumber || '',
+          boothNumber: candidate.boothNumber || apiMatch?.boothNumber || localMatch?.boothNumber || '',
+          eventName: candidate.eventName || apiMatch?.eventName || localMatch?.eventName || '',
+          organizer: candidate.organizer || apiMatch?.organizer || localMatch?.organizer || '',
+          durationDays: candidate.durationDays || apiMatch?.durationDays || localMatch?.durationDays || 3,
+          startDate: candidate.startDate || apiMatch?.startDate || localMatch?.startDate || '',
+          endDate: candidate.endDate || apiMatch?.endDate || localMatch?.endDate || '',
+          marketingRepIds: repIds,
+          marketingRepNames: repNames,
+          status: candidate.status || apiMatch?.status || localMatch?.status || 'Active'
+        };
+
+        stallMap.set(idKey, fullStall);
+      };
+
+      for (const cs of (cloudStalls || [])) {
+        processCandidate(cs);
+      }
+      for (const as of (apiStalls || [])) {
+        if (!stallMap.has((as.id || '').toLowerCase())) {
+          processCandidate(as);
+        }
+      }
+      for (const ls of (localStalls || [])) {
+        if (!stallMap.has((ls.id || '').toLowerCase())) {
+          processCandidate(ls);
+        }
+      }
+
+      const mergedList = Array.from(stallMap.values());
+      if (mergedList.length > 0) {
+        this.allStalls.set(mergedList);
         this.ensureValidActiveStall();
 
-        // Synchronize backend stalls to Supabase and Dexie
-        for (const st of mapped) {
+        for (const st of mergedList) {
           await this.db.saveStall(st);
-          this.supabaseSync.saveStallToSupabase(st);
         }
-        return;
       }
-    } catch (apiErr) {
-      console.warn('[StallService] Backend API stalls fetch notice:', apiErr);
-    }
-
-    // 3. Offline fallback from local Dexie
-    try {
-      const cached = (await this.db.getAllStalls()) as Stall[];
-      if (cached && cached.length > 0) {
-        this.allStalls.set(cached);
-        this.ensureValidActiveStall();
-      }
-    } catch (dbErr) {
-      console.warn('[StallService] Error loading local cached stalls:', dbErr);
+    } catch (err) {
+      console.warn('[StallService] Error loading stalls:', err);
     }
   }
 
@@ -245,6 +303,13 @@ export class StallService {
       await this.supabaseSync.saveStallToSupabase(stall);
     } catch (supErr) {
       console.warn('[StallService] Supabase save warning:', supErr);
+    }
+
+    // 4. Save to Backend API
+    try {
+      await firstValueFrom(this.http.post(`${getApiUrl()}/stalls`, stall).pipe(catchError(() => of(null))));
+    } catch (apiErr) {
+      console.warn('[StallService] Backend API save warning:', apiErr);
     }
 
     return stall;
