@@ -27,10 +27,18 @@ export class OcrDebuggerComponent {
   capturedDocSrc = signal<string | null>(null);
   activeDocFilter = signal<'vibrant' | 'original' | 'bw'>('vibrant');
   docCorners = signal<CardCorners>({
-    topLeft: { x: 8, y: 12 },
-    topRight: { x: 92, y: 12 },
-    bottomRight: { x: 92, y: 88 },
-    bottomLeft: { x: 8, y: 88 }
+    topLeft: { x: 4, y: 4 },
+    topRight: { x: 96, y: 4 },
+    bottomRight: { x: 96, y: 96 },
+    bottomLeft: { x: 4, y: 96 }
+  });
+
+  centerPoint = computed(() => {
+    const c = this.docCorners();
+    return {
+      x: Math.round(((c.topLeft.x + c.topRight.x + c.bottomRight.x + c.bottomLeft.x) / 4) * 10) / 10,
+      y: Math.round(((c.topLeft.y + c.topRight.y + c.bottomRight.y + c.bottomLeft.y) / 4) * 10) / 10
+    };
   });
 
   isDraggingCorner = signal(false);
@@ -56,8 +64,7 @@ export class OcrDebuggerComponent {
   async openDocCropModal(sourceDataUrl: string): Promise<void> {
     this.capturedDocSrc.set(sourceDataUrl);
     this.showDocCropModal.set(true);
-    const detected = await this.preprocessor.autoDetectCardCorners(sourceDataUrl);
-    this.docCorners.set(detected);
+    this.resetQuadCorners();
   }
 
   closeDocCropModal(): void {
@@ -66,10 +73,10 @@ export class OcrDebuggerComponent {
 
   resetQuadCorners(): void {
     this.docCorners.set({
-      topLeft: { x: 8, y: 12 },
-      topRight: { x: 92, y: 12 },
-      bottomRight: { x: 92, y: 88 },
-      bottomLeft: { x: 8, y: 88 }
+      topLeft: { x: 4, y: 4 },
+      topRight: { x: 96, y: 4 },
+      bottomRight: { x: 96, y: 96 },
+      bottomLeft: { x: 4, y: 96 }
     });
   }
 
@@ -78,8 +85,136 @@ export class OcrDebuggerComponent {
     if (!src) return;
     const rotatedUrl = await this.preprocessor.rotateDataUrl(src, degreesDelta);
     this.capturedDocSrc.set(rotatedUrl);
-    const reDetected = await this.preprocessor.autoDetectCardCorners(rotatedUrl);
-    this.docCorners.set(reDetected);
+    this.resetQuadCorners();
+  }
+
+  startAreaSelection(event: MouseEvent | TouchEvent, imageWrapperEl: HTMLElement): void {
+    if ('button' in event && event.button !== 0) return;
+
+    const target = event.target as HTMLElement;
+    if (target && target.closest('.interactive-handle')) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const rect = imageWrapperEl.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const startClientX = 'touches' in event && event.touches.length > 0 ? event.touches[0].clientX : (event as MouseEvent).clientX;
+    const startClientY = 'touches' in event && event.touches.length > 0 ? event.touches[0].clientY : (event as MouseEvent).clientY;
+
+    const startPctX = Math.max(0, Math.min(100, ((startClientX - rect.left) / rect.width) * 100));
+    const startPctY = Math.max(0, Math.min(100, ((startClientY - rect.top) / rect.height) * 100));
+
+    let hasMoved = false;
+
+    const updateSelection = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+      const curPctX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+      const curPctY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+
+      const dx = Math.abs(curPctX - startPctX);
+      const dy = Math.abs(curPctY - startPctY);
+
+      if (dx > 1 || dy > 1) {
+        hasMoved = true;
+        const minX = Math.round(Math.min(startPctX, curPctX) * 10) / 10;
+        const maxX = Math.round(Math.max(startPctX, curPctX) * 10) / 10;
+        const minY = Math.round(Math.min(startPctY, curPctY) * 10) / 10;
+        const maxY = Math.round(Math.max(startPctY, curPctY) * 10) / 10;
+
+        this.docCorners.set({
+          topLeft: { x: minX, y: minY },
+          topRight: { x: maxX, y: minY },
+          bottomRight: { x: maxX, y: maxY },
+          bottomLeft: { x: minX, y: maxY }
+        });
+      }
+    };
+
+    const endSelection = () => {
+      window.removeEventListener('mousemove', updateSelection);
+      window.removeEventListener('mouseup', endSelection);
+      window.removeEventListener('touchmove', updateSelection);
+      window.removeEventListener('touchend', endSelection);
+
+      if (hasMoved) {
+        const c = this.docCorners();
+        const w = Math.abs(c.topRight.x - c.topLeft.x);
+        const h = Math.abs(c.bottomLeft.y - c.topLeft.y);
+        if (w < 4 || h < 4) {
+          this.resetQuadCorners();
+        }
+      }
+    };
+
+    window.addEventListener('mousemove', updateSelection);
+    window.addEventListener('mouseup', endSelection);
+    window.addEventListener('touchmove', updateSelection);
+    window.addEventListener('touchend', endSelection);
+  }
+
+  startMoveBox(event: MouseEvent | TouchEvent, imageWrapperEl: HTMLElement): void {
+    if ('button' in event && event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const rect = imageWrapperEl.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const startClientX = 'touches' in event && event.touches.length > 0 ? event.touches[0].clientX : (event as MouseEvent).clientX;
+    const startClientY = 'touches' in event && event.touches.length > 0 ? event.touches[0].clientY : (event as MouseEvent).clientY;
+
+    const startPctX = ((startClientX - rect.left) / rect.width) * 100;
+    const startPctY = ((startClientY - rect.top) / rect.height) * 100;
+
+    const initCorners = { ...this.docCorners() };
+
+    const minX = Math.min(initCorners.topLeft.x, initCorners.bottomLeft.x);
+    const maxX = Math.max(initCorners.topRight.x, initCorners.bottomRight.x);
+    const minY = Math.min(initCorners.topLeft.y, initCorners.topRight.y);
+    const maxY = Math.max(initCorners.bottomLeft.y, initCorners.bottomRight.y);
+
+    const updateMove = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+      const curPctX = ((clientX - rect.left) / rect.width) * 100;
+      const curPctY = ((clientY - rect.top) / rect.height) * 100;
+
+      let deltaX = curPctX - startPctX;
+      let deltaY = curPctY - startPctY;
+
+      if (minX + deltaX < 0) deltaX = -minX;
+      if (maxX + deltaX > 100) deltaX = 100 - maxX;
+      if (minY + deltaY < 0) deltaY = -minY;
+      if (maxY + deltaY > 100) deltaY = 100 - maxY;
+
+      deltaX = Math.round(deltaX * 10) / 10;
+      deltaY = Math.round(deltaY * 10) / 10;
+
+      this.docCorners.set({
+        topLeft: { x: Math.round((initCorners.topLeft.x + deltaX) * 10) / 10, y: Math.round((initCorners.topLeft.y + deltaY) * 10) / 10 },
+        topRight: { x: Math.round((initCorners.topRight.x + deltaX) * 10) / 10, y: Math.round((initCorners.topRight.y + deltaY) * 10) / 10 },
+        bottomRight: { x: Math.round((initCorners.bottomRight.x + deltaX) * 10) / 10, y: Math.round((initCorners.bottomRight.y + deltaY) * 10) / 10 },
+        bottomLeft: { x: Math.round((initCorners.bottomLeft.x + deltaX) * 10) / 10, y: Math.round((initCorners.bottomLeft.y + deltaY) * 10) / 10 }
+      });
+    };
+
+    const endMove = () => {
+      window.removeEventListener('mousemove', updateMove);
+      window.removeEventListener('mouseup', endMove);
+      window.removeEventListener('touchmove', updateMove);
+      window.removeEventListener('touchend', endMove);
+    };
+
+    window.addEventListener('mousemove', updateMove);
+    window.addEventListener('mouseup', endMove);
+    window.addEventListener('touchmove', updateMove);
+    window.addEventListener('touchend', endMove);
   }
 
   startCornerDrag(event: MouseEvent | TouchEvent, target: string, imageWrapperEl: HTMLElement): void {
