@@ -11,6 +11,7 @@ import { QrScannerComponent, QrParsedContact } from '../qr-scanner/qr-scanner.co
 import { VoiceRecorderComponent } from '../voice-recorder/voice-recorder.component';
 import { PREDEFINED_DESIGNATIONS } from '../../../core/services/card-parser.service';
 import { VoiceParserService } from '../../../core/services/voice-parser.service';
+import { VoiceTranscribeResult } from '../../../core/services/gemini-voice.service';
 import { SupabaseSyncService } from '../../../core/services/supabase-sync.service';
 import { getApiUrl } from '../../../core/config/api.config';
 import { AuthService } from '../../../core/services/auth.service';
@@ -439,6 +440,40 @@ export class LeadFormComponent implements OnInit {
 
       this.isAutoFilled.set(true);
     }
+  }
+
+  onVoiceLeadDataExtracted(data: VoiceTranscribeResult): void {
+    if (!data) return;
+
+    if (data.name && (!this.name || this.name.trim() === '')) {
+      this.name = data.name;
+    }
+    if (data.company && (!this.company || this.company.trim() === '')) {
+      this.company = data.company;
+    }
+    if (data.designation && (!this.designation || this.designation.trim() === '')) {
+      this.designation = data.designation;
+    }
+    if (data.phone && (!this.phone || this.phone.trim() === '')) {
+      this.phone = data.phone;
+    }
+    if (data.email && (!this.email || this.email.trim() === '')) {
+      this.email = data.email;
+    }
+    if (data.website && (!this.website || this.website.trim() === '')) {
+      this.website = data.website;
+    }
+    if (data.address && (!this.address || this.address.trim() === '')) {
+      this.address = data.address;
+    }
+    if (data.interestLevel && !this.interestLevel) {
+      this.interestLevel = data.interestLevel;
+    }
+    if (data.remarks && (!this.remarks || this.remarks.trim() === '')) {
+      this.remarks = data.remarks;
+    }
+
+    this.isAutoFilled.set(true);
   }
 
   onVoiceCleared(): void {

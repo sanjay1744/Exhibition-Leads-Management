@@ -249,6 +249,7 @@
         [initialTranscript]="voiceNotesTranscript" 
         (voiceRecorded)="onVoiceRecorded($event)" 
         (transcriptGenerated)="onTranscriptGenerated($event)"
+        (leadDataExtracted)="onVoiceLeadDataExtracted($event)"
         (voiceCleared)="onVoiceCleared()"
       ></app-voice-recorder>
     </div>

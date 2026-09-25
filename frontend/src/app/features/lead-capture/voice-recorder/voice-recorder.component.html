@@ -10,10 +10,10 @@
           <h3 class="text-xs font-bold uppercase tracking-wider text-white">Voice Note Audio</h3>
         </div>
       </div>
-      @if (whisperStt.isModelLoading() || whisperStt.isTranscribing()) {
-        <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-400/20 text-blue-100 border border-blue-300/30 whitespace-nowrap shrink-0 flex items-center gap-1">
-          <span class="material-icons text-xs animate-spin text-blue-300">sync</span>
-          AI Processing
+      @if (isTranscribing()) {
+        <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-400/20 text-indigo-100 border border-indigo-300/30 whitespace-nowrap shrink-0 flex items-center gap-1">
+          <span class="material-icons text-xs animate-spin text-indigo-200">sync</span>
+          Gemini 2.5 Flash
         </span>
       } @else if (isRecording()) {
         <div class="flex items-center gap-1.5 bg-rose-500/20 text-rose-200 border border-rose-400/30 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold animate-pulse whitespace-nowrap shrink-0">
@@ -21,7 +21,10 @@
           REC {{ formatTime(recordingDuration()) }}
         </div>
       } @else {
-        <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-400/20 text-rose-100 border border-rose-300/30 whitespace-nowrap shrink-0">AI Speech</span>
+        <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-100 border border-emerald-300/30 whitespace-nowrap shrink-0 flex items-center gap-1">
+          <span class="material-icons text-[11px] text-emerald-300">auto_awesome</span>
+          Gemini 2.5 Flash
+        </span>
       }
     </div>
 
@@ -110,11 +113,11 @@
           <!-- Transcribed Notes Box -->
           <div class="space-y-1">
             <div class="flex items-center justify-between text-[11px] font-bold text-slate-700">
-              <span class="flex items-center gap-1 text-blue-700">
-                <span class="material-icons text-xs">subtitles</span>
-                Transcribed Discussion Notes:
-                @if (whisperStt.isModelLoading() || whisperStt.isTranscribing()) {
-                  <span class="material-icons text-xs animate-spin text-blue-600 ml-1 font-bold">sync</span>
+              <span class="flex items-center gap-1 text-indigo-700">
+                <span class="material-icons text-xs">auto_awesome</span>
+                Transcribed Discussion Notes (Gemini 2.5 Flash):
+                @if (isTranscribing()) {
+                  <span class="material-icons text-xs animate-spin text-indigo-600 ml-1 font-bold">sync</span>
                 }
               </span>
             </div>
@@ -124,10 +127,38 @@
               (ngModelChange)="onTranscriptChange($event)"
               rows="2" 
               placeholder="Transcribed notes will appear here automatically..."
-              class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-600 transition"
+              class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:border-indigo-600 transition"
             ></textarea>
-
           </div>
+
+          <!-- Gemini Extracted Lead Preview Chips -->
+          @if (leadData()) {
+            <div class="p-2 bg-indigo-50/80 border border-indigo-200/60 rounded-lg text-[11px] text-indigo-900 flex flex-wrap items-center gap-1.5">
+              <span class="font-bold flex items-center gap-0.5 text-indigo-700">
+                <span class="material-icons text-xs">psychology</span> Extracted:
+              </span>
+              @if (leadData()?.name) {
+                <span class="bg-white/90 px-1.5 py-0.5 rounded text-indigo-900 border border-indigo-200 font-medium">
+                  👤 {{ leadData()?.name }}
+                </span>
+              }
+              @if (leadData()?.company) {
+                <span class="bg-white/90 px-1.5 py-0.5 rounded text-indigo-900 border border-indigo-200 font-medium">
+                  🏢 {{ leadData()?.company }}
+                </span>
+              }
+              @if (leadData()?.phone) {
+                <span class="bg-white/90 px-1.5 py-0.5 rounded text-indigo-900 border border-indigo-200 font-medium">
+                  📞 {{ leadData()?.phone }}
+                </span>
+              }
+              @if (leadData()?.interestLevel) {
+                <span class="bg-white/90 px-1.5 py-0.5 rounded text-indigo-900 border border-indigo-200 font-medium">
+                  🔥 {{ leadData()?.interestLevel }}
+                </span>
+              }
+            </div>
+          }
 
           <!-- Action Buttons -->
           <div class="flex items-center gap-2 pt-1">
